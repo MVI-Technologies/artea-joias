@@ -1,0 +1,73 @@
+/* Client List Styles */
+
+.client-list-page {
+  animation: fadeIn 0.3s ease;
+}
+
+.client-name-cell {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.client-group-badge {
+  display: inline-block;
+  background-color: #6c757d;
+  color: white;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.client-name {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.client-phone {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.table-footer {
+  padding: var(--spacing-sm) var(--spacing-md);
+  background-color: var(--bg-primary);
+  border-top: 1px solid var(--border-color);
+  font-size: var(--font-size-sm);
+}
+
+/* Lot Detail Styles */
+.lot-detail-page {
+  animation: fadeIn 0.3s ease;
+}
+
+.lot-info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--spacing-md);
+}
+
+.lot-info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.lot-info-item label {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+}
+
+.lot-info-item span {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.lot-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+}

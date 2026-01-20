@@ -1,0 +1,133 @@
+/* Romaneio Styles */
+
+.romaneio-page {
+  animation: fadeIn 0.3s ease;
+}
+
+.romaneio-layout {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: var(--spacing-lg);
+}
+
+/* Sidebar */
+.romaneio-sidebar .card-body {
+  padding: 0;
+}
+
+.lot-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.lot-item {
+  padding: var(--spacing-md);
+  border-bottom: 1px solid var(--border-color);
+  cursor: pointer;
+  transition: background-color var(--transition-fast);
+}
+
+.lot-item:hover {
+  background-color: var(--bg-primary);
+}
+
+.lot-item.active {
+  background-color: rgba(52, 152, 219, 0.1);
+  border-left: 3px solid var(--color-primary);
+}
+
+.lot-item-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+  margin-bottom: 4px;
+}
+
+/* Content */
+.romaneio-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.romaneio-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+/* Client Cards */
+.romaneio-client-card {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  margin-bottom: var(--spacing-md);
+  overflow: hidden;
+}
+
+.romaneio-client-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-md);
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.romaneio-client-header h4 {
+  margin: 0;
+  font-size: var(--font-size-base);
+}
+
+.romaneio-client-total {
+  color: var(--color-success);
+}
+
+.romaneio-items-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.romaneio-items-table th,
+.romaneio-items-table td {
+  padding: var(--spacing-sm) var(--spacing-md);
+  text-align: left;
+  font-size: var(--font-size-sm);
+}
+
+.romaneio-items-table th {
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.romaneio-items-table td {
+  border-top: 1px solid var(--border-color);
+}
+
+/* Print Styles */
+@media print {
+  .romaneio-sidebar,
+  .page-header,
+  .romaneio-actions,
+  .sidebar,
+  .header {
+    display: none !important;
+  }
+  
+  .romaneio-layout {
+    grid-template-columns: 1fr;
+  }
+  
+  .romaneio-client-card {
+    break-inside: avoid;
+  }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .romaneio-layout {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,0 +1,107 @@
+/* Import Clients Styles */
+
+.import-clients-page {
+  animation: fadeIn 0.3s ease;
+}
+
+.import-instructions {
+  margin-bottom: var(--spacing-lg);
+}
+
+.import-instructions h3 {
+  margin-bottom: var(--spacing-sm);
+}
+
+.import-instructions ol {
+  margin: var(--spacing-md) 0;
+  padding-left: var(--spacing-lg);
+  color: var(--text-secondary);
+}
+
+.import-instructions li {
+  margin-bottom: var(--spacing-xs);
+}
+
+/* Upload Area */
+.import-upload {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-lg);
+}
+
+.upload-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-xl);
+  border: 2px dashed var(--border-color);
+  border-radius: var(--border-radius-lg);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-align: center;
+  width: 100%;
+  max-width: 500px;
+}
+
+.upload-area:hover {
+  border-color: var(--color-primary);
+  background-color: rgba(52, 152, 219, 0.05);
+}
+
+/* Results */
+.import-result {
+  margin-top: var(--spacing-lg);
+}
+
+.result-summary {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  border-radius: var(--border-radius);
+  margin-bottom: var(--spacing-md);
+}
+
+.result-summary.success {
+  background-color: var(--color-success-light);
+  color: #155724;
+}
+
+.result-summary.error {
+  background-color: var(--color-danger-light);
+  color: #721c24;
+}
+
+.result-errors {
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  padding: var(--spacing-md);
+}
+
+.result-errors h4 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  color: var(--color-danger);
+  margin-bottom: var(--spacing-sm);
+}
+
+.errors-list {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.error-item {
+  padding: var(--spacing-xs) 0;
+  font-size: var(--font-size-sm);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.error-item:last-child {
+  border-bottom: none;
+}

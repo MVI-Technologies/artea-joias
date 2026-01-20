@@ -1,0 +1,69 @@
+/* Settings Page Styles */
+
+.settings-page {
+  animation: fadeIn 0.3s ease;
+}
+
+.settings-form {
+  max-width: 900px;
+}
+
+/* File Upload */
+.file-upload {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+/* Integration List */
+.integration-list {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  overflow: hidden;
+}
+
+.integration-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-bottom: 1px solid var(--border-color);
+  font-size: var(--font-size-sm);
+}
+
+.integration-item:last-child {
+  border-bottom: none;
+}
+
+.integration-item.highlight {
+  background-color: rgba(255, 193, 7, 0.1);
+}
+
+.integration-item span:first-child {
+  color: var(--text-primary);
+}
+
+/* Tabs inside card */
+.card .tabs {
+  margin: 0;
+  padding: 0 var(--spacing-lg);
+  border-bottom: 1px solid var(--border-color);
+  background-color: var(--bg-secondary);
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+.card .tabs::-webkit-scrollbar {
+  height: 4px;
+}
+
+.card .tabs::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.card .tabs::-webkit-scrollbar-thumb {
+  background-color: var(--border-color);
+  border-radius: 2px;
+}

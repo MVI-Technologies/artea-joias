@@ -1,0 +1,174 @@
+/* Client Orders Styles */
+
+.client-orders-page {
+  animation: fadeIn 0.3s ease;
+}
+
+.client-orders-page h1 {
+  margin-bottom: var(--spacing-lg);
+}
+
+/* Filters */
+.order-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-lg);
+}
+
+.filter-btn {
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.filter-btn:hover {
+  border-color: var(--color-primary);
+}
+
+.filter-btn.active {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: white;
+}
+
+/* Orders List */
+.orders-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.order-card-client {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-lg);
+  overflow: hidden;
+}
+
+.order-card-main {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+}
+
+.order-product-img {
+  width: 80px;
+  height: 80px;
+  border-radius: var(--border-radius);
+  background: var(--bg-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.order-product-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.order-details {
+  flex: 1;
+}
+
+.order-details h3 {
+  font-size: var(--font-size-base);
+  margin-bottom: var(--spacing-xs);
+}
+
+.order-lot,
+.order-qty {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.order-value {
+  text-align: right;
+}
+
+.order-total {
+  display: block;
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.order-date {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+}
+
+/* Status Bar */
+.order-status-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+}
+
+.order-status-bar.status-pendente {
+  background: var(--color-warning-light);
+  color: #856404;
+}
+
+.order-status-bar.status-pago {
+  background: var(--color-success-light);
+  color: #155724;
+}
+
+.order-status-bar.status-em_preparacao {
+  background: var(--color-info-light);
+  color: #0c5460;
+}
+
+.order-status-bar.status-enviado {
+  background: #cce5ff;
+  color: #004085;
+}
+
+.order-status-bar.status-entregue {
+  background: var(--color-success-light);
+  color: #155724;
+}
+
+.order-status-bar.status-cancelado {
+  background: var(--color-danger-light);
+  color: #721c24;
+}
+
+.tracking-code {
+  margin-left: auto;
+  font-family: monospace;
+}
+
+/* Responsive */
+@media (max-width: 576px) {
+  .order-card-main {
+    flex-wrap: wrap;
+  }
+
+  .order-product-img {
+    width: 60px;
+    height: 60px;
+  }
+
+  .order-value {
+    width: 100%;
+    text-align: left;
+    margin-top: var(--spacing-sm);
+    padding-top: var(--spacing-sm);
+    border-top: 1px solid var(--border-color);
+  }
+}

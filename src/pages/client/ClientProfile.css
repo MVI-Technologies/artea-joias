@@ -1,0 +1,81 @@
+/* Client Profile Styles */
+
+.client-profile-page {
+  animation: fadeIn 0.3s ease;
+}
+
+.client-profile-page h1 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-lg);
+}
+
+.profile-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-lg);
+}
+
+.profile-grid .card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.profile-grid .card-header h3 {
+  font-size: var(--font-size-base);
+  margin: 0;
+}
+
+/* Addresses */
+.addresses-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.address-card {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  background: var(--bg-primary);
+  border-radius: var(--border-radius);
+}
+
+.address-info p {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+}
+
+.address-info p:first-child {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+/* Add Address Form */
+.add-address-form {
+  margin-top: var(--spacing-lg);
+  padding-top: var(--spacing-lg);
+  border-top: 1px solid var(--border-color);
+}
+
+.add-address-form h4 {
+  margin-bottom: var(--spacing-md);
+}
+
+.add-address-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-md);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .profile-grid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,0 +1,250 @@
+/* LotList Styles - Based on Reference Image */
+
+.lots-page {
+  padding: 0;
+}
+
+/* Toolbar */
+.lots-toolbar {
+  display: flex;
+  gap: 16px;
+  padding: 16px 20px;
+  background: #f5f5f5;
+  border-bottom: 1px solid #ddd;
+}
+
+.search-box {
+  position: relative;
+  flex: 1;
+  max-width: 400px;
+}
+
+.search-box input {
+  width: 100%;
+  padding: 10px 16px 10px 40px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  background: white;
+}
+
+.search-box .search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #666;
+}
+
+.status-filter {
+  padding: 10px 16px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  background: white;
+  min-width: 180px;
+}
+
+/* Action Buttons */
+.lots-actions {
+  display: flex;
+  gap: 12px;
+  padding: 16px 20px;
+  background: #e8e8e8;
+}
+
+.btn-dark {
+  background: #333;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 4px;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-dark:hover {
+  background: #444;
+}
+
+.dropdown-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Table */
+.lots-table-container {
+  overflow-x: auto;
+}
+
+.lots-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.lots-table thead {
+  background: #c0c0c0;
+}
+
+.lots-table th {
+  padding: 12px 16px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 13px;
+  color: #333;
+  border-bottom: 1px solid #aaa;
+}
+
+.lots-table th:last-child {
+  text-align: left;
+}
+
+/* Lot Rows */
+.lot-row {
+  border-bottom: 1px solid #ddd;
+  background: white;
+}
+
+.lot-row:hover {
+  background: #f9f9f9;
+}
+
+.lot-row-highlight {
+  background: #8bc34a !important;
+}
+
+.lot-row-highlight:hover {
+  background: #7cb342 !important;
+}
+
+.lot-row-highlight .lot-name-text {
+  color: #333;
+  font-weight: 600;
+}
+
+.lot-name {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+}
+
+.lot-name-text {
+  font-size: 14px;
+}
+
+.lot-status-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.status-open {
+  background: #8bc34a;
+  color: white;
+}
+
+.status-closed {
+  background: #f44336;
+  color: white;
+}
+
+.status-prep {
+  background: #ff9800;
+  color: white;
+}
+
+.status-paid {
+  background: #2196f3;
+  color: white;
+}
+
+.status-sent {
+  background: #9c27b0;
+  color: white;
+}
+
+.status-done {
+  background: #4caf50;
+  color: white;
+}
+
+/* Action Buttons in Table */
+.lot-actions-cell {
+  display: flex;
+  gap: 8px;
+  padding: 12px 16px;
+}
+
+.btn-action {
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  text-decoration: none;
+}
+
+.btn-products {
+  background: #2196f3;
+  color: white;
+}
+
+.btn-products:hover {
+  background: #1976d2;
+}
+
+.btn-romaneios {
+  background: white;
+  color: #333;
+  border: 1px solid #ddd;
+}
+
+.btn-romaneios:hover {
+  background: #f5f5f5;
+}
+
+.btn-separacao {
+  background: white;
+  color: #333;
+  border: 1px solid #ddd;
+}
+
+.btn-separacao:hover {
+  background: #f5f5f5;
+}
+
+.btn-acoes {
+  background: #666;
+  color: white;
+}
+
+.btn-acoes:hover {
+  background: #555;
+}
+
+/* Empty state */
+.empty-message {
+  text-align: center;
+  padding: 40px;
+  color: #666;
+}
+
+/* Pagination */
+.lots-pagination {
+  padding: 12px 20px;
+  font-size: 13px;
+  color: #666;
+  background: white;
+  border-top: 1px solid #ddd;
+}
