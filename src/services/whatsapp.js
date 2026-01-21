@@ -145,3 +145,55 @@ _Artea Joias - Compras Coletivas_`
 
   return sendWhatsAppMessage(client.telefone, message)
 }
+
+/**
+ * Notificar clientes sobre novo catálogo/link de vendas
+ * @param {Object} catalog - Dados do catálogo criado
+ * @param {Array} clients - Lista de clientes para notificar
+ * @param {string} catalogUrl - URL do catálogo
+ */
+export async function notifyNewCatalog(catalog, clients, catalogUrl) {
+  // Gerar número do link baseado no ID ou criar sequencial
+  const linkNumber = catalog.numero_link || catalog.id?.slice(-4).toUpperCase() || Date.now().toString().slice(-4)
+  
+  const message = `Olá, %Nome%
+
+Acabamos de lançar um link repleto de novidades para você. As peças estão incríveis e escolhidas com muito amor.
+
+*LINK ${linkNumber}* - ${catalog.nome || 'Semijóias de Luxo no Precinho'}
+
+Não fique de fora, entre no link abaixo ⬇️😃
+
+${catalogUrl}
+
+Att, Equipe ARTEA JOIAS
+
+_Mensagem automática_`
+
+  const recipients = clients.map(c => ({ telefone: c.telefone, nome: c.nome }))
+  return sendBulkWhatsAppMessage(recipients, message)
+}
+
+/**
+ * Notificar clientes sobre fechamento de catálogo/link de vendas
+ * @param {Object} catalog - Dados do catálogo fechado
+ * @param {Array} clients - Lista de clientes para notificar
+ */
+export async function notifyCatalogClosed(catalog, clients) {
+  const linkNumber = catalog.numero_link || catalog.id?.slice(-4).toUpperCase() || ''
+  
+  const message = `Olá, %Nome%
+
+O *LINK ${linkNumber}* - ${catalog.nome || 'Catálogo'} foi *FECHADO*! 🔒
+
+Agradecemos por participar! Em breve você receberá informações sobre pagamento e envio do seu pedido.
+
+Caso tenha alguma dúvida, entre em contato conosco.
+
+Att, Equipe ARTEA JOIAS
+
+_Mensagem automática_`
+
+  const recipients = clients.map(c => ({ telefone: c.telefone, nome: c.nome }))
+  return sendBulkWhatsAppMessage(recipients, message)
+}

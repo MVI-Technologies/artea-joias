@@ -24,9 +24,12 @@ import {
   Lock,
   ClipboardList,
   MoreVertical,
-  CheckSquare
+  CheckSquare,
+  Bell,
+  Loader2
 } from 'lucide-react'
 import { supabase } from '../../../lib/supabase'
+import { notifyCatalogClosed } from '../../../services/whatsapp'
 import './LotDetail.css'
 
 export default function LotDetail() {
@@ -48,6 +51,13 @@ export default function LotDetail() {
   const [closing, setClosing] = useState(false)
   const [showActionsMenu, setShowActionsMenu] = useState(false)
   const [separacaoItems, setSeparacaoItems] = useState({}) // { order_id: boolean }
+  
+  // States para confirmação e notificação
+  const [showConfirmModal, setShowConfirmModal] = useState(false)
+  const [confirmAction, setConfirmAction] = useState(null)
+  const [notifyOnClose, setNotifyOnClose] = useState(true)
+  const [sendingNotification, setSendingNotification] = useState(false)
+  const [notification, setNotification] = useState(null)
   
   // States para gerenciamento de produtos
   const [showProductModal, setShowProductModal] = useState(false)
@@ -159,17 +169,7 @@ export default function LotDetail() {
   const copyLink = () => {
     const link = `${window.location.origin}/catalogo/${lot?.link_compra || id}`
     navigator.clipboard.writeText(link)
-    alert('Link copiado!')
-  }
-
-  const removeProduct = async (lpId) => {
-    if (!confirm('Remover produto do link?')) return
-    try {
-      await supabase.from('lot_products').delete().eq('id', lpId)
-      fetchData()
-    } catch (error) {
-      alert('Erro ao remover')
-    }
+    showNotification('success', 'Link copiado para a área de transferência!')
   }
 
   const addProductsToLot = async () => {
@@ -225,7 +225,14 @@ export default function LotDetail() {
     }
   }
 
-  const closeLot = async () => {
+  // Mostrar notificação toast
+  const showNotification = (type, message) => {
+    setNotification({ type, message })
+    setTimeout(() => setNotification(null), 5000)
+  }
+
+  // Abrir modal de confirmação para fechar
+  const openCloseConfirmation = () => {
     // Verificar se há pacotes incompletos
     if (lot?.requer_pacote_fechado) {
       const pacotesIncompletos = products.filter(lp => {
@@ -238,29 +245,146 @@ export default function LotDetail() {
       })
 
       if (pacotesIncompletos.length > 0) {
-        alert('Existem pacotes incompletos. O link não pode ser fechado.')
+        showNotification('error', 'Existem pacotes incompletos. O link não pode ser fechado.')
         return
       }
     }
 
-    if (!confirm('Tem certeza que deseja fechar este link? Romaneios serão gerados automaticamente.')) return
+    setConfirmAction('close')
+    setShowConfirmModal(true)
+  }
 
+  // Executar fechamento do lote
+  const closeLot = async () => {
+    setShowConfirmModal(false)
     setClosing(true)
+    
     try {
-      const { error } = await supabase
+      // Primeiro tenta atualizar com select
+      let updatedLot = null
+      const { data, error } = await supabase
         .from('lots')
         .update({ status: 'fechado' })
         .eq('id', id)
+        .select()
+        .single()
 
-      if (error) throw error
+      if (error) {
+        // Se der erro no trigger de romaneios, tenta sem select
+        console.warn('Erro no update com select, tentando sem:', error.message)
+        
+        const { error: error2 } = await supabase
+          .from('lots')
+          .update({ status: 'fechado' })
+          .eq('id', id)
+        
+        if (error2) throw error2
+        
+        // Busca os dados atualizados
+        const { data: lotData } = await supabase
+          .from('lots')
+          .select('*')
+          .eq('id', id)
+          .single()
+        
+        updatedLot = lotData
+      } else {
+        updatedLot = data
+      }
+
+      // Enviar notificação se marcado
+      if (notifyOnClose) {
+        setSendingNotification(true)
+        
+        try {
+          const { data: clients, error: clientsError } = await supabase
+            .from('clients')
+            .select('id, nome, telefone')
+            .eq('role', 'cliente')
+            .not('telefone', 'is', null)
+          
+          if (!clientsError && clients && clients.length > 0) {
+            const result = await notifyCatalogClosed(updatedLot, clients)
+            
+            if (result.success) {
+              showNotification('success', `Link fechado! ${result.data?.success || clients.length} cliente(s) notificado(s).`)
+            } else {
+              showNotification('warning', `Link fechado, mas erro ao notificar: ${result.error}`)
+            }
+          } else {
+            showNotification('success', 'Link fechado com sucesso!')
+          }
+        } catch (notifyError) {
+          console.error('Erro ao notificar:', notifyError)
+          showNotification('warning', 'Link fechado, mas erro ao enviar notificações.')
+        } finally {
+          setSendingNotification(false)
+        }
+      } else {
+        showNotification('success', 'Link fechado com sucesso!')
+      }
 
       fetchData()
-      alert('Link fechado com sucesso! Romaneios gerados.')
     } catch (error) {
       console.error('Erro ao fechar:', error)
-      alert('Erro ao fechar link')
+      showNotification('error', 'Erro ao fechar link. Tente novamente.')
     } finally {
       setClosing(false)
+    }
+  }
+
+  // Abrir confirmação para remover produto
+  const openRemoveProductConfirm = (lpId) => {
+    setConfirmAction({ type: 'removeProduct', lpId })
+    setShowConfirmModal(true)
+  }
+
+  // Executar remoção de produto
+  const executeRemoveProduct = async () => {
+    const lpId = confirmAction.lpId
+    setShowConfirmModal(false)
+    try {
+      await supabase.from('lot_products').delete().eq('id', lpId)
+      fetchData()
+      showNotification('success', 'Produto removido do link.')
+    } catch (error) {
+      showNotification('error', 'Erro ao remover produto.')
+    }
+  }
+
+  // Abrir confirmação para deletar produto
+  const openDeleteProductConfirm = (productId) => {
+    setConfirmAction({ type: 'deleteProduct', productId })
+    setShowConfirmModal(true)
+  }
+
+  // Executar deleção de produto
+  const executeDeleteProduct = async () => {
+    const productId = confirmAction.productId
+    setShowConfirmModal(false)
+    try {
+      const { error } = await supabase
+        .from('products')
+        .delete()
+        .eq('id', productId)
+
+      if (error) throw error
+      fetchData()
+      showNotification('success', 'Produto excluído permanentemente.')
+    } catch (error) {
+      console.error('Erro ao excluir produto:', error)
+      showNotification('error', 'Erro ao excluir. Verifique se não há reservas.')
+    }
+  }
+
+  // Handler do modal de confirmação
+  const handleConfirm = () => {
+    if (confirmAction === 'close') {
+      closeLot()
+    } else if (confirmAction?.type === 'removeProduct') {
+      executeRemoveProduct()
+    } else if (confirmAction?.type === 'deleteProduct') {
+      executeDeleteProduct()
     }
   }
 
@@ -372,22 +496,6 @@ export default function LotDetail() {
     }
   }
 
-  const deleteProduct = async (productId) => {
-    if (!confirm('Tem certeza que deseja EXCLUIR este produto permanentemente? Esta ação não pode ser desfeita.')) return
-
-    try {
-      const { error } = await supabase
-        .from('products')
-        .delete()
-        .eq('id', productId)
-
-      if (error) throw error
-      fetchData()
-    } catch (error) {
-      console.error('Erro ao excluir produto:', error)
-      alert('Erro ao excluir produto. Verifique se o produto não possui reservas.')
-    }
-  }
 
   const filteredProducts = products.filter(lp => {
     const product = lp.product
@@ -461,7 +569,7 @@ export default function LotDetail() {
                     <Copy size={14} /> Duplicar Grupo
                   </button>
                   {isOpen && (
-                     <button className="text-danger" onClick={closeLot}>
+                     <button className="text-danger" onClick={openCloseConfirmation}>
                       <Lock size={14} /> Fechar Grupo
                     </button>
                   )}
@@ -526,10 +634,10 @@ export default function LotDetail() {
           {isOpen && (
             <button 
               className="btn btn-danger" 
-              onClick={closeLot}
-              disabled={closing}
+              onClick={openCloseConfirmation}
+              disabled={closing || sendingNotification}
             >
-              <Lock size={16} /> {closing ? 'Fechando...' : 'Fechar Link'}
+              <Lock size={16} /> {closing ? 'Fechando...' : sendingNotification ? 'Notificando...' : 'Fechar Link'}
             </button>
           )}
         </div>
@@ -656,7 +764,7 @@ export default function LotDetail() {
                   <div key={lp.id} className="product-card">
                     {/* Remove button */}
                     {isOpen && (
-                      <button className="card-remove" onClick={() => removeProduct(lp.id)}>
+                      <button className="card-remove" onClick={() => openRemoveProductConfirm(lp.id)}>
                         <X size={16} />
                       </button>
                     )}
@@ -711,7 +819,7 @@ export default function LotDetail() {
                       </button>
                       <button 
                         className="btn btn-sm btn-danger"
-                        onClick={() => deleteProduct(product.id)}
+                        onClick={() => openDeleteProductConfirm(product.id)}
                       >
                         <Trash2 size={14} />
                       </button>
@@ -1028,6 +1136,95 @@ export default function LotDetail() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Modal: Confirmação Personalizado */}
+      {showConfirmModal && (
+        <div className="modal-overlay" onClick={() => setShowConfirmModal(false)}>
+          <div className="modal-content modal-confirm" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>
+                {confirmAction === 'close' ? '🔒 Fechar Link' : 
+                 confirmAction?.type === 'removeProduct' ? '📦 Remover Produto' :
+                 confirmAction?.type === 'deleteProduct' ? '🗑️ Excluir Produto' : 'Confirmar'}
+              </h2>
+              <button className="modal-close" onClick={() => setShowConfirmModal(false)}>
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="modal-body">
+              {confirmAction === 'close' && (
+                <>
+                  <p className="confirm-message">
+                    Tem certeza que deseja <strong>fechar este link</strong>?
+                  </p>
+                  <p className="confirm-hint">
+                    Após fechado, os clientes não poderão mais fazer reservas.
+                  </p>
+                  
+                  <div className="confirm-option">
+                    <label className="checkbox-container">
+                      <input
+                        type="checkbox"
+                        checked={notifyOnClose}
+                        onChange={(e) => setNotifyOnClose(e.target.checked)}
+                      />
+                      <span className="checkbox-label">
+                        <Bell size={16} />
+                        Notificar clientes via WhatsApp sobre o fechamento
+                      </span>
+                    </label>
+                  </div>
+                </>
+              )}
+              
+              {confirmAction?.type === 'removeProduct' && (
+                <p className="confirm-message">
+                  Deseja <strong>remover</strong> este produto do link?
+                  <br />
+                  <small>O produto continuará existindo no sistema.</small>
+                </p>
+              )}
+              
+              {confirmAction?.type === 'deleteProduct' && (
+                <>
+                  <p className="confirm-message confirm-danger">
+                    ⚠️ Tem certeza que deseja <strong>EXCLUIR PERMANENTEMENTE</strong> este produto?
+                  </p>
+                  <p className="confirm-hint">
+                    Esta ação não pode ser desfeita. O produto será removido do sistema.
+                  </p>
+                </>
+              )}
+            </div>
+
+            <div className="modal-footer">
+              <button className="btn btn-outline" onClick={() => setShowConfirmModal(false)}>
+                Cancelar
+              </button>
+              <button 
+                className={`btn ${confirmAction?.type === 'deleteProduct' ? 'btn-danger' : 'btn-primary'}`}
+                onClick={handleConfirm}
+              >
+                {confirmAction === 'close' ? 'Fechar Link' : 
+                 confirmAction?.type === 'removeProduct' ? 'Remover' :
+                 confirmAction?.type === 'deleteProduct' ? 'Excluir' : 'Confirmar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Notificação Toast */}
+      {notification && (
+        <div className={`toast-notification toast-${notification.type}`}>
+          {notification.type === 'success' && <CheckCircle size={20} />}
+          {notification.type === 'error' && <AlertTriangle size={20} />}
+          {notification.type === 'warning' && <AlertTriangle size={20} />}
+          <span>{notification.message}</span>
+          <button className="toast-close" onClick={() => setNotification(null)}>×</button>
         </div>
       )}
 

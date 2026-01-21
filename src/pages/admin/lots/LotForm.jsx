@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Save, Info } from 'lucide-react'
+import { ArrowLeft, Save, Info, Bell, Loader2, Lock } from 'lucide-react'
 import { supabase } from '../../../lib/supabase'
+import { notifyNewCatalog, notifyCatalogClosed } from '../../../services/whatsapp'
 import './LotForm.css'
 
 export default function LotForm() {
@@ -11,7 +12,13 @@ export default function LotForm() {
   
   const [loading, setLoading] = useState(isEditing)
   const [saving, setSaving] = useState(false)
+  const [sendingNotification, setSendingNotification] = useState(false)
   const [activeTab, setActiveTab] = useState('taxas')
+  const [notifyClients, setNotifyClients] = useState(false)
+  const [notifyOnClose, setNotifyOnClose] = useState(false) // Notificar ao fechar
+  const [notificationResult, setNotificationResult] = useState(null)
+  const [originalStatus, setOriginalStatus] = useState('') // Status original para detectar mudança
+  const [originalCatalog, setOriginalCatalog] = useState(null) // Dados originais do catálogo
   
   const [formData, setFormData] = useState({
     nome: '',
@@ -42,6 +49,10 @@ export default function LotForm() {
         .single()
 
       if (error) throw error
+
+      // Guardar status e dados originais para detectar mudanças
+      setOriginalStatus(data.status || 'aberto')
+      setOriginalCatalog(data)
 
       setFormData({
         nome: data.nome || '',
@@ -75,6 +86,8 @@ export default function LotForm() {
     }
 
     setSaving(true)
+    setNotificationResult(null)
+    
     try {
       const dataToSave = {
         nome: formData.nome,
@@ -90,27 +103,113 @@ export default function LotForm() {
         // taxa_separacao_dinamica: formData.taxa_separacao_dinamica
       }
 
+      let savedCatalog = null
+
       if (isEditing) {
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('lots')
           .update(dataToSave)
           .eq('id', id)
+          .select()
+          .single()
         if (error) throw error
+        savedCatalog = data
       } else {
-        dataToSave.link_compra = `grupo-${Date.now()}`
-        const { error } = await supabase
+        // Gerar link único para o catálogo
+        const linkCode = generateLinkCode()
+        dataToSave.link_compra = linkCode
+        
+        const { data, error } = await supabase
           .from('lots')
           .insert(dataToSave)
+          .select()
+          .single()
         if (error) throw error
+        savedCatalog = data
       }
 
-      navigate('/admin/lotes')
+      // Verificar se deve enviar notificação
+      const shouldNotifyNewCatalog = notifyClients && !isEditing && savedCatalog
+      const shouldNotifyClose = notifyOnClose && isEditing && originalStatus !== 'fechado' && formData.status === 'fechado' && savedCatalog
+
+      if (shouldNotifyNewCatalog || shouldNotifyClose) {
+        setSaving(false)
+        setSendingNotification(true)
+        
+        try {
+          // Buscar todos os clientes com telefone cadastrado
+          const { data: clients, error: clientsError } = await supabase
+            .from('clients')
+            .select('id, nome, telefone')
+            .eq('role', 'cliente')
+            .not('telefone', 'is', null)
+          
+          if (clientsError) throw clientsError
+          
+          if (clients && clients.length > 0) {
+            let result
+            
+            if (shouldNotifyNewCatalog) {
+              // Notificação de novo catálogo
+              const catalogUrl = `https://arteajoias.semijoias.net/catalogo/${savedCatalog.link_compra}`
+              result = await notifyNewCatalog(savedCatalog, clients, catalogUrl)
+            } else {
+              // Notificação de fechamento
+              result = await notifyCatalogClosed(savedCatalog, clients)
+            }
+            
+            if (result.success) {
+              setNotificationResult({
+                type: 'success',
+                message: shouldNotifyNewCatalog 
+                  ? `Catálogo criado e ${result.data?.success || clients.length} cliente(s) notificado(s) com sucesso!`
+                  : `Catálogo fechado e ${result.data?.success || clients.length} cliente(s) notificado(s) com sucesso!`
+              })
+            } else {
+              setNotificationResult({
+                type: 'warning',
+                message: `Catálogo salvo, mas houve erro ao notificar: ${result.error}`
+              })
+            }
+          } else {
+            setNotificationResult({
+              type: 'info',
+              message: shouldNotifyNewCatalog 
+                ? 'Catálogo criado! Nenhum cliente com telefone cadastrado para notificar.'
+                : 'Catálogo fechado! Nenhum cliente com telefone cadastrado para notificar.'
+            })
+          }
+        } catch (notifyError) {
+          console.error('Erro ao notificar:', notifyError)
+          setNotificationResult({
+            type: 'warning',
+            message: `Catálogo salvo, mas erro ao enviar notificações: ${notifyError.message}`
+          })
+        } finally {
+          setSendingNotification(false)
+        }
+        
+        // Aguardar um pouco para mostrar o resultado antes de navegar
+        setTimeout(() => navigate('/admin/lotes'), 2500)
+      } else {
+        navigate('/admin/lotes')
+      }
     } catch (error) {
       console.error('Erro ao salvar:', error)
       alert('Erro ao salvar grupo de compras')
-    } finally {
       setSaving(false)
+      setSendingNotification(false)
     }
+  }
+
+  // Gerar código único para o link do catálogo
+  const generateLinkCode = () => {
+    const chars = 'abcdefghijklmnopqrstuvwxyz0123456789'
+    let code = ''
+    for (let i = 0; i < 24; i++) {
+      code += chars.charAt(Math.floor(Math.random() * chars.length))
+    }
+    return code
   }
 
   if (loading) {
@@ -157,7 +256,7 @@ export default function LotForm() {
             />
           </div>
 
-          <div className="form-row">
+            <div className="form-row">
             <div className="form-group">
               <label>Status</label>
               <select
@@ -165,9 +264,11 @@ export default function LotForm() {
                 onChange={(e) => handleChange('status', e.target.value)}
               >
                 <option value="aberto">Aberto</option>
-                <option value="pronto_aberto">Pronto e Aberto</option>
                 <option value="fechado">Fechado</option>
                 <option value="preparacao">Em preparação</option>
+                <option value="pago">Pago</option>
+                <option value="enviado">Enviado</option>
+                <option value="concluido">Concluído</option>
               </select>
             </div>
           </div>
@@ -285,10 +386,84 @@ export default function LotForm() {
           </div>
         )}
 
+        {/* Notificação de clientes - novo catálogo */}
+        {!isEditing && (
+          <div className="form-section notification-section">
+            <div className="notification-checkbox">
+              <label className="checkbox-container">
+                <input
+                  type="checkbox"
+                  checked={notifyClients}
+                  onChange={(e) => setNotifyClients(e.target.checked)}
+                  disabled={saving || sendingNotification}
+                />
+                <span className="checkmark"></span>
+                <span className="checkbox-label">
+                  <Bell size={16} />
+                  Enviar notificação WhatsApp para todos os clientes
+                </span>
+              </label>
+              <p className="notification-hint">
+                Ao marcar esta opção, todos os clientes cadastrados com telefone receberão uma mensagem automática sobre o novo catálogo.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Notificação de fechamento - ao mudar status para fechado */}
+        {isEditing && originalStatus !== 'fechado' && formData.status === 'fechado' && (
+          <div className="form-section notification-section notification-close">
+            <div className="notification-checkbox">
+              <label className="checkbox-container">
+                <input
+                  type="checkbox"
+                  checked={notifyOnClose}
+                  onChange={(e) => setNotifyOnClose(e.target.checked)}
+                  disabled={saving || sendingNotification}
+                />
+                <span className="checkmark"></span>
+                <span className="checkbox-label">
+                  <Lock size={16} />
+                  Enviar notificação de FECHAMENTO para todos os clientes
+                </span>
+              </label>
+              <p className="notification-hint">
+                Ao marcar esta opção, todos os clientes receberão uma mensagem informando que este catálogo foi fechado.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Feedback de notificação */}
+        {notificationResult && (
+          <div className={`notification-result notification-${notificationResult.type}`}>
+            {notificationResult.message}
+          </div>
+        )}
+
         {/* Botão Salvar */}
         <div className="form-actions">
-          <button type="submit" className="btn btn-save" disabled={saving}>
-            {saving ? 'Salvando...' : 'Salvar'}
+          <button type="submit" className="btn btn-save" disabled={saving || sendingNotification}>
+            {saving ? (
+              <>
+                <Loader2 size={16} className="spinning" />
+                Salvando...
+              </>
+            ) : sendingNotification ? (
+              <>
+                <Loader2 size={16} className="spinning" />
+                Enviando notificações...
+              </>
+            ) : (
+              <>
+                <Save size={16} />
+                {notifyClients && !isEditing 
+                  ? 'Salvar e Notificar Clientes' 
+                  : notifyOnClose && formData.status === 'fechado'
+                    ? 'Fechar e Notificar Clientes'
+                    : 'Salvar'}
+              </>
+            )}
           </button>
         </div>
       </form>

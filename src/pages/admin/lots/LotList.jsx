@@ -48,12 +48,12 @@ export default function LotList() {
   const getStatusBadge = (status) => {
     const statusMap = {
       'aberto': { label: 'Aberto', class: 'badge-green' },
-      'pronto_aberto': { label: 'Pronto e Aberto', class: 'badge-green' },
       'fechado': { label: 'Fechado', class: 'badge-red' },
       'preparacao': { label: 'Em preparação', class: 'badge-orange' },
       'pago': { label: 'Pago', class: 'badge-blue' },
       'enviado': { label: 'Enviado', class: 'badge-purple' },
       'concluido': { label: 'Concluído', class: 'badge-gray' },
+      'cancelado': { label: 'Cancelado', class: 'badge-red' },
     }
     return statusMap[status] || { label: status || 'Aberto', class: 'badge-green' }
   }
@@ -131,9 +131,11 @@ export default function LotList() {
           >
             <option value="todos">Todos os status</option>
             <option value="aberto">Aberto</option>
-            <option value="pronto_aberto">Pronto e Aberto</option>
             <option value="fechado">Fechado</option>
             <option value="preparacao">Em preparação</option>
+            <option value="pago">Pago</option>
+            <option value="enviado">Enviado</option>
+            <option value="concluido">Concluído</option>
           </select>
         </div>
       </div>
