@@ -23,6 +23,7 @@ import ClientForm from './pages/admin/clients/ClientForm'
 import OrderList from './pages/admin/orders/OrderList'
 import RomaneioList from './pages/admin/romaneios/RomaneioList'
 import RomaneioDetail from './pages/admin/romaneios/RomaneioDetail'
+import SeparacaoList from './pages/admin/separacao/SeparacaoList'
 import Reports from './pages/admin/reports/Reports'
 import ImportClients from './pages/admin/import/ImportClients'
 import Settings from './pages/admin/settings/Settings'
@@ -105,6 +106,8 @@ function AppRoutes() {
         <Route path="lotes/novo" element={<LotForm />} />
         <Route path="lotes/:id" element={<LotDetail />} />
         <Route path="lotes/:id/editar" element={<LotForm />} />
+        <Route path="lotes/:id/separacao" element={<LotDetail defaultTab="separacao" />} />
+        <Route path="lotes/:id/romaneios" element={<LotDetail defaultTab="romaneios" />} />
         
         {/* Marketing */}
         <Route path="marketing" element={<Marketing />} />
@@ -122,6 +125,9 @@ function AppRoutes() {
         {/* Romaneios */}
         <Route path="romaneios" element={<RomaneioList />} />
         <Route path="romaneios/:id" element={<RomaneioDetail />} />
+        
+        {/* Separação */}
+        <Route path="separacao" element={<SeparacaoList />} />
         
         {/* Relatórios */}
         <Route path="relatorios" element={<Reports />} />

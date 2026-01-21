@@ -1386,3 +1386,151 @@
 .confirm-option .checkbox-label svg {
   color: #f59e0b;
 }
+
+/* ========================================
+   MODAL DE CONFIGURAÇÕES MELHORADO
+   ======================================== */
+.modal-settings {
+  max-width: 600px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-settings .modal-header h2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.settings-body {
+  padding: 0 !important;
+}
+
+.settings-section {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border-color, #e5e7eb);
+}
+
+.settings-section:last-child {
+  border-bottom: none;
+}
+
+.settings-section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #3b82f6;
+  margin-bottom: 16px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.settings-section .form-group {
+  margin-bottom: 16px;
+}
+
+.settings-section .form-group:last-child {
+  margin-bottom: 0;
+}
+
+.settings-section .form-group label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 6px;
+}
+
+.settings-section .form-group input,
+.settings-section .form-group textarea,
+.settings-section .form-group select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 14px;
+  background: white;
+  color: #1f2937;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.settings-section .form-group input:focus,
+.settings-section .form-group textarea:focus,
+.settings-section .form-group select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.settings-section .form-group input::placeholder,
+.settings-section .form-group textarea::placeholder {
+  color: #9ca3af;
+}
+
+.settings-section .form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+/* Checkbox Group - Estilo corrigido */
+.checkbox-group {
+  margin-top: 16px;
+  background: #f8fafc;
+  padding: 16px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.checkbox-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  margin: 0;
+}
+
+.checkbox-wrapper input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: #3b82f6;
+  cursor: pointer;
+  flex-shrink: 0;
+  margin: 0;
+}
+
+.checkbox-text {
+  font-size: 14px;
+  color: #1e293b;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.checkbox-hint {
+  font-size: 12px;
+  color: #64748b;
+  margin: 8px 0 0 28px;
+  line-height: 1.4;
+}
+
+.modal-settings .modal-footer {
+  border-top: 1px solid var(--border-color, #e5e7eb);
+  padding: 16px 24px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.modal-settings .modal-footer .btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+@media (max-width: 600px) {
+  .settings-section .form-row {
+    grid-template-columns: 1fr;
+  }
+}

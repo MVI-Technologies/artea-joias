@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom'
 import { 
   ArrowLeft, 
   RefreshCw, 
@@ -26,15 +26,17 @@ import {
   MoreVertical,
   CheckSquare,
   Bell,
-  Loader2
+  Loader2,
+  Save
 } from 'lucide-react'
 import { supabase } from '../../../lib/supabase'
 import { notifyCatalogClosed } from '../../../services/whatsapp'
 import './LotDetail.css'
 
-export default function LotDetail() {
+export default function LotDetail({ defaultTab }) {
   const { id } = useParams()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [lot, setLot] = useState(null)
   const [products, setProducts] = useState([])
   const [reservas, setReservas] = useState([])
@@ -42,7 +44,7 @@ export default function LotDetail() {
   const [search, setSearch] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('todas')
   const [categories, setCategories] = useState([])
-  const [activeTab, setActiveTab] = useState('produtos')
+  const [activeTab, setActiveTab] = useState(defaultTab || searchParams.get('tab') || 'produtos')
   const [showAddProductModal, setShowAddProductModal] = useState(false)
   const [availableProducts, setAvailableProducts] = useState([])
   const [selectedProducts, setSelectedProducts] = useState([])
@@ -388,6 +390,46 @@ export default function LotDetail() {
     }
   }
 
+  // Duplicar lote
+  const duplicateLot = async () => {
+    setShowActionsMenu(false)
+    
+    try {
+      const newLot = {
+        nome: `${lot.nome} (cópia)`,
+        descricao: lot.descricao,
+        status: 'aberto',
+        link_compra: `grupo-${Date.now()}`
+      }
+      
+      const { data, error } = await supabase
+        .from('lots')
+        .insert(newLot)
+        .select()
+        .single()
+      
+      if (error) throw error
+      
+      // Copiar produtos do lote original
+      if (products && products.length > 0) {
+        const newLotProducts = products.map(lp => ({
+          lot_id: data.id,
+          product_id: lp.product_id,
+          quantidade_pedidos: 0,
+          quantidade_clientes: 0
+        }))
+        
+        await supabase.from('lot_products').insert(newLotProducts)
+      }
+      
+      showNotification('success', 'Catálogo duplicado com sucesso!')
+      navigate(`/admin/lotes/${data.id}`)
+    } catch (error) {
+      console.error('Erro ao duplicar:', error)
+      showNotification('error', 'Erro ao duplicar catálogo')
+    }
+  }
+
   // ========================================
   // FUNÇÕES DE GERENCIAMENTO DE PRODUTOS
   // ========================================
@@ -562,14 +604,14 @@ export default function LotDetail() {
               </button>
               {showActionsMenu && (
                 <div className="dropdown-menu-right">
-                  <button onClick={() => setShowSettingsModal(true)}>
+                  <button onClick={() => { setShowSettingsModal(true); setShowActionsMenu(false); }}>
                     <Settings size={14} /> Configurações
                   </button>
-                  <button onClick={() => alert('Funcionalidade em desenvolvimento')}>
+                  <button onClick={duplicateLot}>
                     <Copy size={14} /> Duplicar Grupo
                   </button>
                   {isOpen && (
-                     <button className="text-danger" onClick={openCloseConfirmation}>
+                     <button className="text-danger" onClick={() => { openCloseConfirmation(); setShowActionsMenu(false); }}>
                       <Lock size={14} /> Fechar Grupo
                     </button>
                   )}
@@ -1025,105 +1067,127 @@ export default function LotDetail() {
       {/* Modal: Configurações */}
       {showSettingsModal && (
         <div className="modal-overlay" onClick={() => setShowSettingsModal(false)}>
-          <div className="modal-content modal-lg" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-content modal-settings" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>Configurações do Link</h2>
+              <h2><Settings size={20} /> Configurações do Link</h2>
               <button className="modal-close" onClick={() => setShowSettingsModal(false)}>
                 <X size={20} />
               </button>
             </div>
             
-            <div className="modal-body">
-              <div className="form-group">
-                <label>Nome do Link</label>
-                <input
-                  type="text"
-                  value={lotSettings.nome || ''}
-                  onChange={(e) => setLotSettings({ ...lotSettings, nome: e.target.value })}
-                />
-              </div>
-
-              <div className="form-group">
-                <label>Descrição</label>
-                <textarea
-                  value={lotSettings.descricao || ''}
-                  onChange={(e) => setLotSettings({ ...lotSettings, descricao: e.target.value })}
-                  rows={2}
-                />
-              </div>
-
-              <div className="form-row">
+            <div className="modal-body settings-body">
+              {/* Seção: Informações Básicas */}
+              <div className="settings-section">
+                <h3 className="settings-section-title">
+                  <FileText size={16} /> Informações Básicas
+                </h3>
+                
                 <div className="form-group">
-                  <label>Data/Hora de Encerramento</label>
-                  <input
-                    type="datetime-local"
-                    value={lotSettings.data_fim ? new Date(lotSettings.data_fim).toISOString().slice(0, 16) : ''}
-                    onChange={(e) => setLotSettings({ ...lotSettings, data_fim: e.target.value })}
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Taxa de Separação (R$)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={lotSettings.taxa_separacao || 0}
-                    onChange={(e) => setLotSettings({ ...lotSettings, taxa_separacao: parseFloat(e.target.value) || 0 })}
-                  />
-                </div>
-              </div>
-
-              <div className="form-group checkbox-group">
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={lotSettings.requer_pacote_fechado || false}
-                    onChange={(e) => setLotSettings({ ...lotSettings, requer_pacote_fechado: e.target.checked })}
-                  />
-                  Requer pacote fechado
-                </label>
-              </div>
-
-              <hr />
-              <h3>Dados de Pagamento</h3>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Chave PIX</label>
+                  <label>Nome do Link</label>
                   <input
                     type="text"
-                    value={lotSettings.chave_pix || ''}
-                    onChange={(e) => setLotSettings({ ...lotSettings, chave_pix: e.target.value })}
-                    placeholder="CNPJ, email ou telefone"
+                    value={lotSettings.nome || ''}
+                    onChange={(e) => setLotSettings({ ...lotSettings, nome: e.target.value })}
+                    placeholder="Ex: LINK 502 - Novidades"
                   />
                 </div>
+
                 <div className="form-group">
-                  <label>Nome do Beneficiário</label>
+                  <label>Descrição</label>
+                  <textarea
+                    value={lotSettings.descricao || ''}
+                    onChange={(e) => setLotSettings({ ...lotSettings, descricao: e.target.value })}
+                    rows={2}
+                    placeholder="Descrição para os clientes..."
+                  />
+                </div>
+              </div>
+
+              {/* Seção: Regras e Prazos */}
+              <div className="settings-section">
+                <h3 className="settings-section-title">
+                  <Clock size={16} /> Regras e Prazos
+                </h3>
+                
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Data/Hora de Encerramento</label>
+                    <input
+                      type="datetime-local"
+                      value={lotSettings.data_fim ? new Date(lotSettings.data_fim).toISOString().slice(0, 16) : ''}
+                      onChange={(e) => setLotSettings({ ...lotSettings, data_fim: e.target.value })}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Taxa de Separação (R$)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={lotSettings.taxa_separacao || 0}
+                      onChange={(e) => setLotSettings({ ...lotSettings, taxa_separacao: parseFloat(e.target.value) || 0 })}
+                    />
+                  </div>
+                </div>
+
+                <div className="checkbox-group">
+                  <label className="checkbox-wrapper">
+                    <input
+                      type="checkbox"
+                      checked={lotSettings.requer_pacote_fechado || false}
+                      onChange={(e) => setLotSettings({ ...lotSettings, requer_pacote_fechado: e.target.checked })}
+                    />
+                    <span className="checkbox-text">Requer pacote fechado</span>
+                  </label>
+                  <p className="checkbox-hint">Só permite fechar quando todos os pacotes estiverem completos</p>
+                </div>
+              </div>
+
+              {/* Seção: Dados de Pagamento */}
+              <div className="settings-section">
+                <h3 className="settings-section-title">
+                  <DollarSign size={16} /> Dados de Pagamento
+                </h3>
+
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Chave PIX</label>
+                    <input
+                      type="text"
+                      value={lotSettings.chave_pix || ''}
+                      onChange={(e) => setLotSettings({ ...lotSettings, chave_pix: e.target.value })}
+                      placeholder="CNPJ, email ou telefone"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Nome do Beneficiário</label>
+                    <input
+                      type="text"
+                      value={lotSettings.nome_beneficiario || ''}
+                      onChange={(e) => setLotSettings({ ...lotSettings, nome_beneficiario: e.target.value })}
+                      placeholder="Nome que aparece no PIX"
+                    />
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label>Telefone do Setor Financeiro</label>
                   <input
                     type="text"
-                    value={lotSettings.nome_beneficiario || ''}
-                    onChange={(e) => setLotSettings({ ...lotSettings, nome_beneficiario: e.target.value })}
+                    value={lotSettings.telefone_financeiro || ''}
+                    onChange={(e) => setLotSettings({ ...lotSettings, telefone_financeiro: e.target.value })}
+                    placeholder="(XX) XXXXX-XXXX"
                   />
                 </div>
-              </div>
 
-              <div className="form-group">
-                <label>Telefone do Setor Financeiro</label>
-                <input
-                  type="text"
-                  value={lotSettings.telefone_financeiro || ''}
-                  onChange={(e) => setLotSettings({ ...lotSettings, telefone_financeiro: e.target.value })}
-                  placeholder="(XX) XXXXX-XXXX"
-                />
-              </div>
-
-              <div className="form-group">
-                <label>Mensagem de Pagamento</label>
-                <textarea
-                  value={lotSettings.mensagem_pagamento || ''}
-                  onChange={(e) => setLotSettings({ ...lotSettings, mensagem_pagamento: e.target.value })}
-                  placeholder="Instruções adicionais..."
-                  rows={3}
-                />
+                <div className="form-group">
+                  <label>Mensagem de Pagamento</label>
+                  <textarea
+                    value={lotSettings.mensagem_pagamento || ''}
+                    onChange={(e) => setLotSettings({ ...lotSettings, mensagem_pagamento: e.target.value })}
+                    placeholder="Instruções adicionais para o cliente..."
+                    rows={3}
+                  />
+                </div>
               </div>
             </div>
 
@@ -1132,7 +1196,7 @@ export default function LotDetail() {
                 Cancelar
               </button>
               <button className="btn btn-primary" onClick={updateLotSettings}>
-                Salvar
+                <Save size={16} /> Salvar Configurações
               </button>
             </div>
           </div>
