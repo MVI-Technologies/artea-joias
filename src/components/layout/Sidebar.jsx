@@ -28,33 +28,15 @@ import './Sidebar.css'
 
 const menuItems = [
   {
-    label: 'Compras',
-    icon: ShoppingBag,
-    path: '/admin/compras',
-    badge: null
-  },
-  {
-    label: 'Produtos',
-    icon: Package,
-    submenu: [
-      { label: 'Estoque', path: '/admin/produtos/estoque' },
-      { label: 'Categorias', path: '/admin/produtos/categorias' },
-      { label: 'Coleções', path: '/admin/produtos/colecoes' },
-    ]
-  },
-  {
-    label: 'Vendas',
-    icon: Wallet,
-    submenu: [
-      { label: 'Atacado', path: '/admin/vendas/atacado' },
-      { label: 'Varejo', path: '/admin/vendas/varejo' },
-      { label: 'Aluguel', path: '/admin/vendas/aluguel' },
-    ]
-  },
-  {
     label: 'Grupo de Compras',
     icon: LinkIcon,
     path: '/admin/lotes',
+    badge: null
+  },
+  {
+    label: 'Marketing',
+    icon: Megaphone,
+    path: '/admin/marketing',
     badge: null
   },
   {
@@ -89,11 +71,6 @@ const menuItems = [
     icon: Settings,
     path: '/admin/configuracoes',
     badge: 1
-  },
-  {
-    label: 'Pesquisar',
-    icon: FileSpreadsheet,
-    path: '/admin/pesquisar',
   }
 ]
 

@@ -101,8 +101,10 @@
 }
 
 .sidebar-link.active {
-  background-color: var(--color-primary);
+  background-color: rgba(212, 175, 55, 0.1);
   color: var(--sidebar-text-active);
+  border-left: 3px solid var(--color-primary, #D4AF37);
+  padding-left: calc(var(--spacing-md) - 3px);
 }
 
 .sidebar-icon {

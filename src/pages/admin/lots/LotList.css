@@ -1,250 +1,382 @@
-/* LotList Styles - Based on Reference Image */
+/* Grupo de Compras - LotList Styles */
 
-.lots-page {
-  padding: 0;
+.grupo-compras-page {
+  padding: 16px 24px;
+  background: var(--bg-primary);
 }
 
 /* Toolbar */
-.lots-toolbar {
+.toolbar {
   display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
   gap: 16px;
-  padding: 16px 20px;
-  background: #f5f5f5;
-  border-bottom: 1px solid #ddd;
+}
+
+.toolbar-left {
+  flex: 1;
 }
 
 .search-box {
   position: relative;
-  flex: 1;
-  max-width: 400px;
+  max-width: 300px;
 }
 
 .search-box input {
   width: 100%;
-  padding: 10px 16px 10px 40px;
-  border: 1px solid #ddd;
+  padding: 8px 12px 8px 36px;
+  border: 1px solid var(--border-color);
   border-radius: 4px;
-  font-size: 14px;
-  background: white;
+  font-size: 13px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.search-box input::placeholder {
+  color: var(--text-tertiary);
 }
 
 .search-box .search-icon {
   position: absolute;
-  left: 12px;
+  left: 10px;
   top: 50%;
   transform: translateY(-50%);
-  color: #666;
+  color: var(--text-tertiary);
 }
 
 .status-filter {
-  padding: 10px 16px;
-  border: 1px solid #ddd;
+  padding: 8px 12px;
+  border: 1px solid var(--border-color);
   border-radius: 4px;
-  font-size: 14px;
-  background: white;
-  min-width: 180px;
+  font-size: 13px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  min-width: 150px;
 }
 
 /* Action Buttons */
-.lots-actions {
+.action-buttons {
   display: flex;
-  gap: 12px;
-  padding: 16px 20px;
-  background: #e8e8e8;
-}
-
-.btn-dark {
-  background: #333;
-  color: white;
-  border: none;
-  padding: 10px 20px;
-  border-radius: 4px;
-  font-size: 14px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
   gap: 8px;
+  margin-bottom: 16px;
 }
 
-.btn-dark:hover {
-  background: #444;
-}
-
-.dropdown-btn {
-  display: flex;
+.btn {
+  display: inline-flex;
   align-items: center;
   gap: 6px;
-}
-
-/* Table */
-.lots-table-container {
-  overflow-x: auto;
-}
-
-.lots-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.lots-table thead {
-  background: #c0c0c0;
-}
-
-.lots-table th {
-  padding: 12px 16px;
-  text-align: left;
-  font-weight: 600;
-  font-size: 13px;
-  color: #333;
-  border-bottom: 1px solid #aaa;
-}
-
-.lots-table th:last-child {
-  text-align: left;
-}
-
-/* Lot Rows */
-.lot-row {
-  border-bottom: 1px solid #ddd;
-  background: white;
-}
-
-.lot-row:hover {
-  background: #f9f9f9;
-}
-
-.lot-row-highlight {
-  background: #8bc34a !important;
-}
-
-.lot-row-highlight:hover {
-  background: #7cb342 !important;
-}
-
-.lot-row-highlight .lot-name-text {
-  color: #333;
-  font-weight: 600;
-}
-
-.lot-name {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 16px;
-}
-
-.lot-name-text {
-  font-size: 14px;
-}
-
-.lot-status-badge {
-  display: inline-block;
-  padding: 4px 12px;
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: 500;
-}
-
-.status-open {
-  background: #8bc34a;
-  color: white;
-}
-
-.status-closed {
-  background: #f44336;
-  color: white;
-}
-
-.status-prep {
-  background: #ff9800;
-  color: white;
-}
-
-.status-paid {
-  background: #2196f3;
-  color: white;
-}
-
-.status-sent {
-  background: #9c27b0;
-  color: white;
-}
-
-.status-done {
-  background: #4caf50;
-  color: white;
-}
-
-/* Action Buttons in Table */
-.lot-actions-cell {
-  display: flex;
-  gap: 8px;
-  padding: 12px 16px;
-}
-
-.btn-action {
   padding: 8px 16px;
   border-radius: 4px;
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
   border: none;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  text-decoration: none;
+  transition: all 0.2s;
 }
 
-.btn-products {
-  background: #2196f3;
+.btn-primary {
+  background: #3b82f6;
   color: white;
 }
 
-.btn-products:hover {
-  background: #1976d2;
+.btn-primary:hover {
+  background: #2563eb;
+}
+
+.btn-dark {
+  background: #374151;
+  color: white;
+}
+
+.btn-dark:hover {
+  background: #4b5563;
+}
+
+.dropdown-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Table Container */
+.table-container {
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  overflow: hidden;
+}
+
+.grupos-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.grupos-table th {
+  text-align: start;
+  padding: 12px 16px;
+  font-size: 12px;
+  font-weight: 600;
+  color: white;
+  background: #4b5563;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.grupos-table td {
+  padding: 12px 16px;
+  font-size: 13px;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-color);
+  vertical-align: middle;
+}
+
+.col-nome {
+  min-width: 300px;
+}
+
+.col-data {
+  width: 120px;
+  text-align: start;
+}
+
+.col-acoes {
+  width: 320px;
+}
+
+/* Row Styles */
+.row-highlight {
+  background: #4a5e3a;
+}
+
+.row-highlight td {
+  border-bottom: 1px solid #5a7048;
+}
+
+.row-regular:hover {
+  background: var(--bg-hover);
+}
+
+.nome-text {
+  display: inline-block;
+  margin-right: 10px;
+}
+
+/* Status Badges */
+.status-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+.badge-green {
+  background: #22c55e;
+  color: white;
+}
+
+.badge-red {
+  background: #ef4444;
+  color: white;
+}
+
+.badge-orange {
+  background: #f97316;
+  color: white;
+}
+
+.badge-blue {
+  background: #3b82f6;
+  color: white;
+}
+
+.badge-purple {
+  background: #8b5cf6;
+  color: white;
+}
+
+.badge-gray {
+  background: #6b7280;
+  color: white;
+}
+
+/* Action Buttons in Table */
+.acoes-buttons {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.btn-action {
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  transition: all 0.15s;
+  white-space: nowrap;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.btn-produtos {
+  background: #3b82f6;
+  color: white;
+}
+
+.btn-produtos:hover {
+  background: #2563eb;
 }
 
 .btn-romaneios {
-  background: white;
-  color: #333;
-  border: 1px solid #ddd;
-}
-
-.btn-romaneios:hover {
-  background: #f5f5f5;
-}
-
-.btn-separacao {
-  background: white;
-  color: #333;
-  border: 1px solid #ddd;
-}
-
-.btn-separacao:hover {
-  background: #f5f5f5;
-}
-
-.btn-acoes {
-  background: #666;
+  background: #6b7280;
   color: white;
 }
 
-.btn-acoes:hover {
-  background: #555;
+.btn-romaneios:hover {
+  background: #4b5563;
 }
 
-/* Empty state */
+.btn-separacao {
+  background: #6b7280;
+  color: white;
+}
+
+.btn-separacao:hover {
+  background: #4b5563;
+}
+
+.btn-acoes {
+  background: #22c55e;
+  color: white;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.btn-acoes:hover {
+  background: #16a34a;
+}
+
+/* Dropdown */
+.dropdown-container {
+  position: relative;
+  display: inline-block;
+}
+
+.dropdown-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  z-index: 100;
+  min-width: 160px;
+  padding: 4px 0;
+  margin-top: 4px;
+}
+
+.dropdown-menu button {
+  display: block;
+  width: 100%;
+  padding: 8px 16px;
+  text-align: left;
+  font-size: 13px;
+  color: var(--text-primary);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.dropdown-menu button:hover {
+  background: var(--bg-hover);
+}
+
+/* Empty State */
 .empty-message {
   text-align: center;
-  padding: 40px;
-  color: #666;
+  color: var(--text-secondary);
+  padding: 40px !important;
+  font-size: 14px;
 }
 
 /* Pagination */
-.lots-pagination {
-  padding: 12px 20px;
+.pagination {
+  display: flex;
+  justify-content: flex-start;
+  padding: 16px;
+  color: var(--text-secondary);
   font-size: 13px;
-  color: #666;
-  background: white;
-  border-top: 1px solid #ddd;
+}
+
+/* Loading */
+.loading-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--border-color);
+  border-top-color: var(--primary-color);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .grupos-table {
+    font-size: 12px;
+  }
+
+  .grupos-table th,
+  .grupos-table td {
+    padding: 10px 12px;
+  }
+
+  .col-nome {
+    min-width: 200px;
+  }
+
+  .col-acoes {
+    width: auto;
+  }
+
+  .acoes-buttons {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 768px) {
+  .grupo-compras-page {
+    padding: 12px;
+  }
+
+  .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .search-box {
+    max-width: none;
+  }
+
+  .action-buttons {
+    flex-wrap: wrap;
+  }
+
+  .table-container {
+    overflow-x: auto;
+  }
+
+  .grupos-table {
+    min-width: 700px;
+  }
 }
