@@ -328,6 +328,8 @@ export default function LotDetail() {
         preco: parseFloat(productForm.preco),
         categoria_id: productForm.categoria_id || null,
         imagem1: productForm.imagem1 || null,
+        tipo_venda: productForm.tipo_venda,
+        quantidade_pacote: productForm.tipo_venda === 'pacote' ? (parseInt(productForm.quantidade_pacote) || 12) : 12,
         ativo: true
       }
 
