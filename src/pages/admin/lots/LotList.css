@@ -104,12 +104,30 @@
   background: var(--bg-secondary);
   border-radius: 8px;
   border: 1px solid var(--border-color);
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: visible;
+  position: relative;
+}
+
+/* Scrollbar sempre visível */
+.table-container::-webkit-scrollbar {
+  height: 10px;
+  background: #e5e7eb;
+}
+
+.table-container::-webkit-scrollbar-thumb {
+  background: #9ca3af;
+  border-radius: 5px;
+}
+
+.table-container::-webkit-scrollbar-thumb:hover {
+  background: #6b7280;
 }
 
 .grupos-table {
   width: 100%;
   border-collapse: collapse;
+  overflow: visible;
 }
 
 .grupos-table th {
@@ -141,6 +159,8 @@
 
 .col-acoes {
   width: 320px;
+  overflow: visible;
+  position: relative;
 }
 
 /* Row Styles */
@@ -272,31 +292,93 @@
   position: absolute;
   top: 100%;
   right: 0;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-  z-index: 100;
-  min-width: 160px;
-  padding: 4px 0;
   margin-top: 4px;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+  z-index: 99999;
+  min-width: 180px;
+  padding: 6px 0;
+  animation: dropdownFade 0.15s ease-out;
+}
+
+@keyframes dropdownFade {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .dropdown-menu button {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 10px;
   width: 100%;
-  padding: 8px 16px;
+  padding: 12px 16px;
   text-align: left;
-  font-size: 13px;
-  color: var(--text-primary);
+  font-size: 14px;
+  color: #374151;
   background: transparent;
   border: none;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background-color 0.2s ease;
+  white-space: nowrap;
 }
 
 .dropdown-menu button:hover {
-  background: var(--bg-hover);
+  background-color: #e5e7eb;
+}
+
+.dropdown-menu button svg {
+  color: #6b7280;
+  flex-shrink: 0;
+}
+
+.dropdown-menu.show {
+  display: block;
+}
+
+/* Dropdown Menu Fixo (fora da tabela) */
+.dropdown-menu-fixed {
+  position: fixed;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+  z-index: 99999;
+  min-width: 180px;
+  padding: 6px 0;
+  animation: dropdownFade 0.15s ease-out;
+}
+
+.dropdown-menu-fixed button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 16px;
+  text-align: left;
+  font-size: 14px;
+  color: #374151;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  white-space: nowrap;
+}
+
+.dropdown-menu-fixed button:hover {
+  background-color: #e5e7eb;
+}
+
+.dropdown-menu-fixed button svg {
+  color: #6b7280;
+  flex-shrink: 0;
 }
 
 /* Empty State */
@@ -378,5 +460,429 @@
 
   .grupos-table {
     min-width: 700px;
+  }
+}
+
+/* ===== MODAL OVERLAY ===== */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* ===== MODAL DE CONFIRMAÇÃO ===== */
+.modal-confirm {
+  background: #1f2937;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 420px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  animation: slideUp 0.25s ease;
+}
+
+@keyframes slideUp {
+  from { 
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to { 
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.modal-confirm-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 20px 24px;
+  border-bottom: 1px solid #374151;
+}
+
+.modal-confirm-header h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #f9fafb;
+  margin: 0;
+}
+
+.modal-confirm-header .icon-warning {
+  color: #f59e0b;
+}
+
+.modal-confirm-header .icon-info {
+  color: #3b82f6;
+}
+
+.modal-confirm-body {
+  padding: 20px 24px;
+}
+
+.modal-confirm-body p {
+  margin: 0 0 8px 0;
+  color: #e5e7eb;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.modal-confirm-body .text-muted {
+  color: #9ca3af;
+  font-size: 13px;
+}
+
+.checkbox-notify {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+  padding: 12px 16px;
+  background: #374151;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.checkbox-notify input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: #22c55e;
+}
+
+.checkbox-notify svg {
+  color: #22c55e;
+}
+
+.checkbox-notify span {
+  color: #e5e7eb;
+  font-size: 14px;
+}
+
+.modal-confirm-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 16px 24px;
+  border-top: 1px solid #374151;
+}
+
+.modal-confirm-footer .btn {
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s;
+}
+
+.modal-confirm-footer .btn-secondary {
+  background: #4b5563;
+  color: #e5e7eb;
+}
+
+.modal-confirm-footer .btn-secondary:hover {
+  background: #6b7280;
+}
+
+.modal-confirm-footer .btn-primary {
+  background: #3b82f6;
+  color: white;
+}
+
+.modal-confirm-footer .btn-primary:hover {
+  background: #2563eb;
+}
+
+.modal-confirm-footer .btn-danger {
+  background: #ef4444;
+  color: white;
+}
+
+.modal-confirm-footer .btn-danger:hover {
+  background: #dc2626;
+}
+
+.modal-confirm-footer .btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ===== MODAL DE CONFIGURAÇÕES (TEMA CLARO) ===== */
+.modal-config-light {
+  background: white;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 600px;
+  max-height: 90vh;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+  animation: slideUp 0.25s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-config-header-light {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.modal-config-header-light h3 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 18px;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0;
+}
+
+.btn-close-light {
+  background: transparent;
+  border: none;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.btn-close-light:hover {
+  background: #f3f4f6;
+  color: #1f2937;
+}
+
+.modal-config-body-light {
+  padding: 24px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.config-section {
+  margin-bottom: 24px;
+}
+
+.config-section:last-child {
+  margin-bottom: 0;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #3b82f6;
+  margin: 0 0 16px 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.section-title svg {
+  color: #3b82f6;
+}
+
+.form-group-light {
+  margin-bottom: 16px;
+}
+
+.form-group-light label {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 8px;
+}
+
+.form-group-light input,
+.form-group-light textarea {
+  width: 100%;
+  padding: 12px 14px;
+  background: white;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  color: #1f2937;
+  font-size: 14px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  box-sizing: border-box;
+}
+
+.form-group-light input:focus,
+.form-group-light textarea:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.form-group-light input::placeholder,
+.form-group-light textarea::placeholder {
+  color: #9ca3af;
+}
+
+.form-row-light {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.checkbox-section {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 16px;
+  margin-top: 16px;
+}
+
+.checkbox-wrapper-light {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  margin: 0;
+}
+
+.checkbox-wrapper-light input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  accent-color: #3b82f6;
+  cursor: pointer;
+}
+
+.checkbox-wrapper-light span {
+  font-size: 14px;
+  font-weight: 500;
+  color: #1f2937;
+}
+
+.checkbox-hint-light {
+  font-size: 13px;
+  color: #6b7280;
+  margin: 8px 0 0 32px;
+  line-height: 1.4;
+}
+
+.modal-config-footer-light {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 16px 24px;
+  border-top: 1px solid #e5e7eb;
+  background: #f9fafb;
+  border-radius: 0 0 12px 12px;
+}
+
+.btn-cancel-light {
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid #d1d5db;
+  background: white;
+  color: #374151;
+  transition: all 0.2s;
+}
+
+.btn-cancel-light:hover {
+  background: #f3f4f6;
+}
+
+.btn-save-light {
+  padding: 10px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  background: #3b82f6;
+  color: white;
+  transition: all 0.2s;
+}
+
+.btn-save-light:hover {
+  background: #2563eb;
+}
+
+.btn-cancel-light:disabled,
+.btn-save-light:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+@media (max-width: 600px) {
+  .form-row-light {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ===== TOAST NOTIFICATION ===== */
+.toast-notification {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+  z-index: 10001;
+  animation: toastSlide 0.3s ease;
+}
+
+@keyframes toastSlide {
+  from {
+    opacity: 0;
+    transform: translateX(100px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.toast-success {
+  background: #059669;
+  color: white;
+}
+
+.toast-error {
+  background: #dc2626;
+  color: white;
+}
+
+.toast-warning {
+  background: #d97706;
+  color: white;
+}
+
+.toast-notification svg {
+  flex-shrink: 0;
+}
+
+@media (max-width: 480px) {
+  .modal-config-body .form-row {
+    grid-template-columns: 1fr;
+  }
+  
+  .toast-notification {
+    left: 16px;
+    right: 16px;
+    bottom: 16px;
   }
 }

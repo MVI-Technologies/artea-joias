@@ -6,11 +6,35 @@
   margin: 0 auto;
 }
 
-.page-header {
+.romaneio-page .page-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
   margin-bottom: 24px;
 }
 
-.page-header h1 {
+.romaneio-page .btn-voltar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: white;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  color: #374151;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.romaneio-page .btn-voltar:hover {
+  background: #f3f4f6;
+  border-color: #9ca3af;
+}
+
+.romaneio-page .header-title h1 {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -20,7 +44,7 @@
   margin: 0;
 }
 
-.page-subtitle {
+.romaneio-page .page-subtitle {
   color: var(--text-secondary);
   margin-top: 4px;
   font-size: 14px;

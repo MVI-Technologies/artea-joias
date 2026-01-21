@@ -12,7 +12,8 @@ import {
   Clock,
   DollarSign,
   ChevronDown,
-  Filter
+  Filter,
+  ArrowLeft
 } from 'lucide-react'
 import { supabase } from '../../../lib/supabase'
 import './RomaneioList.css'
@@ -141,8 +142,14 @@ export default function RomaneioList() {
   return (
     <div className="romaneio-page">
       <div className="page-header">
-        <h1><FileText size={24} /> Romaneios</h1>
-        <p className="page-subtitle">Gerencie os romaneios gerados após o fechamento dos links</p>
+        <button className="btn-voltar" onClick={() => navigate('/admin/lotes')}>
+          <ArrowLeft size={18} />
+          Voltar
+        </button>
+        <div className="header-title">
+          <h1><FileText size={24} /> Romaneios</h1>
+          <p className="page-subtitle">Gerencie os romaneios gerados após o fechamento dos links</p>
+        </div>
       </div>
 
       <div className="romaneio-layout">

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom'
 import { 
   ArrowLeft, 
   RefreshCw, 
@@ -24,14 +24,19 @@ import {
   Lock,
   ClipboardList,
   MoreVertical,
-  CheckSquare
+  CheckSquare,
+  Bell,
+  Loader2,
+  Save
 } from 'lucide-react'
 import { supabase } from '../../../lib/supabase'
+import { notifyCatalogClosed } from '../../../services/whatsapp'
 import './LotDetail.css'
 
-export default function LotDetail() {
+export default function LotDetail({ defaultTab }) {
   const { id } = useParams()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [lot, setLot] = useState(null)
   const [products, setProducts] = useState([])
   const [reservas, setReservas] = useState([])
@@ -39,7 +44,7 @@ export default function LotDetail() {
   const [search, setSearch] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('todas')
   const [categories, setCategories] = useState([])
-  const [activeTab, setActiveTab] = useState('produtos')
+  const [activeTab, setActiveTab] = useState(defaultTab || searchParams.get('tab') || 'produtos')
   const [showAddProductModal, setShowAddProductModal] = useState(false)
   const [availableProducts, setAvailableProducts] = useState([])
   const [selectedProducts, setSelectedProducts] = useState([])
@@ -48,6 +53,13 @@ export default function LotDetail() {
   const [closing, setClosing] = useState(false)
   const [showActionsMenu, setShowActionsMenu] = useState(false)
   const [separacaoItems, setSeparacaoItems] = useState({}) // { order_id: boolean }
+  
+  // States para confirmação e notificação
+  const [showConfirmModal, setShowConfirmModal] = useState(false)
+  const [confirmAction, setConfirmAction] = useState(null)
+  const [notifyOnClose, setNotifyOnClose] = useState(true)
+  const [sendingNotification, setSendingNotification] = useState(false)
+  const [notification, setNotification] = useState(null)
   
   // States para gerenciamento de produtos
   const [showProductModal, setShowProductModal] = useState(false)
@@ -159,17 +171,7 @@ export default function LotDetail() {
   const copyLink = () => {
     const link = `${window.location.origin}/catalogo/${lot?.link_compra || id}`
     navigator.clipboard.writeText(link)
-    alert('Link copiado!')
-  }
-
-  const removeProduct = async (lpId) => {
-    if (!confirm('Remover produto do link?')) return
-    try {
-      await supabase.from('lot_products').delete().eq('id', lpId)
-      fetchData()
-    } catch (error) {
-      alert('Erro ao remover')
-    }
+    showNotification('success', 'Link copiado para a área de transferência!')
   }
 
   const addProductsToLot = async () => {
@@ -225,7 +227,14 @@ export default function LotDetail() {
     }
   }
 
-  const closeLot = async () => {
+  // Mostrar notificação toast
+  const showNotification = (type, message) => {
+    setNotification({ type, message })
+    setTimeout(() => setNotification(null), 5000)
+  }
+
+  // Abrir modal de confirmação para fechar
+  const openCloseConfirmation = () => {
     // Verificar se há pacotes incompletos
     if (lot?.requer_pacote_fechado) {
       const pacotesIncompletos = products.filter(lp => {
@@ -238,29 +247,186 @@ export default function LotDetail() {
       })
 
       if (pacotesIncompletos.length > 0) {
-        alert('Existem pacotes incompletos. O link não pode ser fechado.')
+        showNotification('error', 'Existem pacotes incompletos. O link não pode ser fechado.')
         return
       }
     }
 
-    if (!confirm('Tem certeza que deseja fechar este link? Romaneios serão gerados automaticamente.')) return
+    setConfirmAction('close')
+    setShowConfirmModal(true)
+  }
 
+  // Executar fechamento do lote
+  const closeLot = async () => {
+    setShowConfirmModal(false)
     setClosing(true)
+    
     try {
-      const { error } = await supabase
+      // Primeiro tenta atualizar com select
+      let updatedLot = null
+      const { data, error } = await supabase
         .from('lots')
         .update({ status: 'fechado' })
         .eq('id', id)
+        .select()
+        .single()
 
-      if (error) throw error
+      if (error) {
+        // Se der erro no trigger de romaneios, tenta sem select
+        console.warn('Erro no update com select, tentando sem:', error.message)
+        
+        const { error: error2 } = await supabase
+          .from('lots')
+          .update({ status: 'fechado' })
+          .eq('id', id)
+        
+        if (error2) throw error2
+        
+        // Busca os dados atualizados
+        const { data: lotData } = await supabase
+          .from('lots')
+          .select('*')
+          .eq('id', id)
+          .single()
+        
+        updatedLot = lotData
+      } else {
+        updatedLot = data
+      }
+
+      // Enviar notificação se marcado
+      if (notifyOnClose) {
+        setSendingNotification(true)
+        
+        try {
+          const { data: clients, error: clientsError } = await supabase
+            .from('clients')
+            .select('id, nome, telefone')
+            .eq('role', 'cliente')
+            .not('telefone', 'is', null)
+          
+          if (!clientsError && clients && clients.length > 0) {
+            const result = await notifyCatalogClosed(updatedLot, clients)
+            
+            if (result.success) {
+              showNotification('success', `Link fechado! ${result.data?.success || clients.length} cliente(s) notificado(s).`)
+            } else {
+              showNotification('warning', `Link fechado, mas erro ao notificar: ${result.error}`)
+            }
+          } else {
+            showNotification('success', 'Link fechado com sucesso!')
+          }
+        } catch (notifyError) {
+          console.error('Erro ao notificar:', notifyError)
+          showNotification('warning', 'Link fechado, mas erro ao enviar notificações.')
+        } finally {
+          setSendingNotification(false)
+        }
+      } else {
+        showNotification('success', 'Link fechado com sucesso!')
+      }
 
       fetchData()
-      alert('Link fechado com sucesso! Romaneios gerados.')
     } catch (error) {
       console.error('Erro ao fechar:', error)
-      alert('Erro ao fechar link')
+      showNotification('error', 'Erro ao fechar link. Tente novamente.')
     } finally {
       setClosing(false)
+    }
+  }
+
+  // Abrir confirmação para remover produto
+  const openRemoveProductConfirm = (lpId) => {
+    setConfirmAction({ type: 'removeProduct', lpId })
+    setShowConfirmModal(true)
+  }
+
+  // Executar remoção de produto
+  const executeRemoveProduct = async () => {
+    const lpId = confirmAction.lpId
+    setShowConfirmModal(false)
+    try {
+      await supabase.from('lot_products').delete().eq('id', lpId)
+      fetchData()
+      showNotification('success', 'Produto removido do link.')
+    } catch (error) {
+      showNotification('error', 'Erro ao remover produto.')
+    }
+  }
+
+  // Abrir confirmação para deletar produto
+  const openDeleteProductConfirm = (productId) => {
+    setConfirmAction({ type: 'deleteProduct', productId })
+    setShowConfirmModal(true)
+  }
+
+  // Executar deleção de produto
+  const executeDeleteProduct = async () => {
+    const productId = confirmAction.productId
+    setShowConfirmModal(false)
+    try {
+      const { error } = await supabase
+        .from('products')
+        .delete()
+        .eq('id', productId)
+
+      if (error) throw error
+      fetchData()
+      showNotification('success', 'Produto excluído permanentemente.')
+    } catch (error) {
+      console.error('Erro ao excluir produto:', error)
+      showNotification('error', 'Erro ao excluir. Verifique se não há reservas.')
+    }
+  }
+
+  // Handler do modal de confirmação
+  const handleConfirm = () => {
+    if (confirmAction === 'close') {
+      closeLot()
+    } else if (confirmAction?.type === 'removeProduct') {
+      executeRemoveProduct()
+    } else if (confirmAction?.type === 'deleteProduct') {
+      executeDeleteProduct()
+    }
+  }
+
+  // Duplicar lote
+  const duplicateLot = async () => {
+    setShowActionsMenu(false)
+    
+    try {
+      const newLot = {
+        nome: `${lot.nome} (cópia)`,
+        descricao: lot.descricao,
+        status: 'aberto',
+        link_compra: `grupo-${Date.now()}`
+      }
+      
+      const { data, error } = await supabase
+        .from('lots')
+        .insert(newLot)
+        .select()
+        .single()
+      
+      if (error) throw error
+      
+      // Copiar produtos do lote original
+      if (products && products.length > 0) {
+        const newLotProducts = products.map(lp => ({
+          lot_id: data.id,
+          product_id: lp.product_id,
+          quantidade_pedidos: 0,
+          quantidade_clientes: 0
+        }))
+        
+        await supabase.from('lot_products').insert(newLotProducts)
+      }
+      
+      showNotification('success', 'Catálogo duplicado com sucesso!')
+      navigate(`/admin/lotes/${data.id}`)
+    } catch (error) {
+      console.error('Erro ao duplicar:', error)
+      showNotification('error', 'Erro ao duplicar catálogo')
     }
   }
 
@@ -372,22 +538,6 @@ export default function LotDetail() {
     }
   }
 
-  const deleteProduct = async (productId) => {
-    if (!confirm('Tem certeza que deseja EXCLUIR este produto permanentemente? Esta ação não pode ser desfeita.')) return
-
-    try {
-      const { error } = await supabase
-        .from('products')
-        .delete()
-        .eq('id', productId)
-
-      if (error) throw error
-      fetchData()
-    } catch (error) {
-      console.error('Erro ao excluir produto:', error)
-      alert('Erro ao excluir produto. Verifique se o produto não possui reservas.')
-    }
-  }
 
   const filteredProducts = products.filter(lp => {
     const product = lp.product
@@ -454,14 +604,14 @@ export default function LotDetail() {
               </button>
               {showActionsMenu && (
                 <div className="dropdown-menu-right">
-                  <button onClick={() => setShowSettingsModal(true)}>
+                  <button onClick={() => { setShowSettingsModal(true); setShowActionsMenu(false); }}>
                     <Settings size={14} /> Configurações
                   </button>
-                  <button onClick={() => alert('Funcionalidade em desenvolvimento')}>
+                  <button onClick={duplicateLot}>
                     <Copy size={14} /> Duplicar Grupo
                   </button>
                   {isOpen && (
-                     <button className="text-danger" onClick={closeLot}>
+                     <button className="text-danger" onClick={() => { openCloseConfirmation(); setShowActionsMenu(false); }}>
                       <Lock size={14} /> Fechar Grupo
                     </button>
                   )}
@@ -526,10 +676,10 @@ export default function LotDetail() {
           {isOpen && (
             <button 
               className="btn btn-danger" 
-              onClick={closeLot}
-              disabled={closing}
+              onClick={openCloseConfirmation}
+              disabled={closing || sendingNotification}
             >
-              <Lock size={16} /> {closing ? 'Fechando...' : 'Fechar Link'}
+              <Lock size={16} /> {closing ? 'Fechando...' : sendingNotification ? 'Notificando...' : 'Fechar Link'}
             </button>
           )}
         </div>
@@ -656,7 +806,7 @@ export default function LotDetail() {
                   <div key={lp.id} className="product-card">
                     {/* Remove button */}
                     {isOpen && (
-                      <button className="card-remove" onClick={() => removeProduct(lp.id)}>
+                      <button className="card-remove" onClick={() => openRemoveProductConfirm(lp.id)}>
                         <X size={16} />
                       </button>
                     )}
@@ -711,7 +861,7 @@ export default function LotDetail() {
                       </button>
                       <button 
                         className="btn btn-sm btn-danger"
-                        onClick={() => deleteProduct(product.id)}
+                        onClick={() => openDeleteProductConfirm(product.id)}
                       >
                         <Trash2 size={14} />
                       </button>
@@ -917,105 +1067,127 @@ export default function LotDetail() {
       {/* Modal: Configurações */}
       {showSettingsModal && (
         <div className="modal-overlay" onClick={() => setShowSettingsModal(false)}>
-          <div className="modal-content modal-lg" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-content modal-settings" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>Configurações do Link</h2>
+              <h2><Settings size={20} /> Configurações do Link</h2>
               <button className="modal-close" onClick={() => setShowSettingsModal(false)}>
                 <X size={20} />
               </button>
             </div>
             
-            <div className="modal-body">
-              <div className="form-group">
-                <label>Nome do Link</label>
-                <input
-                  type="text"
-                  value={lotSettings.nome || ''}
-                  onChange={(e) => setLotSettings({ ...lotSettings, nome: e.target.value })}
-                />
-              </div>
-
-              <div className="form-group">
-                <label>Descrição</label>
-                <textarea
-                  value={lotSettings.descricao || ''}
-                  onChange={(e) => setLotSettings({ ...lotSettings, descricao: e.target.value })}
-                  rows={2}
-                />
-              </div>
-
-              <div className="form-row">
+            <div className="modal-body settings-body">
+              {/* Seção: Informações Básicas */}
+              <div className="settings-section">
+                <h3 className="settings-section-title">
+                  <FileText size={16} /> Informações Básicas
+                </h3>
+                
                 <div className="form-group">
-                  <label>Data/Hora de Encerramento</label>
-                  <input
-                    type="datetime-local"
-                    value={lotSettings.data_fim ? new Date(lotSettings.data_fim).toISOString().slice(0, 16) : ''}
-                    onChange={(e) => setLotSettings({ ...lotSettings, data_fim: e.target.value })}
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Taxa de Separação (R$)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={lotSettings.taxa_separacao || 0}
-                    onChange={(e) => setLotSettings({ ...lotSettings, taxa_separacao: parseFloat(e.target.value) || 0 })}
-                  />
-                </div>
-              </div>
-
-              <div className="form-group checkbox-group">
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={lotSettings.requer_pacote_fechado || false}
-                    onChange={(e) => setLotSettings({ ...lotSettings, requer_pacote_fechado: e.target.checked })}
-                  />
-                  Requer pacote fechado
-                </label>
-              </div>
-
-              <hr />
-              <h3>Dados de Pagamento</h3>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Chave PIX</label>
+                  <label>Nome do Link</label>
                   <input
                     type="text"
-                    value={lotSettings.chave_pix || ''}
-                    onChange={(e) => setLotSettings({ ...lotSettings, chave_pix: e.target.value })}
-                    placeholder="CNPJ, email ou telefone"
+                    value={lotSettings.nome || ''}
+                    onChange={(e) => setLotSettings({ ...lotSettings, nome: e.target.value })}
+                    placeholder="Ex: LINK 502 - Novidades"
                   />
                 </div>
+
                 <div className="form-group">
-                  <label>Nome do Beneficiário</label>
+                  <label>Descrição</label>
+                  <textarea
+                    value={lotSettings.descricao || ''}
+                    onChange={(e) => setLotSettings({ ...lotSettings, descricao: e.target.value })}
+                    rows={2}
+                    placeholder="Descrição para os clientes..."
+                  />
+                </div>
+              </div>
+
+              {/* Seção: Regras e Prazos */}
+              <div className="settings-section">
+                <h3 className="settings-section-title">
+                  <Clock size={16} /> Regras e Prazos
+                </h3>
+                
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Data/Hora de Encerramento</label>
+                    <input
+                      type="datetime-local"
+                      value={lotSettings.data_fim ? new Date(lotSettings.data_fim).toISOString().slice(0, 16) : ''}
+                      onChange={(e) => setLotSettings({ ...lotSettings, data_fim: e.target.value })}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Taxa de Separação (R$)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={lotSettings.taxa_separacao || 0}
+                      onChange={(e) => setLotSettings({ ...lotSettings, taxa_separacao: parseFloat(e.target.value) || 0 })}
+                    />
+                  </div>
+                </div>
+
+                <div className="checkbox-group">
+                  <label className="checkbox-wrapper">
+                    <input
+                      type="checkbox"
+                      checked={lotSettings.requer_pacote_fechado || false}
+                      onChange={(e) => setLotSettings({ ...lotSettings, requer_pacote_fechado: e.target.checked })}
+                    />
+                    <span className="checkbox-text">Requer pacote fechado</span>
+                  </label>
+                  <p className="checkbox-hint">Só permite fechar quando todos os pacotes estiverem completos</p>
+                </div>
+              </div>
+
+              {/* Seção: Dados de Pagamento */}
+              <div className="settings-section">
+                <h3 className="settings-section-title">
+                  <DollarSign size={16} /> Dados de Pagamento
+                </h3>
+
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Chave PIX</label>
+                    <input
+                      type="text"
+                      value={lotSettings.chave_pix || ''}
+                      onChange={(e) => setLotSettings({ ...lotSettings, chave_pix: e.target.value })}
+                      placeholder="CNPJ, email ou telefone"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Nome do Beneficiário</label>
+                    <input
+                      type="text"
+                      value={lotSettings.nome_beneficiario || ''}
+                      onChange={(e) => setLotSettings({ ...lotSettings, nome_beneficiario: e.target.value })}
+                      placeholder="Nome que aparece no PIX"
+                    />
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label>Telefone do Setor Financeiro</label>
                   <input
                     type="text"
-                    value={lotSettings.nome_beneficiario || ''}
-                    onChange={(e) => setLotSettings({ ...lotSettings, nome_beneficiario: e.target.value })}
+                    value={lotSettings.telefone_financeiro || ''}
+                    onChange={(e) => setLotSettings({ ...lotSettings, telefone_financeiro: e.target.value })}
+                    placeholder="(XX) XXXXX-XXXX"
                   />
                 </div>
-              </div>
 
-              <div className="form-group">
-                <label>Telefone do Setor Financeiro</label>
-                <input
-                  type="text"
-                  value={lotSettings.telefone_financeiro || ''}
-                  onChange={(e) => setLotSettings({ ...lotSettings, telefone_financeiro: e.target.value })}
-                  placeholder="(XX) XXXXX-XXXX"
-                />
-              </div>
-
-              <div className="form-group">
-                <label>Mensagem de Pagamento</label>
-                <textarea
-                  value={lotSettings.mensagem_pagamento || ''}
-                  onChange={(e) => setLotSettings({ ...lotSettings, mensagem_pagamento: e.target.value })}
-                  placeholder="Instruções adicionais..."
-                  rows={3}
-                />
+                <div className="form-group">
+                  <label>Mensagem de Pagamento</label>
+                  <textarea
+                    value={lotSettings.mensagem_pagamento || ''}
+                    onChange={(e) => setLotSettings({ ...lotSettings, mensagem_pagamento: e.target.value })}
+                    placeholder="Instruções adicionais para o cliente..."
+                    rows={3}
+                  />
+                </div>
               </div>
             </div>
 
@@ -1024,10 +1196,99 @@ export default function LotDetail() {
                 Cancelar
               </button>
               <button className="btn btn-primary" onClick={updateLotSettings}>
-                Salvar
+                <Save size={16} /> Salvar Configurações
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Modal: Confirmação Personalizado */}
+      {showConfirmModal && (
+        <div className="modal-overlay" onClick={() => setShowConfirmModal(false)}>
+          <div className="modal-content modal-confirm" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>
+                {confirmAction === 'close' ? '🔒 Fechar Link' : 
+                 confirmAction?.type === 'removeProduct' ? '📦 Remover Produto' :
+                 confirmAction?.type === 'deleteProduct' ? '🗑️ Excluir Produto' : 'Confirmar'}
+              </h2>
+              <button className="modal-close" onClick={() => setShowConfirmModal(false)}>
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="modal-body">
+              {confirmAction === 'close' && (
+                <>
+                  <p className="confirm-message">
+                    Tem certeza que deseja <strong>fechar este link</strong>?
+                  </p>
+                  <p className="confirm-hint">
+                    Após fechado, os clientes não poderão mais fazer reservas.
+                  </p>
+                  
+                  <div className="confirm-option">
+                    <label className="checkbox-container">
+                      <input
+                        type="checkbox"
+                        checked={notifyOnClose}
+                        onChange={(e) => setNotifyOnClose(e.target.checked)}
+                      />
+                      <span className="checkbox-label">
+                        <Bell size={16} />
+                        Notificar clientes via WhatsApp sobre o fechamento
+                      </span>
+                    </label>
+                  </div>
+                </>
+              )}
+              
+              {confirmAction?.type === 'removeProduct' && (
+                <p className="confirm-message">
+                  Deseja <strong>remover</strong> este produto do link?
+                  <br />
+                  <small>O produto continuará existindo no sistema.</small>
+                </p>
+              )}
+              
+              {confirmAction?.type === 'deleteProduct' && (
+                <>
+                  <p className="confirm-message confirm-danger">
+                    ⚠️ Tem certeza que deseja <strong>EXCLUIR PERMANENTEMENTE</strong> este produto?
+                  </p>
+                  <p className="confirm-hint">
+                    Esta ação não pode ser desfeita. O produto será removido do sistema.
+                  </p>
+                </>
+              )}
+            </div>
+
+            <div className="modal-footer">
+              <button className="btn btn-outline" onClick={() => setShowConfirmModal(false)}>
+                Cancelar
+              </button>
+              <button 
+                className={`btn ${confirmAction?.type === 'deleteProduct' ? 'btn-danger' : 'btn-primary'}`}
+                onClick={handleConfirm}
+              >
+                {confirmAction === 'close' ? 'Fechar Link' : 
+                 confirmAction?.type === 'removeProduct' ? 'Remover' :
+                 confirmAction?.type === 'deleteProduct' ? 'Excluir' : 'Confirmar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Notificação Toast */}
+      {notification && (
+        <div className={`toast-notification toast-${notification.type}`}>
+          {notification.type === 'success' && <CheckCircle size={20} />}
+          {notification.type === 'error' && <AlertTriangle size={20} />}
+          {notification.type === 'warning' && <AlertTriangle size={20} />}
+          <span>{notification.message}</span>
+          <button className="toast-close" onClick={() => setNotification(null)}>×</button>
         </div>
       )}
 
