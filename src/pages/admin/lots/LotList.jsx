@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { Plus, Search, Bell, ChevronDown, Copy, ExternalLink } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { Plus, Search, Bell, ChevronDown, Copy, ExternalLink, Link as LinkIcon, MoreVertical, Edit, Lock, FileText, Package, Scissors } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../../../lib/supabase'
 import './LotList.css'
@@ -10,9 +10,20 @@ export default function LotList() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('todos')
+  const [openDropdown, setOpenDropdown] = useState(null)
+  const dropdownRef = useRef(null)
 
   useEffect(() => {
     fetchLots()
+    
+    // Close dropdown when clicking outside
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setOpenDropdown(null)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
   const fetchLots = async () => {
@@ -28,7 +39,7 @@ export default function LotList() {
       if (error) throw error
       setLots(data || [])
     } catch (error) {
-      console.error('Erro ao carregar lotes:', error)
+      console.error('Erro ao carregar grupos:', error)
     } finally {
       setLoading(false)
     }
@@ -36,14 +47,15 @@ export default function LotList() {
 
   const getStatusBadge = (status) => {
     const statusMap = {
-      'aberto': { label: 'Pronto e Aberto', class: 'status-open' },
-      'fechado': { label: 'Fechado', class: 'status-closed' },
-      'preparacao': { label: 'Em Preparação', class: 'status-prep' },
-      'pago': { label: 'Pago', class: 'status-paid' },
-      'enviado': { label: 'Enviado', class: 'status-sent' },
-      'concluido': { label: 'Concluído', class: 'status-done' },
+      'aberto': { label: 'Aberto', class: 'badge-green' },
+      'pronto_aberto': { label: 'Pronto e Aberto', class: 'badge-green' },
+      'fechado': { label: 'Fechado', class: 'badge-red' },
+      'preparacao': { label: 'Em preparação', class: 'badge-orange' },
+      'pago': { label: 'Pago', class: 'badge-blue' },
+      'enviado': { label: 'Enviado', class: 'badge-purple' },
+      'concluido': { label: 'Concluído', class: 'badge-gray' },
     }
-    return statusMap[status] || { label: status, class: 'status-default' }
+    return statusMap[status] || { label: status || 'Aberto', class: 'badge-green' }
   }
 
   const formatDate = (date) => {
@@ -51,86 +63,140 @@ export default function LotList() {
     return new Date(date).toLocaleDateString('pt-BR')
   }
 
+  const toggleDropdown = (lotId, e) => {
+    e.stopPropagation()
+    setOpenDropdown(openDropdown === lotId ? null : lotId)
+  }
+
+  const handleAction = (action, lot) => {
+    setOpenDropdown(null)
+    switch (action) {
+      case 'editar':
+        navigate(`/admin/lotes/${lot.id}/editar`)
+        break
+      case 'privacidade':
+        // TODO: Implementar privacidade
+        break
+      case 'duplicar':
+        // TODO: Implementar duplicar
+        break
+      case 'relatorio':
+        // TODO: Implementar relatório
+        break
+      case 'romaneios':
+        navigate(`/admin/romaneios?lot=${lot.id}`)
+        break
+      case 'separacao':
+        // TODO: Implementar separação
+        break
+      default:
+        break
+    }
+  }
+
   const filteredLots = lots.filter(lot => {
-    const matchSearch = lot.nome.toLowerCase().includes(search.toLowerCase())
+    const matchSearch = lot.nome?.toLowerCase().includes(search.toLowerCase())
     const matchStatus = statusFilter === 'todos' || lot.status === statusFilter
     return matchSearch && matchStatus
   })
 
-  // Agrupar por tipo (Pronta Entrega no topo como destaque)
-  const prontaEntrega = filteredLots.find(l => l.nome.includes('Pronta Entrega'))
-  const regularLots = filteredLots.filter(l => !l.nome.includes('Pronta Entrega'))
+  // Separar "Minha Loja - Pronta Entrega" no topo
+  const prontaEntrega = filteredLots.find(l => l.nome?.includes('Pronta Entrega'))
+  const regularLots = filteredLots.filter(l => !l.nome?.includes('Pronta Entrega'))
 
   if (loading) {
     return <div className="page-container"><div className="loading-spinner" style={{ margin: '40px auto' }} /></div>
   }
 
   return (
-    <div className="page-container lots-page">
+    <div className="page-container grupo-compras-page">
       {/* Barra de busca e filtros */}
-      <div className="lots-toolbar">
-        <div className="search-box">
-          <Search size={18} className="search-icon" />
-          <input 
-            type="text" 
-            placeholder="Buscar nome" 
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+      <div className="toolbar">
+        <div className="toolbar-left">
+          <div className="search-box">
+            <input 
+              type="text" 
+              placeholder="Buscar nome" 
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            <Search size={16} className="search-icon" />
+          </div>
         </div>
-        <select 
-          className="status-filter"
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-        >
-          <option value="todos">Todos os status</option>
-          <option value="aberto">Pronto e Aberto</option>
-          <option value="fechado">Fechado</option>
-          <option value="preparacao">Em Preparação</option>
-          <option value="pago">Pago</option>
-          <option value="enviado">Enviado</option>
-          <option value="concluido">Concluído</option>
-        </select>
+        <div className="toolbar-right">
+          <select 
+            className="status-filter"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+          >
+            <option value="todos">Todos os status</option>
+            <option value="aberto">Aberto</option>
+            <option value="pronto_aberto">Pronto e Aberto</option>
+            <option value="fechado">Fechado</option>
+            <option value="preparacao">Em preparação</option>
+          </select>
+        </div>
       </div>
 
       {/* Botões de ação */}
-      <div className="lots-actions">
+      <div className="action-buttons">
         <button className="btn btn-primary" onClick={() => navigate('/admin/lotes/novo')}>
-          <Plus size={18} /> Catálogo
+          <Plus size={16} /> Catálogo
         </button>
         <button className="btn btn-dark">
-          <Bell size={18} /> Notificações
+          Notificações
         </button>
-        <button className="btn btn-dark dropdown-btn">
-          Ações <ChevronDown size={16} />
+        <button className="btn btn-dark dropdown-toggle">
+          Ações <ChevronDown size={14} />
         </button>
       </div>
 
-      {/* Tabela de lotes */}
-      <div className="lots-table-container">
-        <table className="lots-table">
+      {/* Tabela de grupos */}
+      <div className="table-container">
+        <table className="grupos-table">
           <thead>
             <tr>
-              <th>Nome</th>
-              <th>Criado em</th>
-              <th>Encerramento</th>
-              <th>Ações</th>
+              <th className="col-nome text-white">Nome</th>
+              <th className="col-data text-white">Data início</th>
+              <th className="col-data text-white">Encerramento</th>
+              <th className="col-acoes text-white">Ações</th>
             </tr>
           </thead>
           <tbody>
             {/* Linha destaque - Pronta Entrega */}
             {prontaEntrega && (
-              <tr className="lot-row lot-row-highlight">
-                <td className="lot-name">
-                  <span className="lot-name-text">{prontaEntrega.nome}</span>
+              <tr className="row-highlight">
+                <td className="col-nome">
+                  <span className="nome-text">{prontaEntrega.nome}</span>
                 </td>
-                <td></td>
-                <td></td>
-                <td className="lot-actions-cell">
-                  <Link to={`/admin/lotes/${prontaEntrega.id}`} className="btn btn-action btn-products">Produtos</Link>
-                  <button className="btn btn-action btn-romaneios">Romaneios</button>
-                  <button className="btn btn-action btn-separacao">Separação</button>
-                  <button className="btn btn-action btn-acoes dropdown-btn">Ações <ChevronDown size={14} /></button>
+                <td className="col-data"></td>
+                <td className="col-data"></td>
+                <td className="col-acoes">
+                  <div className="acoes-buttons">
+                    <Link to={`/admin/lotes/${prontaEntrega.id}`} className="btn-action btn-produtos">
+                      Produtos
+                    </Link>
+                    <button className="btn-action btn-romaneios">Romaneios</button>
+                    <button className="btn-action btn-separacao">Separação</button>
+                    <div className="dropdown-container" ref={dropdownRef}>
+                      <button 
+                        className="btn-action btn-acoes"
+                        onClick={(e) => toggleDropdown(prontaEntrega.id, e)}
+                      >
+                        Ações <ChevronDown size={12} />
+                      </button>
+                      {openDropdown === prontaEntrega.id && (
+                        <div className="dropdown-menu">
+                          <button onClick={() => handleAction('editar', prontaEntrega)}>Editar</button>
+                          <button onClick={() => handleAction('privacidade', prontaEntrega)}>Privacidade</button>
+                          <button onClick={() => handleAction('duplicar', prontaEntrega)}>Duplicar</button>
+                          <button onClick={() => handleAction('relatorio', prontaEntrega)}>Relatório Produtos</button>
+                          <button onClick={() => handleAction('romaneios', prontaEntrega)}>Romaneios</button>
+                          <button onClick={() => handleAction('separacao', prontaEntrega)}>Separação</button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </td>
               </tr>
             )}
@@ -139,20 +205,41 @@ export default function LotList() {
             {regularLots.map((lot) => {
               const status = getStatusBadge(lot.status)
               return (
-                <tr key={lot.id} className="lot-row">
-                  <td className="lot-name">
-                    <span className="lot-name-text">{lot.nome}</span>
-                    <span className={`lot-status-badge ${status.class}`}>
+                <tr key={lot.id} className="row-regular">
+                  <td className="col-nome">
+                    <span className="nome-text">{lot.nome}</span>
+                    <span className={`status-badge ${status.class}`}>
                       {status.label}
                     </span>
                   </td>
-                  <td>{formatDate(lot.created_at)}</td>
-                  <td>{formatDate(lot.data_fim)}</td>
-                  <td className="lot-actions-cell">
-                    <Link to={`/admin/lotes/${lot.id}`} className="btn btn-action btn-products">Produtos</Link>
-                    <button className="btn btn-action btn-romaneios">Romaneios</button>
-                    <button className="btn btn-action btn-separacao">Separação</button>
-                    <button className="btn btn-action btn-acoes dropdown-btn">Ações <ChevronDown size={14} /></button>
+                  <td className="col-data">{formatDate(lot.created_at)}</td>
+                  <td className="col-data">{formatDate(lot.data_fim)}</td>
+                  <td className="col-acoes">
+                    <div className="acoes-buttons">
+                      <Link to={`/admin/lotes/${lot.id}`} className="btn-action btn-produtos">
+                        Produtos
+                      </Link>
+                      <button className="btn-action btn-romaneios">Romaneios</button>
+                      <button className="btn-action btn-separacao">Separação</button>
+                      <div className="dropdown-container" ref={openDropdown === lot.id ? dropdownRef : null}>
+                        <button 
+                          className="btn-action btn-acoes"
+                          onClick={(e) => toggleDropdown(lot.id, e)}
+                        >
+                          Ações <ChevronDown size={12} />
+                        </button>
+                        {openDropdown === lot.id && (
+                          <div className="dropdown-menu">
+                            <button onClick={() => handleAction('editar', lot)}>Editar</button>
+                            <button onClick={() => handleAction('privacidade', lot)}>Privacidade</button>
+                            <button onClick={() => handleAction('duplicar', lot)}>Duplicar</button>
+                            <button onClick={() => handleAction('relatorio', lot)}>Relatório Produtos</button>
+                            <button onClick={() => handleAction('romaneios', lot)}>Romaneios</button>
+                            <button onClick={() => handleAction('separacao', lot)}>Separação</button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </td>
                 </tr>
               )
@@ -161,7 +248,7 @@ export default function LotList() {
             {filteredLots.length === 0 && (
               <tr>
                 <td colSpan="4" className="empty-message">
-                  Nenhum catálogo encontrado
+                  Nenhum grupo de compras encontrado
                 </td>
               </tr>
             )}
@@ -170,7 +257,7 @@ export default function LotList() {
       </div>
 
       {/* Paginação */}
-      <div className="lots-pagination">
+      <div className="pagination">
         Página 1 / 1 - {filteredLots.length} resultados
       </div>
     </div>

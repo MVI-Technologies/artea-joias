@@ -17,14 +17,19 @@ import CategoryList from './pages/admin/products/CategoryList'
 import CollectionList from './pages/admin/products/CollectionList'
 import LotList from './pages/admin/lots/LotList'
 import LotDetail from './pages/admin/lots/LotDetail'
+import LotForm from './pages/admin/lots/LotForm'
 import ClientList from './pages/admin/clients/ClientList'
 import ClientForm from './pages/admin/clients/ClientForm'
 import OrderList from './pages/admin/orders/OrderList'
 import RomaneioList from './pages/admin/romaneios/RomaneioList'
+import RomaneioDetail from './pages/admin/romaneios/RomaneioDetail'
 import Reports from './pages/admin/reports/Reports'
 import ImportClients from './pages/admin/import/ImportClients'
 import Settings from './pages/admin/settings/Settings'
 import WhatsApp from './pages/admin/whatsapp/WhatsApp'
+import Marketing from './pages/admin/marketing/Marketing'
+import Financeiro from './pages/admin/financeiro/Financeiro'
+import UserList from './pages/admin/users/UserList'
 
 // Client Pages
 import ClientDashboard from './pages/client/ClientDashboard'
@@ -95,9 +100,14 @@ function AppRoutes() {
         <Route path="produtos/categorias" element={<CategoryList />} />
         <Route path="produtos/colecoes" element={<CollectionList />} />
         
-        {/* Lotes/Links */}
+        {/* Lotes/Grupo de Compras */}
         <Route path="lotes" element={<LotList />} />
+        <Route path="lotes/novo" element={<LotForm />} />
         <Route path="lotes/:id" element={<LotDetail />} />
+        <Route path="lotes/:id/editar" element={<LotForm />} />
+        
+        {/* Marketing */}
+        <Route path="marketing" element={<Marketing />} />
         
         {/* Clientes */}
         <Route path="clientes" element={<ClientList />} />
@@ -111,6 +121,7 @@ function AppRoutes() {
         
         {/* Romaneios */}
         <Route path="romaneios" element={<RomaneioList />} />
+        <Route path="romaneios/:id" element={<RomaneioDetail />} />
         
         {/* Relatórios */}
         <Route path="relatorios" element={<Reports />} />
@@ -118,8 +129,12 @@ function AppRoutes() {
         {/* Configurações */}
         <Route path="configuracoes" element={<Settings />} />
         
-        {/* WhatsApp */}
-        <Route path="whatsapp" element={<WhatsApp />} />
+        {/* Marketing e Financeiro */}
+        <Route path="marketing" element={<Marketing />} />
+        <Route path="financeiro" element={<Financeiro />} />
+        <Route path="usuarios" element={<UserList />} />
+
+        {/* WhatsApp */}\n        <Route path="whatsapp" element={<WhatsApp />} />
         
         {/* Fallback */}
         <Route path="*" element={<Dashboard />} />

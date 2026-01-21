@@ -1,0 +1,248 @@
+/* LotForm Styles */
+
+.lot-form-page {
+  padding: 24px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+/* Header */
+.form-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.btn-back {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 8px;
+  cursor: pointer;
+  color: var(--text-primary);
+  transition: all 0.2s;
+}
+
+.btn-back:hover {
+  background: var(--bg-hover);
+}
+
+.form-header h1 {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+/* Form */
+.lot-form {
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  padding: 24px;
+  border: 1px solid var(--border-color);
+}
+
+/* Form Sections */
+.form-section {
+  margin-bottom: 24px;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.flex-2 {
+  grid-column: span 2;
+}
+
+/* Form Groups */
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-group label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+}
+
+.form-group input,
+.form-group textarea,
+.form-group select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  font-size: 14px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  transition: border-color 0.2s;
+}
+
+.form-group input:focus,
+.form-group textarea:focus,
+.form-group select:focus {
+  outline: none;
+  border-color: #3b82f6;
+}
+
+.form-group input::placeholder,
+.form-group textarea::placeholder {
+  color: var(--text-tertiary);
+}
+
+.required {
+  font-size: 11px;
+  font-weight: 400;
+  color: #f59e0b;
+}
+
+.optional {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-tertiary);
+}
+
+.info-icon {
+  color: var(--text-tertiary);
+  cursor: help;
+}
+
+/* Tabs */
+.form-tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 0;
+  border-bottom: none;
+}
+
+.tab-btn {
+  padding: 10px 32px;
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.tab-btn:hover {
+  background: #2563eb;
+}
+
+.tab-btn-link {
+  padding: 10px 24px;
+  background: transparent;
+  color: #3b82f6;
+  border: none;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.tab-btn-link:hover {
+  text-decoration: underline;
+}
+
+/* Taxas Section */
+.taxas-section {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 20px;
+  margin-top: 16px;
+}
+
+.taxas-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.taxa-dinamica {
+  margin-top: 8px;
+}
+
+/* Form Actions */
+.form-actions {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border-color);
+}
+
+.btn-save {
+  background: #374151;
+  color: white;
+  padding: 10px 24px;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-save:hover {
+  background: #4b5563;
+}
+
+.btn-save:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Text Utilities */
+.text-muted {
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+/* Loading */
+.loading-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--border-color);
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .lot-form-page {
+    padding: 16px;
+  }
+
+  .lot-form {
+    padding: 16px;
+  }
+
+  .taxas-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .flex-2 {
+    grid-column: span 1;
+  }
+}
+
+@media (max-width: 480px) {
+  .taxas-grid {
+    grid-template-columns: 1fr;
+  }
+}

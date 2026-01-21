@@ -360,7 +360,7 @@ export default function WhatsApp() {
       <div className="card api-status-card">
         <div className="api-status">
           <span className="api-status-indicator active"></span>
-          <span>Evolution API conectada</span>
+          <span>Whatsapp conectado</span>
         </div>
         <p className="api-info">
           Há <strong>{clients.filter(c => c.telefone).length}</strong> clientes com WhatsApp registrado.

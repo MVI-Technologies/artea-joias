@@ -1,6 +1,31 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { ArrowLeft, RefreshCw, Plus, Search, Copy, ChevronDown, X, Edit, MessageCircle, Image, Link as LinkIcon, Trash2 } from 'lucide-react'
+import { 
+  ArrowLeft, 
+  RefreshCw, 
+  Plus, 
+  Search, 
+  Copy, 
+  ChevronDown, 
+  X, 
+  Edit, 
+  MessageCircle, 
+  Image, 
+  Link as LinkIcon, 
+  Trash2, 
+  Users, 
+  Package,
+  DollarSign,
+  Clock,
+  AlertTriangle,
+  CheckCircle,
+  FileText,
+  Settings,
+  Lock,
+  ClipboardList,
+  MoreVertical,
+  CheckSquare
+} from 'lucide-react'
 import { supabase } from '../../../lib/supabase'
 import './LotDetail.css'
 
@@ -9,12 +34,34 @@ export default function LotDetail() {
   const navigate = useNavigate()
   const [lot, setLot] = useState(null)
   const [products, setProducts] = useState([])
+  const [reservas, setReservas] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('todas')
   const [categories, setCategories] = useState([])
+  const [activeTab, setActiveTab] = useState('produtos')
+  const [showAddProductModal, setShowAddProductModal] = useState(false)
+  const [availableProducts, setAvailableProducts] = useState([])
+  const [selectedProducts, setSelectedProducts] = useState([])
+  const [showSettingsModal, setShowSettingsModal] = useState(false)
+  const [lotSettings, setLotSettings] = useState({})
+  const [closing, setClosing] = useState(false)
+  const [showActionsMenu, setShowActionsMenu] = useState(false)
+  const [separacaoItems, setSeparacaoItems] = useState({}) // { order_id: boolean }
+  
+  // States para gerenciamento de produtos
   const [showProductModal, setShowProductModal] = useState(false)
   const [editingProduct, setEditingProduct] = useState(null)
+  const [productForm, setProductForm] = useState({
+    nome: '',
+    descricao: '',
+    preco: '',
+    categoria_id: '',
+    tipo_venda: 'individual',
+    quantidade_pacote: 12,
+    imagem1: ''
+  })
+  const [savingProduct, setSavingProduct] = useState(false)
 
   useEffect(() => {
     fetchData()
@@ -31,6 +78,7 @@ export default function LotDetail() {
 
       if (lotError) throw lotError
       setLot(lotData)
+      setLotSettings(lotData)
 
       // Buscar produtos do lote
       const { data: lotProducts, error: lpError } = await supabase
@@ -43,6 +91,38 @@ export default function LotDetail() {
 
       if (lpError) throw lpError
       setProducts(lotProducts || [])
+
+      // Buscar reservas agrupadas por cliente
+      const { data: reservasData, error: resError } = await supabase
+        .from('reservas')
+        .select(`
+          *,
+          client:clients(id, nome, telefone, email),
+          product:products(id, nome, preco, imagem1)
+        `)
+        .eq('lot_id', id)
+        .eq('status', 'confirmada')
+        .order('created_at', { ascending: false })
+
+      if (!resError) {
+        // Agrupar reservas por cliente
+        const grouped = (reservasData || []).reduce((acc, res) => {
+          const clientId = res.client_id
+          if (!acc[clientId]) {
+            acc[clientId] = {
+              client: res.client,
+              items: [],
+              total: 0,
+              quantidade: 0
+            }
+          }
+          acc[clientId].items.push(res)
+          acc[clientId].total += res.valor_total
+          acc[clientId].quantidade += res.quantidade
+          return acc
+        }, {})
+        setReservas(Object.values(grouped))
+      }
 
       // Buscar categorias
       const { data: cats } = await supabase
@@ -59,6 +139,23 @@ export default function LotDetail() {
     }
   }
 
+  const fetchAvailableProducts = async () => {
+    try {
+      // Buscar produtos que não estão no lote
+      const { data: allProducts } = await supabase
+        .from('products')
+        .select('*, category:categories(*)')
+        .eq('ativo', true)
+        .order('nome')
+
+      const lotProductIds = products.map(lp => lp.product_id)
+      const available = (allProducts || []).filter(p => !lotProductIds.includes(p.id))
+      setAvailableProducts(available)
+    } catch (error) {
+      console.error('Erro ao buscar produtos:', error)
+    }
+  }
+
   const copyLink = () => {
     const link = `${window.location.origin}/catalogo/${lot?.link_compra || id}`
     navigator.clipboard.writeText(link)
@@ -66,12 +163,229 @@ export default function LotDetail() {
   }
 
   const removeProduct = async (lpId) => {
-    if (!confirm('Remover produto do catálogo?')) return
+    if (!confirm('Remover produto do link?')) return
     try {
       await supabase.from('lot_products').delete().eq('id', lpId)
       fetchData()
     } catch (error) {
       alert('Erro ao remover')
+    }
+  }
+
+  const addProductsToLot = async () => {
+    if (selectedProducts.length === 0) return
+
+    try {
+      const inserts = selectedProducts.map(productId => ({
+        lot_id: id,
+        product_id: productId,
+        quantidade_pedidos: 0,
+        quantidade_clientes: 0
+      }))
+
+      const { error } = await supabase
+        .from('lot_products')
+        .insert(inserts)
+
+      if (error) throw error
+
+      setShowAddProductModal(false)
+      setSelectedProducts([])
+      fetchData()
+    } catch (error) {
+      console.error('Erro ao adicionar produtos:', error)
+      alert('Erro ao adicionar produtos')
+    }
+  }
+
+  const updateLotSettings = async () => {
+    try {
+      const { error } = await supabase
+        .from('lots')
+        .update({
+          nome: lotSettings.nome,
+          descricao: lotSettings.descricao,
+          data_fim: lotSettings.data_fim,
+          taxa_separacao: lotSettings.taxa_separacao,
+          requer_pacote_fechado: lotSettings.requer_pacote_fechado,
+          chave_pix: lotSettings.chave_pix,
+          nome_beneficiario: lotSettings.nome_beneficiario,
+          mensagem_pagamento: lotSettings.mensagem_pagamento,
+          telefone_financeiro: lotSettings.telefone_financeiro
+        })
+        .eq('id', id)
+
+      if (error) throw error
+
+      setShowSettingsModal(false)
+      fetchData()
+    } catch (error) {
+      console.error('Erro ao atualizar:', error)
+      alert('Erro ao atualizar configurações')
+    }
+  }
+
+  const closeLot = async () => {
+    // Verificar se há pacotes incompletos
+    if (lot?.requer_pacote_fechado) {
+      const pacotesIncompletos = products.filter(lp => {
+        const product = lp.product
+        if (product?.tipo_venda === 'pacote') {
+          const qtdPacote = product.quantidade_pacote || 12
+          return (lp.quantidade_pedidos || 0) % qtdPacote !== 0
+        }
+        return false
+      })
+
+      if (pacotesIncompletos.length > 0) {
+        alert('Existem pacotes incompletos. O link não pode ser fechado.')
+        return
+      }
+    }
+
+    if (!confirm('Tem certeza que deseja fechar este link? Romaneios serão gerados automaticamente.')) return
+
+    setClosing(true)
+    try {
+      const { error } = await supabase
+        .from('lots')
+        .update({ status: 'fechado' })
+        .eq('id', id)
+
+      if (error) throw error
+
+      fetchData()
+      alert('Link fechado com sucesso! Romaneios gerados.')
+    } catch (error) {
+      console.error('Erro ao fechar:', error)
+      alert('Erro ao fechar link')
+    } finally {
+      setClosing(false)
+    }
+  }
+
+  // ========================================
+  // FUNÇÕES DE GERENCIAMENTO DE PRODUTOS
+  // ========================================
+
+  const openCreateProductModal = () => {
+    setEditingProduct(null)
+    setProductForm({
+      nome: '',
+      descricao: '',
+      preco: '',
+      categoria_id: '',
+      tipo_venda: 'individual',
+      quantidade_pacote: 12,
+      imagem1: ''
+    })
+    setShowProductModal(true)
+  }
+
+  const openEditProductModal = (product) => {
+    setEditingProduct(product)
+    setProductForm({
+      nome: product.nome || '',
+      descricao: product.descricao || '',
+      preco: product.preco || '',
+      categoria_id: product.categoria_id || '',
+      tipo_venda: product.tipo_venda || 'individual',
+      quantidade_pacote: product.quantidade_pacote || 12,
+      imagem1: product.imagem1 || ''
+    })
+    setShowProductModal(true)
+  }
+
+  const closeProductModal = () => {
+    setShowProductModal(false)
+    setEditingProduct(null)
+    setProductForm({
+      nome: '',
+      descricao: '',
+      preco: '',
+      categoria_id: '',
+      tipo_venda: 'individual',
+      quantidade_pacote: 12,
+      imagem1: ''
+    })
+  }
+
+  const saveProduct = async () => {
+    if (!productForm.nome.trim()) {
+      alert('Nome é obrigatório')
+      return
+    }
+    if (!productForm.preco || parseFloat(productForm.preco) <= 0) {
+      alert('Preço é obrigatório')
+      return
+    }
+
+    setSavingProduct(true)
+    try {
+      const productData = {
+        nome: productForm.nome.trim(),
+        descricao: productForm.descricao.trim(),
+        preco: parseFloat(productForm.preco),
+        categoria_id: productForm.categoria_id || null,
+        imagem1: productForm.imagem1 || null,
+        ativo: true
+      }
+
+      if (editingProduct) {
+        // Atualizar produto existente
+        const { error } = await supabase
+          .from('products')
+          .update(productData)
+          .eq('id', editingProduct.id)
+
+        if (error) throw error
+      } else {
+        // Criar novo produto e adicionar ao lote
+        const { data: newProduct, error: insertError } = await supabase
+          .from('products')
+          .insert(productData)
+          .select()
+          .single()
+
+        if (insertError) throw insertError
+
+        // Adicionar ao lote atual
+        const { error: lotError } = await supabase
+          .from('lot_products')
+          .insert({
+            lot_id: id,
+            product_id: newProduct.id,
+            quantidade_pedidos: 0,
+            quantidade_clientes: 0
+          })
+
+        if (lotError) throw lotError
+      }
+
+      closeProductModal()
+      fetchData()
+    } catch (error) {
+      console.error('Erro ao salvar produto:', error)
+      alert('Erro ao salvar produto')
+    } finally {
+      setSavingProduct(false)
+    }
+  }
+
+  const deleteProduct = async (productId) => {
+    if (!confirm('Tem certeza que deseja EXCLUIR este produto permanentemente? Esta ação não pode ser desfeita.')) return
+
+    try {
+      const { error } = await supabase
+        .from('products')
+        .delete()
+        .eq('id', productId)
+
+      if (error) throw error
+      fetchData()
+    } catch (error) {
+      console.error('Erro ao excluir produto:', error)
+      alert('Erro ao excluir produto. Verifique se o produto não possui reservas.')
     }
   }
 
@@ -83,145 +397,752 @@ export default function LotDetail() {
     return matchSearch && matchCategory
   })
 
+  // Calcular estatísticas
+  const stats = {
+    totalProdutos: products.length,
+    totalReservas: reservas.reduce((sum, r) => sum + r.quantidade, 0),
+    totalClientes: reservas.length,
+    valorTotal: reservas.reduce((sum, r) => sum + r.total, 0)
+  }
+
   if (loading) {
     return <div className="page-container"><div className="loading-spinner" style={{ margin: '40px auto' }} /></div>
   }
 
   if (!lot) {
-    return <div className="page-container">Catálogo não encontrado</div>
+    return <div className="page-container">Link não encontrado</div>
   }
+
+  const isOpen = lot.status === 'aberto'
+  const isClosed = lot.status === 'fechado'
 
   return (
     <div className="page-container lot-detail">
       {/* Header */}
       <div className="lot-header">
-        <button className="btn-back" onClick={() => navigate('/admin/lotes')}>
-          <ArrowLeft size={18} />
-        </button>
-        <RefreshCw size={18} className="refresh-icon" onClick={fetchData} />
-        <h1>{lot.nome}</h1>
+        <div className="header-left">
+          <button className="btn-back" onClick={() => navigate('/admin/lotes')}>
+            <ArrowLeft size={18} />
+          </button>
+          <div>
+            <h1>{lot.nome}</h1>
+            <div className="lot-status-bar">
+              <span className={`status-badge status-${lot.status}`}>
+                {lot.status === 'aberto' ? 'ABERTO' : 
+                 lot.status === 'fechado' ? 'FECHADO' : 
+                 lot.status === 'preparacao' ? 'EM PREPARAÇÃO' : lot.status?.toUpperCase()}
+              </span>
+              {lot.data_fim && (
+                <span className="lot-deadline">
+                  <Clock size={14} />
+                  Encerra: {new Date(lot.data_fim).toLocaleString('pt-BR')}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+          <div className="header-actions-group">
+            <button className="btn btn-outline" onClick={fetchData}>
+              <RefreshCw size={16} />
+            </button>
+            <div className="dropdown-container">
+              <button 
+                className="btn btn-outline"
+                onClick={() => setShowActionsMenu(!showActionsMenu)}
+              >
+                <MoreVertical size={16} /> Ações
+              </button>
+              {showActionsMenu && (
+                <div className="dropdown-menu-right">
+                  <button onClick={() => setShowSettingsModal(true)}>
+                    <Settings size={14} /> Configurações
+                  </button>
+                  <button onClick={() => alert('Funcionalidade em desenvolvimento')}>
+                    <Copy size={14} /> Duplicar Grupo
+                  </button>
+                  {isOpen && (
+                     <button className="text-danger" onClick={closeLot}>
+                      <Lock size={14} /> Fechar Grupo
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
       </div>
 
-      {/* Action buttons */}
-      <div className="lot-actions">
-        <button className="btn btn-primary">
-          <Plus size={16} /> Adicionar Produto
-        </button>
-        <button className="btn btn-primary">
-          <Plus size={16} /> Múltiplos Produtos
-        </button>
-        <button className="btn btn-dark dropdown-btn">
-          Ações <ChevronDown size={14} />
-        </button>
-        <button className="btn btn-dark dropdown-btn">
-          Selecionados <ChevronDown size={14} />
-        </button>
-        <button className="btn btn-dark dropdown-btn">
-          Notificações <ChevronDown size={14} />
-        </button>
+      {/* Stats Cards */}
+      <div className="stats-grid">
+        <div className="stat-card">
+          <div className="stat-icon">
+            <Package size={20} strokeWidth={1.5} />
+          </div>
+          <div className="stat-content">
+            <span className="stat-value">{stats.totalProdutos}</span>
+            <span className="stat-label">Produtos</span>
+          </div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-icon">
+            <Users size={20} strokeWidth={1.5} />
+          </div>
+          <div className="stat-content">
+            <span className="stat-value">{stats.totalClientes}</span>
+            <span className="stat-label">Clientes</span>
+          </div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-icon">
+            <FileText size={20} strokeWidth={1.5} />
+          </div>
+          <div className="stat-content">
+            <span className="stat-value">{stats.totalReservas}</span>
+            <span className="stat-label">Reservas</span>
+          </div>
+        </div>
+        <div className="stat-card stat-highlight">
+          <div className="stat-icon">
+            <DollarSign size={20} strokeWidth={1.5} />
+          </div>
+          <div className="stat-content">
+            <span className="stat-value">R$ {stats.valorTotal.toFixed(2)}</span>
+            <span className="stat-label">Total Reservado</span>
+          </div>
+        </div>
       </div>
 
-      {/* Link info */}
+      {/* Link Share Section */}
       <div className="lot-link-section">
-        <a href="#" className="link-text">Listar todos os produtos</a>
-        <div className="link-copy">
+        <div className="link-info">
+          <span className="link-label">Link para compartilhar:</span>
           <span className="link-url">
             {window.location.origin}/catalogo/{lot.link_compra || lot.id}
           </span>
-          <button className="btn btn-copy" onClick={copyLink}>
-            Copiar Link
+        </div>
+        <div className="link-actions">
+          <button className="btn btn-primary" onClick={copyLink}>
+            <Copy size={16} /> Copiar Link
           </button>
-        </div>
-      </div>
-
-      {/* Filters */}
-      <div className="lot-filters">
-        <div className="search-box">
-          <input 
-            type="text" 
-            placeholder="Buscar por descrição" 
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-          <Search size={18} className="search-icon" />
-        </div>
-        <select 
-          className="category-filter"
-          value={categoryFilter}
-          onChange={(e) => setCategoryFilter(e.target.value)}
-        >
-          <option value="todas">Todas as Categorias</option>
-          {categories.map(cat => (
-            <option key={cat.id} value={cat.id}>{cat.nome}</option>
-          ))}
-        </select>
-        <select className="order-filter">
-          <option>Ordenação Padrão</option>
-          <option>Menor Preço</option>
-          <option>Maior Preço</option>
-          <option>Nome A-Z</option>
-        </select>
-      </div>
-
-      {/* Product Grid */}
-      <div className="products-grid">
-        {filteredProducts.length === 0 ? (
-          <div className="empty-products">
-            <p>Nenhum produto no catálogo</p>
-            <button className="btn btn-primary">
-              <Plus size={16} /> Adicionar Produto
+          {isOpen && (
+            <button 
+              className="btn btn-danger" 
+              onClick={closeLot}
+              disabled={closing}
+            >
+              <Lock size={16} /> {closing ? 'Fechando...' : 'Fechar Link'}
             </button>
+          )}
+        </div>
+      </div>
+
+      {/* Aviso de Pacote Fechado */}
+      {lot.requer_pacote_fechado && (
+        <div className="alert alert-warning">
+          <AlertTriangle size={18} />
+          <div>
+            <strong>Pacote Fechado:</strong> Este link só pode ser fechado quando todos os pacotes estiverem completos.
           </div>
-        ) : (
-          filteredProducts.map((lp, index) => {
-            const product = lp.product
-            if (!product) return null
-            
-            return (
-              <div key={lp.id} className="product-card">
-                {/* Remove button */}
-                <button className="card-remove" onClick={() => removeProduct(lp.id)}>
-                  <X size={16} />
-                </button>
+        </div>
+      )}
 
-                {/* Edit button */}
-                <button className="card-edit" onClick={() => setEditingProduct(product)}>
-                  Editar
-                </button>
+      {/* Tabs */}
+      <div className="lot-tabs">
+        <button 
+          className={`tab-btn ${activeTab === 'produtos' ? 'active' : ''}`}
+          onClick={() => setActiveTab('produtos')}
+        >
+          <Package size={16} /> Produtos ({products.length})
+        </button>
+        <button 
+          className={`tab-btn ${activeTab === 'reservas' ? 'active' : ''}`}
+          onClick={() => setActiveTab('reservas')}
+        >
+          <Users size={16} /> Reservas ({reservas.length} clientes)
+        </button>
+        <button 
+          className={`tab-btn ${activeTab === 'romaneios' ? 'active' : ''}`}
+          onClick={() => setActiveTab('romaneios')}
+        >
+          <FileText size={16} /> Romaneios
+        </button>
+        <button 
+          className={`tab-btn ${activeTab === 'separacao' ? 'active' : ''}`}
+          onClick={() => setActiveTab('separacao')}
+        >
+          <ClipboardList size={16} /> Separação
+        </button>
+      </div>
 
-                {/* Product image */}
-                <div className="card-image">
-                  {product.imagem1 ? (
-                    <img src={product.imagem1} alt={product.nome} />
-                  ) : (
-                    <div className="no-image">
-                      <Image size={40} />
+      {/* Tab Content: Produtos */}
+      {activeTab === 'produtos' && (
+        <div className="tab-content">
+          {/* Action buttons */}
+          <div className="lot-actions">
+            {isOpen && (
+              <>
+                <button 
+                  className="btn btn-primary"
+                  onClick={openCreateProductModal}
+                >
+                  <Plus size={16} /> Criar Produto
+                </button>
+                <button 
+                  className="btn btn-secondary"
+                  onClick={() => {
+                    fetchAvailableProducts()
+                    setShowAddProductModal(true)
+                  }}
+                >
+                  <Package size={16} /> Adicionar Existente
+                </button>
+              </>
+            )}
+          </div>
+
+          {/* Filters */}
+          <div className="lot-filters">
+            <div className="search-box">
+              <input 
+                type="text" 
+                placeholder="Buscar por descrição" 
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+              <Search size={18} className="search-icon" />
+            </div>
+            <select 
+              className="category-filter"
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+            >
+              <option value="todas">Todas as Categorias</option>
+              {categories.map(cat => (
+                <option key={cat.id} value={cat.id}>{cat.nome}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Product Grid */}
+          <div className="products-grid">
+            {filteredProducts.length === 0 ? (
+              <div className="empty-products">
+                <Package size={48} />
+                <p>Nenhum produto no link</p>
+                {isOpen && (
+                  <button 
+                    className="btn btn-primary"
+                    onClick={() => {
+                      fetchAvailableProducts()
+                      setShowAddProductModal(true)
+                    }}
+                  >
+                    <Plus size={16} /> Adicionar Produto
+                  </button>
+                )}
+              </div>
+            ) : (
+              filteredProducts.map((lp, index) => {
+                const product = lp.product
+                if (!product) return null
+                
+                // Verificar se é pacote e calcular progresso
+                const isPacote = product.tipo_venda === 'pacote'
+                const qtdPacote = product.quantidade_pacote || 12
+                const qtdReservada = lp.quantidade_pedidos || 0
+                const progressoPacote = isPacote ? (qtdReservada % qtdPacote) : 0
+                const pacotesCompletos = isPacote ? Math.floor(qtdReservada / qtdPacote) : 0
+                
+                return (
+                  <div key={lp.id} className="product-card">
+                    {/* Remove button */}
+                    {isOpen && (
+                      <button className="card-remove" onClick={() => removeProduct(lp.id)}>
+                        <X size={16} />
+                      </button>
+                    )}
+
+                    {/* Product image */}
+                    <div className="card-image">
+                      {product.imagem1 ? (
+                        <img src={product.imagem1} alt={product.nome} />
+                      ) : (
+                        <div className="no-image">
+                          <Image size={40} />
+                        </div>
+                      )}
+                      <span className="card-id">ID {index + 1}</span>
+                      {isPacote && (
+                        <span className="card-badge-pacote">Pacote {qtdPacote}</span>
+                      )}
                     </div>
-                  )}
-                  <span className="card-id">ID {index + 1}</span>
-                </div>
 
-                {/* Product info */}
-                <div className="card-info">
-                  <p className="info-line"><strong>Qtde Pedidos:</strong> {lp.quantidade_pedidos || 0}</p>
-                  <p className="info-line"><strong>Qtde Clientes:</strong> {lp.quantidade_clientes || 0}</p>
-                  <p className="info-line"><strong>Categoria:</strong> {product.category?.nome || '-'}</p>
-                  <p className="info-line"><strong>Obs/Descrição:</strong> {product.descricao || product.nome}</p>
-                  <p className="info-line price"><strong>Valor Unitário:</strong> R$ {product.preco?.toFixed(2) || '0,00'}</p>
-                </div>
+                    {/* Product info */}
+                    <div className="card-info">
+                      <p className="info-line"><strong>Qtde Reservadas:</strong> {qtdReservada}</p>
+                      <p className="info-line"><strong>Qtde Clientes:</strong> {lp.quantidade_clientes || 0}</p>
+                      <p className="info-line"><strong>Categoria:</strong> {product.category?.nome || '-'}</p>
+                      <p className="info-line"><strong>Descrição:</strong> {product.descricao || product.nome}</p>
+                      <p className="info-line price"><strong>Valor:</strong> R$ {product.preco?.toFixed(2) || '0,00'}</p>
+                    </div>
 
-                {/* Card actions */}
-                <div className="card-actions">
-                  <button className="btn btn-sm btn-outline">Pedidos</button>
-                  <button className="btn-icon-sm"><MessageCircle size={16} /></button>
-                  <button className="btn-icon-sm"><Image size={16} /></button>
-                  <button className="btn-icon-sm"><LinkIcon size={16} /></button>
+                    {/* Progresso do pacote */}
+                    {isPacote && lot.requer_pacote_fechado && (
+                      <div className="pacote-progress">
+                        <div className="progress-bar">
+                          <div 
+                            className="progress-fill" 
+                            style={{ width: `${(progressoPacote / qtdPacote) * 100}%` }}
+                          />
+                        </div>
+                        <span className="progress-text">
+                          {progressoPacote}/{qtdPacote} para fechar pacote
+                          {pacotesCompletos > 0 && ` (${pacotesCompletos} completo${pacotesCompletos > 1 ? 's' : ''})`}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Card actions */}
+                    <div className="card-actions">
+                      <button 
+                        className="btn btn-sm btn-outline"
+                        onClick={() => openEditProductModal(product)}
+                      >
+                        <Edit size={14} /> Editar
+                      </button>
+                      <button 
+                        className="btn btn-sm btn-danger"
+                        onClick={() => deleteProduct(product.id)}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </div>
+                )
+              })
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Tab Content: Reservas */}
+      {activeTab === 'reservas' && (
+        <div className="tab-content">
+          {reservas.length === 0 ? (
+            <div className="empty-state">
+              <Users size={48} />
+              <h3>Nenhuma reserva ainda</h3>
+              <p>Compartilhe o link para receber reservas de clientes</p>
+            </div>
+          ) : (
+            <div className="reservas-list">
+              {reservas.map((clientReserva, idx) => (
+                <div key={idx} className="reserva-card">
+                  <div className="reserva-header">
+                    <div className="client-info">
+                      <h4>{clientReserva.client?.nome}</h4>
+                      <span>{clientReserva.client?.telefone}</span>
+                    </div>
+                    <div className="reserva-summary">
+                      <span className="reserva-qty">{clientReserva.quantidade} itens</span>
+                      <span className="reserva-total">R$ {clientReserva.total.toFixed(2)}</span>
+                    </div>
+                  </div>
+                  <div className="reserva-items">
+                    {clientReserva.items.map((item, itemIdx) => (
+                      <div key={itemIdx} className="reserva-item">
+                        <div className="item-image">
+                          {item.product?.imagem1 ? (
+                            <img src={item.product.imagem1} alt="" />
+                          ) : (
+                            <div className="no-image-sm"><Image size={16} /></div>
+                          )}
+                        </div>
+                        <div className="item-info">
+                          <span className="item-name">{item.product?.nome}</span>
+                          <span className="item-qty">Qtd: {item.quantidade}</span>
+                        </div>
+                        <span className="item-price">R$ {item.valor_total.toFixed(2)}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="reserva-actions">
+                    <button className="btn btn-sm btn-outline">
+                      <MessageCircle size={14} /> WhatsApp
+                    </button>
+                    {isClosed && (
+                      <button className="btn btn-sm btn-primary">
+                        <FileText size={14} /> Ver Romaneio
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Tab Content: Romaneios */}
+      {activeTab === 'romaneios' && (
+        <div className="tab-content">
+          {!isClosed ? (
+            <div className="empty-state">
+              <FileText size={48} />
+              <h3>Romaneios serão gerados automaticamente</h3>
+              <p>Quando o link for fechado, os romaneios serão gerados para cada cliente</p>
+            </div>
+          ) : (
+            <div className="romaneios-actions">
+              <button 
+                className="btn btn-primary btn-lg"
+                onClick={() => navigate('/admin/romaneios')}
+              >
+                <FileText size={18} /> Acessar Romaneios
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Tab Content: Separação */}
+      {activeTab === 'separacao' && (
+        <div className="tab-content">
+          <div className="separacao-container">
+             <div className="separacao-header">
+               <h3>Checklist de Separação</h3>
+               <p>Utilize esta lista para conferir os produtos de cada cliente.</p>
+             </div>
+             
+             {reservas.length === 0 ? (
+               <div className="empty-state">
+                 <ClipboardList size={48} />
+                 <h3>Nada para separar</h3>
+               </div>
+             ) : (
+               <div className="separacao-list">
+                 {reservas.map(reservaGroup => (
+                   <div key={reservaGroup.client?.id} className="separacao-card">
+                     <div className="separacao-client-header">
+                       <h4>{reservaGroup.client?.nome}</h4>
+                       <span className="badge-count">{reservaGroup.quantidade} itens</span>
+                     </div>
+                     <div className="separacao-items">
+                       {reservaGroup.items.map(item => (
+                         <label key={item.id} className="separacao-item">
+                           <input 
+                              type="checkbox" 
+                              checked={!!separacaoItems[item.id]}
+                              onChange={(e) => setSeparacaoItems({...separacaoItems, [item.id]: e.target.checked})}
+                           />
+                           <span className="checkmark-box"><CheckSquare size={18} /></span>
+                           <div className="sep-item-info">
+                              <span className="sep-prod-name">{item.product?.nome}</span>
+                              <span className="sep-prod-qty">x{item.quantidade}</span>
+                           </div>
+                         </label>
+                       ))}
+                     </div>
+                   </div>
+                 ))}
+               </div>
+             )}
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Adicionar Produtos */}
+      {showAddProductModal && (
+        <div className="modal-overlay" onClick={() => setShowAddProductModal(false)}>
+          <div className="modal-content modal-lg" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Adicionar Produtos ao Link</h2>
+              <button className="modal-close" onClick={() => setShowAddProductModal(false)}>
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="modal-body">
+              <p className="modal-hint">Selecione os produtos para adicionar:</p>
+              
+              <div className="products-select-grid">
+                {availableProducts.length === 0 ? (
+                  <p>Todos os produtos já estão neste link</p>
+                ) : (
+                  availableProducts.map(product => (
+                    <label key={product.id} className="product-select-item">
+                      <input
+                        type="checkbox"
+                        checked={selectedProducts.includes(product.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedProducts([...selectedProducts, product.id])
+                          } else {
+                            setSelectedProducts(selectedProducts.filter(id => id !== product.id))
+                          }
+                        }}
+                      />
+                      <div className="product-select-image">
+                        {product.imagem1 ? (
+                          <img src={product.imagem1} alt="" />
+                        ) : (
+                          <div className="no-image-sm"><Image size={20} /></div>
+                        )}
+                      </div>
+                      <div className="product-select-info">
+                        <span className="product-name">{product.nome}</span>
+                        <span className="product-price">R$ {product.preco?.toFixed(2)}</span>
+                      </div>
+                    </label>
+                  ))
+                )}
+              </div>
+            </div>
+
+            <div className="modal-footer">
+              <button className="btn btn-outline" onClick={() => setShowAddProductModal(false)}>
+                Cancelar
+              </button>
+              <button 
+                className="btn btn-primary" 
+                onClick={addProductsToLot}
+                disabled={selectedProducts.length === 0}
+              >
+                Adicionar {selectedProducts.length > 0 ? `(${selectedProducts.length})` : ''}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Configurações */}
+      {showSettingsModal && (
+        <div className="modal-overlay" onClick={() => setShowSettingsModal(false)}>
+          <div className="modal-content modal-lg" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Configurações do Link</h2>
+              <button className="modal-close" onClick={() => setShowSettingsModal(false)}>
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="modal-body">
+              <div className="form-group">
+                <label>Nome do Link</label>
+                <input
+                  type="text"
+                  value={lotSettings.nome || ''}
+                  onChange={(e) => setLotSettings({ ...lotSettings, nome: e.target.value })}
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Descrição</label>
+                <textarea
+                  value={lotSettings.descricao || ''}
+                  onChange={(e) => setLotSettings({ ...lotSettings, descricao: e.target.value })}
+                  rows={2}
+                />
+              </div>
+
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Data/Hora de Encerramento</label>
+                  <input
+                    type="datetime-local"
+                    value={lotSettings.data_fim ? new Date(lotSettings.data_fim).toISOString().slice(0, 16) : ''}
+                    onChange={(e) => setLotSettings({ ...lotSettings, data_fim: e.target.value })}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Taxa de Separação (R$)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={lotSettings.taxa_separacao || 0}
+                    onChange={(e) => setLotSettings({ ...lotSettings, taxa_separacao: parseFloat(e.target.value) || 0 })}
+                  />
                 </div>
               </div>
-            )
-          })
-        )}
-      </div>
+
+              <div className="form-group checkbox-group">
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={lotSettings.requer_pacote_fechado || false}
+                    onChange={(e) => setLotSettings({ ...lotSettings, requer_pacote_fechado: e.target.checked })}
+                  />
+                  Requer pacote fechado
+                </label>
+              </div>
+
+              <hr />
+              <h3>Dados de Pagamento</h3>
+
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Chave PIX</label>
+                  <input
+                    type="text"
+                    value={lotSettings.chave_pix || ''}
+                    onChange={(e) => setLotSettings({ ...lotSettings, chave_pix: e.target.value })}
+                    placeholder="CNPJ, email ou telefone"
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Nome do Beneficiário</label>
+                  <input
+                    type="text"
+                    value={lotSettings.nome_beneficiario || ''}
+                    onChange={(e) => setLotSettings({ ...lotSettings, nome_beneficiario: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label>Telefone do Setor Financeiro</label>
+                <input
+                  type="text"
+                  value={lotSettings.telefone_financeiro || ''}
+                  onChange={(e) => setLotSettings({ ...lotSettings, telefone_financeiro: e.target.value })}
+                  placeholder="(XX) XXXXX-XXXX"
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Mensagem de Pagamento</label>
+                <textarea
+                  value={lotSettings.mensagem_pagamento || ''}
+                  onChange={(e) => setLotSettings({ ...lotSettings, mensagem_pagamento: e.target.value })}
+                  placeholder="Instruções adicionais..."
+                  rows={3}
+                />
+              </div>
+            </div>
+
+            <div className="modal-footer">
+              <button className="btn btn-outline" onClick={() => setShowSettingsModal(false)}>
+                Cancelar
+              </button>
+              <button className="btn btn-primary" onClick={updateLotSettings}>
+                Salvar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Criar/Editar Produto */}
+      {showProductModal && (
+        <div className="modal-overlay" onClick={closeProductModal}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>{editingProduct ? 'Editar Produto' : 'Criar Novo Produto'}</h2>
+              <button className="modal-close" onClick={closeProductModal}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="modal-body">
+              <div className="form-group">
+                <label>Nome do Produto *</label>
+                <input
+                  type="text"
+                  value={productForm.nome}
+                  onChange={(e) => setProductForm({ ...productForm, nome: e.target.value })}
+                  placeholder="Ex: Anel Solitário Zircônia"
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Descrição</label>
+                <textarea
+                  value={productForm.descricao}
+                  onChange={(e) => setProductForm({ ...productForm, descricao: e.target.value })}
+                  placeholder="Descrição detalhada do produto..."
+                  rows={2}
+                />
+              </div>
+
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Preço (R$) *</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={productForm.preco}
+                    onChange={(e) => setProductForm({ ...productForm, preco: e.target.value })}
+                    placeholder="0.00"
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Categoria</label>
+                  <select
+                    value={productForm.categoria_id}
+                    onChange={(e) => setProductForm({ ...productForm, categoria_id: e.target.value })}
+                  >
+                    <option value="">Selecione...</option>
+                    {categories.map(cat => (
+                      <option key={cat.id} value={cat.id}>{cat.nome}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Tipo de Venda</label>
+                  <select
+                    value={productForm.tipo_venda}
+                    onChange={(e) => setProductForm({ ...productForm, tipo_venda: e.target.value })}
+                  >
+                    <option value="individual">Individual (1:1)</option>
+                    <option value="pacote">Pacote Fechado</option>
+                  </select>
+                </div>
+                {productForm.tipo_venda === 'pacote' && (
+                  <div className="form-group">
+                    <label>Qtde por Pacote</label>
+                    <input
+                      type="number"
+                      value={productForm.quantidade_pacote}
+                      onChange={(e) => setProductForm({ ...productForm, quantidade_pacote: parseInt(e.target.value) || 12 })}
+                      min="2"
+                    />
+                  </div>
+                )}
+              </div>
+
+              <div className="form-group">
+                <label>URL da Imagem</label>
+                <input
+                  type="url"
+                  value={productForm.imagem1}
+                  onChange={(e) => setProductForm({ ...productForm, imagem1: e.target.value })}
+                  placeholder="https://exemplo.com/imagem.jpg"
+                />
+                {productForm.imagem1 && (
+                  <div className="image-preview">
+                    <img src={productForm.imagem1} alt="Preview" />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="modal-footer">
+              <button className="btn btn-outline" onClick={closeProductModal}>
+                Cancelar
+              </button>
+              <button 
+                className="btn btn-primary" 
+                onClick={saveProduct}
+                disabled={savingProduct}
+              >
+                {savingProduct ? 'Salvando...' : editingProduct ? 'Salvar Alterações' : 'Criar Produto'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

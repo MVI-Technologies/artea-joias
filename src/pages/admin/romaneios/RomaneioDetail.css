@@ -1,0 +1,443 @@
+/* RomaneioDetail Styles */
+
+.romaneio-detail-page {
+  padding: 24px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+/* Toolbar */
+.romaneio-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.toolbar-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* Payment Status Bar */
+.payment-status-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 24px;
+}
+
+.payment-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.status-pago {
+  color: #22c55e;
+}
+
+.status-aguardando {
+  color: #f59e0b;
+}
+
+.status-pendente {
+  color: #ef4444;
+}
+
+.btn-success {
+  background: #22c55e;
+  color: white;
+}
+
+.payment-actions {
+  display: flex;
+  gap: 8px;
+}
+
+
+.btn-success:hover {
+  background: #16a34a;
+}
+
+/* Romaneio Document */
+.romaneio-document {
+  background: white;
+  border-radius: 12px;
+  padding: 40px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  color: #000;
+}
+
+/* Header */
+.romaneio-header {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 30px;
+  padding-bottom: 20px;
+  border-bottom: 2px solid #eee;
+}
+
+.header-logo img {
+  max-width: 80px;
+  max-height: 80px;
+  object-fit: contain;
+}
+
+.logo-placeholder {
+  width: 60px;
+  height: 60px;
+  background: linear-gradient(135deg, #D4AF37, #C5A028);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  font-weight: bold;
+  color: white;
+}
+
+.header-info {
+  text-align: right;
+  flex: 1;
+}
+
+.header-info h1 {
+  font-size: 24px;
+  font-weight: 700;
+  margin: 0 0 4px;
+  color: #000;
+}
+
+.header-info span {
+  font-size: 14px;
+  color: #555;
+}
+
+/* Title */
+.romaneio-title {
+  margin-bottom: 24px;
+}
+
+.romaneio-title h2 {
+  font-size: 16px;
+  font-weight: 400;
+  margin: 0 0 4px;
+  color: #000;
+}
+
+.romaneio-title h2 strong {
+  font-weight: 700;
+}
+
+.pedido-numero {
+  display: block;
+  text-align: right;
+  font-size: 14px;
+  color: #555;
+}
+
+/* Cliente Info Box */
+.cliente-info-box {
+  background: #f9f9f9;
+  border: 1px solid #ddd;
+  padding: 16px 20px;
+  margin-bottom: 24px;
+}
+
+.cliente-info-box p {
+  margin: 0 0 6px;
+  font-size: 14px;
+  color: #000;
+}
+
+.cliente-info-box p:last-child {
+  margin-bottom: 0;
+}
+
+.cliente-info-box strong {
+  font-weight: 600;
+}
+
+/* Produtos Table */
+.produtos-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 24px;
+  font-size: 13px;
+}
+
+.produtos-table th,
+.produtos-table td {
+  border: 1px solid #ddd;
+  padding: 10px 12px;
+  text-align: left;
+}
+
+.produtos-table th {
+  background: #f5f5f5;
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.col-img {
+  width: 70px;
+  text-align: center;
+}
+
+.col-cat {
+  width: 100px;
+}
+
+.col-desc {
+  min-width: 150px;
+}
+
+.col-val,
+.col-qty,
+.col-total {
+  width: 100px;
+  text-align: center;
+}
+
+.produto-thumb {
+  width: 60px;
+  height: 60px;
+  object-fit: cover;
+  border-radius: 4px;
+}
+
+.produto-thumb-placeholder {
+  width: 60px;
+  height: 60px;
+  background: #eee;
+  border-radius: 4px;
+}
+
+/* Resumo Financeiro */
+.resumo-financeiro {
+  margin-bottom: 24px;
+  padding: 16px 0;
+  border-top: 2px solid #000;
+}
+
+.resumo-financeiro h3 {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0 0 12px;
+  color: #000;
+}
+
+.resumo-financeiro ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.resumo-financeiro li {
+  font-size: 14px;
+  margin-bottom: 4px;
+  color: #333;
+}
+
+/* Dados de Pagamento */
+.dados-pagamento {
+  margin-bottom: 24px;
+  padding: 16px;
+  background: #f9f9f9;
+  border-left: 4px solid #D4AF37;
+}
+
+.dados-pagamento h4 {
+  font-size: 14px;
+  font-weight: 700;
+  margin: 0 0 12px;
+  color: #000;
+}
+
+.dados-pagamento p {
+  font-size: 13px;
+  margin: 0 0 8px;
+  color: #333;
+}
+
+.dados-pagamento .importante {
+  margin-top: 12px;
+  color: #000;
+}
+
+.dados-pagamento .aviso {
+  font-size: 12px;
+  color: #555;
+  font-style: italic;
+}
+
+/* Observações */
+.observacoes {
+  margin-bottom: 24px;
+  padding: 16px;
+  background: #fff8e6;
+  border: 1px solid #f5e6c8;
+  border-radius: 8px;
+}
+
+.observacoes h4 {
+  font-size: 14px;
+  font-weight: 700;
+  margin: 0 0 12px;
+  color: #000;
+}
+
+.observacoes ul {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 12px;
+}
+
+.observacoes li {
+  font-size: 13px;
+  margin-bottom: 4px;
+  color: #333;
+}
+
+.nota-taxas {
+  font-size: 12px;
+  color: #666;
+  margin: 0;
+}
+
+/* Footer */
+.romaneio-footer {
+  text-align: left;
+  padding-top: 16px;
+  border-top: 1px solid #ddd;
+}
+
+.romaneio-footer p {
+  font-size: 12px;
+  color: #666;
+  margin: 0;
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #D4AF37, #C5A028);
+  color: white;
+}
+
+.btn-primary:hover {
+  background: linear-gradient(135deg, #C5A028, #B8941E);
+}
+
+.btn-outline {
+  background: transparent;
+  color: var(--text-primary, #333);
+  border: 1px solid var(--border-color, #ddd);
+}
+
+.btn-outline:hover {
+  background: var(--bg-hover, #f5f5f5);
+}
+
+.btn-sm {
+  padding: 6px 12px;
+  font-size: 13px;
+}
+
+/* Print Styles */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  .romaneio-detail-page {
+    padding: 0;
+    max-width: none;
+  }
+
+  .romaneio-document {
+    box-shadow: none;
+    border-radius: 0;
+    padding: 20px;
+  }
+
+  .romaneio-header {
+    padding-bottom: 15px;
+    margin-bottom: 20px;
+  }
+
+  .produtos-table {
+    page-break-inside: auto;
+  }
+
+  .produtos-table tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
+  }
+
+  .dados-pagamento,
+  .observacoes {
+    page-break-inside: avoid;
+  }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .romaneio-detail-page {
+    padding: 16px;
+  }
+
+  .romaneio-document {
+    padding: 20px;
+  }
+
+  .romaneio-header {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .header-info {
+    text-align: center;
+  }
+
+  .produtos-table {
+    font-size: 11px;
+  }
+
+  .produtos-table th,
+  .produtos-table td {
+    padding: 6px 8px;
+  }
+
+  .produto-thumb {
+    width: 40px;
+    height: 40px;
+  }
+
+  .col-img {
+    width: 50px;
+  }
+}
