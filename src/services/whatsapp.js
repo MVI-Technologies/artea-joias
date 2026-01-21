@@ -1,46 +1,73 @@
 /**
- * Serviço de integração com Evolution API (WhatsApp)
+ * Serviço de integração com WhatsApp via Supabase Edge Function
+ * A Edge Function faz a comunicação segura com a Evolution API
  */
 
-const EVOLUTION_API_URL = import.meta.env.VITE_EVOLUTION_API_URL
-const EVOLUTION_API_TOKEN = import.meta.env.VITE_EVOLUTION_API_TOKEN
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
 
 /**
- * Enviar mensagem de texto via WhatsApp
+ * Enviar mensagem de texto via WhatsApp (individual)
  * @param {string} to - Número do destinatário (com DDD)
  * @param {string} message - Mensagem a enviar
  */
 export async function sendWhatsAppMessage(to, message) {
-  if (!EVOLUTION_API_URL || !EVOLUTION_API_TOKEN) {
-    console.warn('Evolution API não configurada')
-    return { success: false, error: 'API não configurada' }
-  }
-
   try {
-    // Formatar número (remover caracteres não numéricos e adicionar código do país)
-    const formattedNumber = formatPhoneNumber(to)
-    
-    const response = await fetch(`${EVOLUTION_API_URL}/message/sendText/artea`, {
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/send-whatsapp?action=single`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'apikey': EVOLUTION_API_TOKEN
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        'apikey': SUPABASE_ANON_KEY
       },
       body: JSON.stringify({
-        number: formattedNumber,
-        text: message
+        to,
+        message
       })
     })
 
     const data = await response.json()
     
-    if (!response.ok) {
-      throw new Error(data.message || 'Erro ao enviar mensagem')
+    if (!response.ok || !data.success) {
+      throw new Error(data.error || 'Erro ao enviar mensagem')
     }
 
-    return { success: true, data }
+    return { success: true, data: data.data }
   } catch (error) {
     console.error('Erro ao enviar WhatsApp:', error)
+    return { success: false, error: error.message }
+  }
+}
+
+/**
+ * Enviar mensagem em massa para múltiplos destinatários
+ * @param {Array<{telefone: string, nome: string}>} recipients - Lista de destinatários
+ * @param {string} message - Mensagem a enviar (suporta variável %Nome%)
+ */
+export async function sendBulkWhatsAppMessage(recipients, message) {
+  try {
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/send-whatsapp?action=bulk`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        'apikey': SUPABASE_ANON_KEY
+      },
+      body: JSON.stringify({
+        recipients,
+        message
+      })
+    })
+
+    const data = await response.json()
+    
+    if (!response.ok || !data.success) {
+      throw new Error(data.error || 'Erro ao enviar mensagens')
+    }
+
+    return { success: true, data: data.data }
+  } catch (error) {
+    console.error('Erro ao enviar WhatsApp em massa:', error)
     return { success: false, error: error.message }
   }
 }
@@ -61,13 +88,8 @@ ${lot.descricao || ''}
 
 _Artea Joias - Compras Coletivas_`
 
-  const results = []
-  for (const client of clients) {
-    const result = await sendWhatsAppMessage(client.telefone, message)
-    results.push({ client: client.nome, ...result })
-  }
-  
-  return results
+  const recipients = clients.map(c => ({ telefone: c.telefone, nome: c.nome }))
+  return sendBulkWhatsAppMessage(recipients, message)
 }
 
 /**
@@ -82,13 +104,8 @@ O lote foi fechado com sucesso! Em breve você receberá informações sobre o p
 
 _Artea Joias - Compras Coletivas_`
 
-  const results = []
-  for (const client of clients) {
-    const result = await sendWhatsAppMessage(client.telefone, message)
-    results.push({ client: client.nome, ...result })
-  }
-  
-  return results
+  const recipients = clients.map(c => ({ telefone: c.telefone, nome: c.nome }))
+  return sendBulkWhatsAppMessage(recipients, message)
 }
 
 /**
@@ -127,19 +144,4 @@ ${order.codigo_rastreio ? `📍 Rastreio: ${order.codigo_rastreio}` : ''}
 _Artea Joias - Compras Coletivas_`
 
   return sendWhatsAppMessage(client.telefone, message)
-}
-
-/**
- * Formatar número de telefone para padrão internacional
- */
-function formatPhoneNumber(phone) {
-  // Remover caracteres não numéricos
-  let cleaned = phone.replace(/\D/g, '')
-  
-  // Se não começar com 55 (Brasil), adicionar
-  if (!cleaned.startsWith('55')) {
-    cleaned = '55' + cleaned
-  }
-  
-  return cleaned
 }

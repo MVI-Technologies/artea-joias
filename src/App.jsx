@@ -24,6 +24,7 @@ import RomaneioList from './pages/admin/romaneios/RomaneioList'
 import Reports from './pages/admin/reports/Reports'
 import ImportClients from './pages/admin/import/ImportClients'
 import Settings from './pages/admin/settings/Settings'
+import WhatsApp from './pages/admin/whatsapp/WhatsApp'
 
 // Client Pages
 import ClientDashboard from './pages/client/ClientDashboard'
@@ -116,6 +117,9 @@ function AppRoutes() {
         
         {/* Configurações */}
         <Route path="configuracoes" element={<Settings />} />
+        
+        {/* WhatsApp */}
+        <Route path="whatsapp" element={<WhatsApp />} />
         
         {/* Fallback */}
         <Route path="*" element={<Dashboard />} />
