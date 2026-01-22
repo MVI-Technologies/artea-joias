@@ -149,7 +149,7 @@
 .user-name {
   font-size: var(--font-size-sm);
   font-weight: 500;
-  color: var(--header-text);
+  color: rgb(194, 194, 194) !important;
 }
 
 .user-role {

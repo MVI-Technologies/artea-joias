@@ -18,6 +18,7 @@ import {
   DollarSign,
   Clock,
   AlertTriangle,
+  Info,
   CheckCircle,
   FileText,
   Settings,
@@ -27,8 +28,10 @@ import {
   CheckSquare,
   Bell,
   Loader2,
-  Save
+  Save,
+  TrendingUp
 } from 'lucide-react'
+import ImageUpload from '../../../components/common/ImageUpload'
 import { supabase } from '../../../lib/supabase'
 import { notifyCatalogClosed } from '../../../services/whatsapp'
 import './LotDetail.css'
@@ -443,7 +446,19 @@ export default function LotDetail({ defaultTab }) {
       categoria_id: '',
       tipo_venda: 'individual',
       quantidade_pacote: 12,
-      imagem1: ''
+      imagem1: '',
+      // Novos campos UI Ref
+      variacoes: '',
+      observacoes: '', // Descrição longa
+      qtd_minima_fornecedor: 1,
+      qtd_maxima_fornecedor: '',
+      qtd_minima_cliente: 1,
+      multiplo_pacote: 1,
+      posicao_catalogo: 0,
+      anotacoes_internas: '',
+      revisar_produto: false,
+      registrar_peso: false,
+      registrar_preco_custo: false
     })
     setShowProductModal(true)
   }
@@ -457,7 +472,19 @@ export default function LotDetail({ defaultTab }) {
       categoria_id: product.categoria_id || '',
       tipo_venda: product.tipo_venda || 'individual',
       quantidade_pacote: product.quantidade_pacote || 12,
-      imagem1: product.imagem1 || ''
+      imagem1: product.imagem1 || '',
+      // Novos campos
+      variacoes: product.variacoes || '',
+      observacoes: product.observacoes || '',
+      qtd_minima_fornecedor: product.qtd_minima_fornecedor || 1,
+      qtd_maxima_fornecedor: product.qtd_maxima_fornecedor || '',
+      qtd_minima_cliente: product.qtd_minima_cliente || 1,
+      multiplo_pacote: product.multiplo_pacote || 1,
+      posicao_catalogo: product.posicao_catalogo || 0,
+      anotacoes_internas: product.anotacoes_internas || '',
+      revisar_produto: product.revisar_produto || false,
+      registrar_peso: product.registrar_peso || false,
+      registrar_preco_custo: product.registrar_preco_custo || false
     })
     setShowProductModal(true)
   }
@@ -472,16 +499,27 @@ export default function LotDetail({ defaultTab }) {
       categoria_id: '',
       tipo_venda: 'individual',
       quantidade_pacote: 12,
-      imagem1: ''
+      imagem1: '',
+      variacoes: '',
+      observacoes: '',
+      qtd_minima_fornecedor: 1,
+      qtd_maxima_fornecedor: '',
+      qtd_minima_cliente: 1,
+      multiplo_pacote: 1,
+      posicao_catalogo: 0,
+      anotacoes_internas: '',
+      revisar_produto: false,
+      registrar_peso: false,
+      registrar_preco_custo: false
     })
   }
 
-  const saveProduct = async () => {
+  const saveProduct = async (keepOpen = false) => {
     if (!productForm.nome.trim()) {
       alert('Nome é obrigatório')
       return
     }
-    if (!productForm.preco || parseFloat(productForm.preco) <= 0) {
+    if (!productForm.preco || parseFloat(productForm.preco) < 0) { // Allow 0
       alert('Preço é obrigatório')
       return
     }
@@ -496,7 +534,18 @@ export default function LotDetail({ defaultTab }) {
         imagem1: productForm.imagem1 || null,
         tipo_venda: productForm.tipo_venda,
         quantidade_pacote: productForm.tipo_venda === 'pacote' ? (parseInt(productForm.quantidade_pacote) || 12) : 12,
-        ativo: true
+        ativo: true,
+        variacoes: productForm.variacoes,
+        observacoes: productForm.observacoes,
+        qtd_minima_fornecedor: parseInt(productForm.qtd_minima_fornecedor) || 1,
+        qtd_maxima_fornecedor: productForm.qtd_maxima_fornecedor ? parseInt(productForm.qtd_maxima_fornecedor) : null,
+        qtd_minima_cliente: parseInt(productForm.qtd_minima_cliente) || 1,
+        multiplo_pacote: parseInt(productForm.multiplo_pacote) || 1,
+        posicao_catalogo: parseInt(productForm.posicao_catalogo) || 0,
+        anotacoes_internas: productForm.anotacoes_internas,
+        revisar_produto: productForm.revisar_produto,
+        registrar_peso: productForm.registrar_peso,
+        registrar_preco_custo: productForm.registrar_preco_custo
       }
 
       if (editingProduct) {
@@ -507,8 +556,10 @@ export default function LotDetail({ defaultTab }) {
           .eq('id', editingProduct.id)
 
         if (error) throw error
+        
+        closeProductModal() // Always close on edit
       } else {
-        // Criar novo produto e adicionar ao lote
+        // Criar novo produto
         const { data: newProduct, error: insertError } = await supabase
           .from('products')
           .insert(productData)
@@ -528,9 +579,25 @@ export default function LotDetail({ defaultTab }) {
           })
 
         if (lotError) throw lotError
+
+        if (keepOpen) {
+          // Reset only specific fields to speed up entry
+          setProductForm(prev => ({
+            ...prev,
+            nome: '',
+            descricao: '',
+            preco: '',
+            imagem1: '',
+            variacoes: '',
+            observacoes: '',
+            // Keep category, type, and rules for convenience
+          }))
+          // Optional: Show success toast
+        } else {
+          closeProductModal()
+        }
       }
 
-      closeProductModal()
       fetchData()
     } catch (error) {
       console.error('Erro ao salvar produto:', error)
@@ -539,6 +606,8 @@ export default function LotDetail({ defaultTab }) {
       setSavingProduct(false)
     }
   }
+
+
 
 
   const filteredProducts = products.filter(lp => {
@@ -606,16 +675,56 @@ export default function LotDetail({ defaultTab }) {
               </button>
               {showActionsMenu && (
                 <div className="dropdown-menu-right">
-                  <button onClick={() => { setShowSettingsModal(true); setShowActionsMenu(false); }}>
-                    <Settings size={14} /> Configurações
-                  </button>
-                  <button onClick={duplicateLot}>
-                    <Copy size={14} /> Duplicar Grupo
-                  </button>
-                  {isOpen && (
-                     <button className="text-danger" onClick={() => { openCloseConfirmation(); setShowActionsMenu(false); }}>
-                      <Lock size={14} /> Fechar Grupo
+                  <div className="dropdown-section">
+                    <span className="dropdown-header">Gestão</span>
+                    <button onClick={() => { setShowSettingsModal(true); setShowActionsMenu(false); }}>
+                      <Settings size={14} /> Editar Link / Configurações
                     </button>
+                    <button onClick={() => { setActiveTab('produtos'); setShowActionsMenu(false); }}>
+                      <Package size={14} /> Editar Produtos
+                    </button>
+                    <button onClick={duplicateLot}>
+                      <Copy size={14} /> Duplicar Grupo
+                    </button>
+                  </div>
+                  
+                  <div className="dropdown-divider" />
+                  
+                  <div className="dropdown-section">
+                    <span className="dropdown-header">Operação</span>
+                    <button onClick={() => { setActiveTab('reservas'); setShowActionsMenu(false); }}>
+                      <ClipboardList size={14} /> Listar Pedidos
+                    </button>
+                    <button onClick={() => { setActiveTab('separacao'); setShowActionsMenu(false); }}>
+                      <CheckSquare size={14} /> Separar Produtos
+                    </button>
+                    <button onClick={() => { setActiveTab('romaneios'); setShowActionsMenu(false); }}>
+                      <FileText size={14} /> Romaneios
+                    </button>
+                  </div>
+
+                  <div className="dropdown-divider" />
+
+                  <div className="dropdown-section">
+                    <span className="dropdown-header">Relatórios</span>
+                    <button onClick={() => navigate(`/admin/relatorios?lotId=${id}&type=financeiro`)}>
+                      <DollarSign size={14} /> Relatório Financeiro
+                    </button>
+                    <button onClick={() => navigate(`/admin/relatorios?lotId=${id}&type=vendas`)}>
+                      <TrendingUp size={14} /> Relatório Vendas
+                    </button>
+                    <button onClick={() => navigate(`/admin/relatorios?lotId=${id}&type=produtos`)}>
+                      <Package size={14} /> Ranking Produtos
+                    </button>
+                  </div>
+
+                  {isOpen && (
+                    <>
+                      <div className="dropdown-divider" />
+                      <button className="text-danger" onClick={() => { openCloseConfirmation(); setShowActionsMenu(false); }}>
+                        <Lock size={14} /> Fechar Grupo
+                      </button>
+                    </>
                   )}
                 </div>
               )}
@@ -1297,7 +1406,7 @@ export default function LotDetail({ defaultTab }) {
       {/* Modal: Criar/Editar Produto */}
       {showProductModal && (
         <div className="modal-overlay" onClick={closeProductModal}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-content product-modal-xl" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h2>{editingProduct ? 'Editar Produto' : 'Criar Novo Produto'}</h2>
               <button className="modal-close" onClick={closeProductModal}>
@@ -1305,89 +1414,186 @@ export default function LotDetail({ defaultTab }) {
               </button>
             </div>
 
-            <div className="modal-body">
-              <div className="form-group">
-                <label>Nome do Produto *</label>
-                <input
-                  type="text"
-                  value={productForm.nome}
-                  onChange={(e) => setProductForm({ ...productForm, nome: e.target.value })}
-                  placeholder="Ex: Anel Solitário Zircônia"
-                />
-              </div>
-
-              <div className="form-group">
-                <label>Descrição</label>
-                <textarea
-                  value={productForm.descricao}
-                  onChange={(e) => setProductForm({ ...productForm, descricao: e.target.value })}
-                  placeholder="Descrição detalhada do produto..."
-                  rows={2}
-                />
-              </div>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Preço (R$) *</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={productForm.preco}
-                    onChange={(e) => setProductForm({ ...productForm, preco: e.target.value })}
-                    placeholder="0.00"
-                  />
+            <div className="modal-body product-modal-body">
+              {/* LAYOUT SUPERIOR: Foto à Direita, Infos à Esquerda */}
+              <div className="product-modal-top">
+                
+                {/* 1. SEÇÃO DE FOTO (Direita na desktop, topo no mobile) */}
+                <div className="product-photo-section">
+                   <label className="photo-upload-label">Foto</label>
+                   <ImageUpload
+                     value={productForm.imagem1}
+                     onChange={(url) => setProductForm(prev => ({ ...prev, imagem1: url }))}
+                   />
                 </div>
-                <div className="form-group">
-                  <label>Categoria</label>
-                  <select
-                    value={productForm.categoria_id}
-                    onChange={(e) => setProductForm({ ...productForm, categoria_id: e.target.value })}
-                  >
-                    <option value="">Selecione...</option>
-                    {categories.map(cat => (
-                      <option key={cat.id} value={cat.id}>{cat.nome}</option>
-                    ))}
-                  </select>
+
+                {/* 2. CORE INFO (Esquerda) - Borda Tracejada */}
+                <div className="product-core-info">
+                  <div className="form-row-custom">
+                    <div className="form-group sm-width">
+                      <label>Preço Unitário (R$)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        className="input-clean"
+                        value={productForm.preco}
+                        onChange={(e) => setProductForm({ ...productForm, preco: e.target.value })}
+                        placeholder="0.00"
+                      />
+                    </div>
+                    <div className="form-group md-width">
+                      <label>Categoria</label>
+                      <select
+                        className="input-clean"
+                        value={productForm.categoria_id}
+                        onChange={(e) => setProductForm({ ...productForm, categoria_id: e.target.value })}
+                      >
+                        <option value="">Selecione...</option>
+                        {categories.map(cat => (
+                          <option key={cat.id} value={cat.id}>{cat.nome}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="form-group flex-grow">
+                      <label>Descrição</label>
+                      <input
+                        type="text"
+                        className="input-clean"
+                        value={productForm.descricao}
+                        onChange={(e) => setProductForm({ ...productForm, descricao: e.target.value })}
+                        placeholder="Ex: Luxo Aço Inox Dourado"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="form-group mt-3">
+                    <label>Variações/Tamanho (separados por vírgula)</label>
+                    <input
+                      type="text"
+                      className="input-clean"
+                      value={productForm.variacoes}
+                      onChange={(e) => setProductForm({ ...productForm, variacoes: e.target.value })}
+                      placeholder="Ex: P, M, G, GG"
+                    />
+                  </div>
                 </div>
               </div>
 
-              <div className="form-row">
-                <div className="form-group">
+              {/* SEÇÃO TIPO DE VENDA (Fora do tracejado) */}
+               <div className="form-group" style={{ maxWidth: '200px' }}>
                   <label>Tipo de Venda</label>
                   <select
+                    className="input-bordered"
                     value={productForm.tipo_venda}
                     onChange={(e) => setProductForm({ ...productForm, tipo_venda: e.target.value })}
                   >
-                    <option value="individual">Individual (1:1)</option>
-                    <option value="pacote">Pacote Fechado</option>
+                    <option value="individual">Individual</option>
+                    <option value="pacote">Pacote</option>
                   </select>
                 </div>
-                {productForm.tipo_venda === 'pacote' && (
-                  <div className="form-group">
-                    <label>Qtde por Pacote</label>
-                    <input
-                      type="number"
-                      value={productForm.quantidade_pacote}
-                      onChange={(e) => setProductForm({ ...productForm, quantidade_pacote: parseInt(e.target.value) || 12 })}
-                      min="2"
-                    />
-                  </div>
-                )}
+
+              {/* SEÇÃO INTERMEDIÁRIA: Regras de Quantidade */}
+              <div className="product-rules-grid">
+                <div className="form-group">
+                  <label>Qtd mínima fornecedor</label>
+                  <input
+                    type="number"
+                    className="input-bordered"
+                    value={productForm.qtd_minima_fornecedor}
+                    onChange={(e) => setProductForm({ ...productForm, qtd_minima_fornecedor: e.target.value })}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Qtd máxima fornecedor</label>
+                  <input
+                    type="number"
+                    className="input-bordered"
+                    value={productForm.qtd_maxima_fornecedor}
+                    onChange={(e) => setProductForm({ ...productForm, qtd_maxima_fornecedor: e.target.value })}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Qtd mínima cliente</label>
+                  <input
+                    type="number"
+                    className="input-bordered"
+                    value={productForm.qtd_minima_cliente}
+                    onChange={(e) => setProductForm({ ...productForm, qtd_minima_cliente: e.target.value })}
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Múltiplo do Fornecedor Peças por pacote</label>
+                  <input
+                    type="number"
+                    className="input-bordered"
+                    value={productForm.multiplo_pacote}
+                    onChange={(e) => setProductForm({ ...productForm, multiplo_pacote: e.target.value })}
+                  />
+                  {productForm.tipo_venda === 'pacote' && (
+                     <small className="field-hint">Qtde atual: {productForm.quantidade_pacote || 12}</small>
+                  )}
+                </div>
               </div>
 
-              <div className="form-group">
-                <label>URL da Imagem</label>
-                <input
-                  type="url"
-                  value={productForm.imagem1}
-                  onChange={(e) => setProductForm({ ...productForm, imagem1: e.target.value })}
-                  placeholder="https://exemplo.com/imagem.jpg"
-                />
-                {productForm.imagem1 && (
-                  <div className="image-preview">
-                    <img src={productForm.imagem1} alt="Preview" />
-                  </div>
-                )}
+              {/* SEÇÃO INFERIOR: Detalhes e Checkboxes */}
+              <div className="product-bottom-section">
+                <div className="form-group">
+                   <label>Posição no catálogo <Info size={12} /></label>
+                   <input
+                     type="number"
+                     className="input-bordered"
+                     style={{ width: '100px' }}
+                     value={productForm.posicao_catalogo}
+                     onChange={(e) => setProductForm({ ...productForm, posicao_catalogo: e.target.value })}
+                   />
+                </div>
+
+                <div className="form-group">
+                  <label>Observações</label>
+                  <input
+                    type="text"
+                    className="input-bordered"
+                    value={productForm.observacoes}
+                    onChange={(e) => setProductForm({ ...productForm, observacoes: e.target.value })}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Anotações Internas</label>
+                  <input
+                    type="text"
+                    className="input-bordered"
+                    value={productForm.anotacoes_internas}
+                    onChange={(e) => setProductForm({ ...productForm, anotacoes_internas: e.target.value })}
+                  />
+                </div>
+
+                <div className="checkbox-stack">
+                  <label className="checkbox-inline">
+                    <input
+                      type="checkbox"
+                      checked={productForm.revisar_produto}
+                      onChange={(e) => setProductForm({ ...productForm, revisar_produto: e.target.checked })}
+                    />
+                    <span>Revisar produto</span>
+                  </label>
+                  <label className="checkbox-inline">
+                    <input
+                      type="checkbox"
+                      checked={productForm.registrar_peso}
+                      onChange={(e) => setProductForm({ ...productForm, registrar_peso: e.target.checked })}
+                    />
+                    <span>Registrar Peso</span>
+                  </label>
+                  <label className="checkbox-inline">
+                    <input
+                      type="checkbox"
+                      checked={productForm.registrar_preco_custo}
+                      onChange={(e) => setProductForm({ ...productForm, registrar_preco_custo: e.target.checked })}
+                    />
+                    <span>Registrar preço custo</span>
+                  </label>
+                </div>
               </div>
             </div>
 
@@ -1395,12 +1601,25 @@ export default function LotDetail({ defaultTab }) {
               <button className="btn btn-outline" onClick={closeProductModal}>
                 Cancelar
               </button>
+              
+              {!editingProduct && (
+                <button 
+                  className="btn btn-secondary" 
+                  onClick={() => saveProduct(true)}
+                  disabled={savingProduct}
+                  style={{ backgroundColor: '#475569', color: 'white', border: 'none' }}
+                >
+                  {savingProduct ? 'Salvando...' : 'Salvar e Próximo'}
+                </button>
+              )}
+
               <button 
                 className="btn btn-primary" 
-                onClick={saveProduct}
+                onClick={() => saveProduct(false)}
                 disabled={savingProduct}
+                style={{ backgroundColor: '#1e293b', borderColor: '#1e293b' }} // Dark premium color
               >
-                {savingProduct ? 'Salvando...' : editingProduct ? 'Salvar Alterações' : 'Criar Produto'}
+                {savingProduct ? 'Salvando...' : (editingProduct ? 'Salvar Alterações' : 'Salvar')}
               </button>
             </div>
           </div>
@@ -1409,3 +1628,7 @@ export default function LotDetail({ defaultTab }) {
     </div>
   )
 }
+
+/* ======================================================================================
+   NÃO REMOVER O CÓDIGO ABAIXO - O COMPONENTE TEM QUE FECHAR AQUI
+   ====================================================================================== */

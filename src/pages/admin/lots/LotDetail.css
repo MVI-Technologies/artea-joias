@@ -1558,3 +1558,258 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ========================================
+   PRODUCT MODAL - LAYOUT PREMIUM 2.0
+   ======================================== */
+.product-modal-xl {
+  max-width: 900px !important;
+  width: 95% !important;
+}
+
+.product-modal-body {
+  padding: 32px 40px !important;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* TOP SECTION: Photo (Right) + Core Info (Left) */
+.product-modal-top {
+  display: flex;
+  flex-direction: row-reverse; /* Foto à direita */
+  gap: 32px;
+  align-items: flex-start;
+}
+
+/* 1. PHOTO UPLOAD SECTION */
+.product-photo-section {
+  width: 220px;
+  flex-shrink: 0;
+}
+
+.photo-upload-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: #334155;
+  margin-bottom: 8px;
+}
+
+.photo-upload-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.photo-placeholder {
+  width: 100%;
+  aspect-ratio: 1;
+  border: 1px dashed #cbd5e1;
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.photo-placeholder:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+}
+
+.photo-preview-large {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+
+.photo-preview-large img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.btn-remove-photo {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.5);
+  color: white;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  backdrop-filter: blur(2px);
+}
+
+.url-input-container input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #475569;
+}
+
+/* 2. CORE INFO SECTION (Dashed Border) */
+.product-core-info {
+  flex: 1;
+  border: 1px dashed #94a3b8;
+  border-radius: 4px;
+  padding: 20px;
+  position: relative;
+}
+
+.product-core-info .form-group {
+  margin-bottom: 16px;
+}
+
+.three-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 16px;
+}
+
+/* CLEAN INPUTS (Dentro do tracejado) */
+.input-clean {
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  padding: 8px 12px;
+  font-size: 13px;
+  width: 100%;
+  transition: all 0.2s;
+  background: white;
+}
+
+.input-clean:focus {
+  border-color: #3b82f6;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.05);
+}
+
+/* Custom Flex Row for Price/Cat/Desc matching reference */
+.form-row-custom {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  flex-wrap: wrap; /* Permite quebra se necessário */
+}
+
+.sm-width {
+  width: 120px;
+  flex-shrink: 0;
+}
+
+.md-width {
+  width: 150px;
+  flex-shrink: 0;
+}
+
+.flex-grow {
+  flex: 1;
+  min-width: 200px; /* Garante tamanho mínimo para descrição */
+}
+
+.mt-3 {
+  margin-top: 12px;
+}
+
+/* 3. RULES GRID */
+.product-rules-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  column-gap: 32px;
+}
+
+.input-bordered {
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  padding: 8px 12px;
+  font-size: 13px;
+  width: 100%;
+  background: white;
+}
+
+.field-hint {
+  display: block;
+  font-size: 11px;
+  color: #64748b;
+  margin-top: 4px;
+}
+
+/* 4. BOTTOM SECTION */
+.product-bottom-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.checkbox-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.checkbox-inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #334155;
+  cursor: pointer;
+}
+
+.checkbox-inline input {
+  cursor: pointer;
+  width: 14px;
+  height: 14px;
+  accent-color: #3b82f6;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+  .product-modal-top {
+    flex-direction: column; /* Foto em cima no mobile */
+  }
+  
+  .product-photo-section {
+    width: 100%;
+    margin-bottom: 20px;
+  }
+  
+  .photo-placeholder {
+    max-width: 100%;
+    margin: 0 auto;
+  }
+
+  /* Stack inputs on mobile */
+  .form-row-custom {
+    flex-direction: column;
+    gap: 16px;
+  }
+  
+  .sm-width, .md-width, .flex-grow {
+    width: 100%;
+  }
+  
+  .product-rules-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+}
