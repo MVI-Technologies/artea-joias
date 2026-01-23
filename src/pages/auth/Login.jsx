@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { LogIn } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
@@ -9,10 +9,21 @@ export default function Login() {
   const [senha, setSenha] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const { signIn } = useAuth()
+  const { signIn, user, isAdmin, loading: authLoading } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const successMessage = location.state?.message
+
+  // Redirecionar automaticamente se já estiver logado
+  useEffect(() => {
+    if (!authLoading && user) {
+      if (isAdmin) {
+        navigate('/admin', { replace: true })
+      } else {
+        navigate('/app', { replace: true })
+      }
+    }
+  }, [user, isAdmin, authLoading, navigate])
 
   const formatTelefone = (value) => {
     const numbers = value.replace(/\D/g, '')
@@ -31,15 +42,28 @@ export default function Login() {
     setLoading(true)
 
     try {
-      const { error } = await signIn(telefone, senha)
+      const { error: loginError } = await signIn(telefone, senha)
       
-      if (error) {
-        setError('Telefone ou senha incorretos')
+      if (loginError) {
+        console.error('Erro de login:', loginError)
+        // Mensagem mais específica baseada no tipo de erro
+        if (loginError.message?.includes('Invalid login credentials')) {
+          setError('Telefone ou senha incorretos. Verifique se o telefone está no formato correto (ex: (11) 99999-9999) e se a senha está correta.')
+        } else if (loginError.message?.includes('Email not confirmed')) {
+          setError('Email não confirmado. Verifique sua caixa de entrada.')
+        } else {
+          setError(`Erro ao fazer login: ${loginError.message || 'Tente novamente.'}`)
+        }
         return
       }
 
-      navigate('/admin')
+      // Login bem-sucedido - aguardar um pouco para o AuthContext processar
+      console.log('✅ Login bem-sucedido, aguardando redirecionamento...')
+      
+      // O redirecionamento será feito pelo useEffect acima quando o user for definido
+      // Não precisamos fazer nada aqui, apenas aguardar
     } catch (err) {
+      console.error('Exceção no login:', err)
       setError('Erro ao fazer login. Tente novamente.')
     } finally {
       setLoading(false)

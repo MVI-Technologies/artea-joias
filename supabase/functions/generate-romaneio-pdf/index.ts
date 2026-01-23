@@ -1,30 +1,57 @@
-
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1'
-import { PDFDocument, rgb, StandardFonts } from 'https://cdn.skypack.dev/pdf-lib'
+import { PDFDocument, rgb, StandardFonts } from 'https://esm.sh/pdf-lib@^1.17.1?target=deno'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
 
-serve(async (req) => {
+Deno.serve(async (req) => {
+  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return new Response('ok', { 
+      status: 200,
+      headers: corsHeaders 
+    })
   }
 
   try {
-    const supabase = createClient(
+    // Criar cliente com SERVICE_ROLE_KEY para acesso ao banco
+    const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
+
+    // Extrair token do header Authorization
+    const authHeader = req.headers.get('Authorization')
+    const token = authHeader?.replace('Bearer ', '') || null
+
+    // Se tiver token, validar usuário
+    let userId = null
+    if (token) {
+      try {
+        const supabaseUser = createClient(
+          Deno.env.get('SUPABASE_URL') ?? '',
+          Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+        )
+        
+        const { data: { user }, error: authError } = await supabaseUser.auth.getUser(token)
+        if (!authError && user) {
+          userId = user.id
+        }
+      } catch (e) {
+        console.log('Erro ao validar token:', e)
+      }
+    }
 
     const { romaneioId } = await req.json()
 
     if (!romaneioId) throw new Error('ID do romaneio obrigatório')
 
     // 1. Buscar Dados do Romaneio Completo
-    const { data: romaneio, error: romError } = await supabase
+    const { data: romaneio, error: romError } = await supabaseAdmin
       .from('romaneios')
       .select(`
         *,
@@ -36,9 +63,24 @@ serve(async (req) => {
 
     if (romError || !romaneio) throw new Error('Romaneio não encontrado')
 
+    // Se tiver userId, verificar acesso
+    if (userId) {
+      const { data: clientData } = await supabaseAdmin
+        .from('clients')
+        .select('id')
+        .eq('auth_id', userId)
+        .single()
+
+      if (!clientData || clientData.id !== romaneio.client_id) {
+        return new Response(
+          JSON.stringify({ error: 'Acesso negado a este romaneio' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+    }
+
     // 2. Buscar Itens do Romaneio (Pedidos)
-    // Assumindo que os pedidos vinculados ao lote e cliente compõem o romaneio
-    const { data: items, error: itemsError } = await supabase
+    const { data: items, error: itemsError } = await supabaseAdmin
       .from('orders')
       .select(`
         *,
@@ -52,7 +94,7 @@ serve(async (req) => {
 
     // 3. Gerar PDF
     const pdfDoc = await PDFDocument.create()
-    const page = pdfDoc.addPage([595.28, 841.89]) // A4
+    let page = pdfDoc.addPage([595.28, 841.89]) // A4
     const { width, height } = page.getSize()
     const font = await pdfDoc.embedFont(StandardFonts.Helvetica)
     const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold)
@@ -111,7 +153,7 @@ serve(async (req) => {
 
     items.forEach((item) => {
         if (y < 50) { // Nova página se acabar espaço
-             const newPage = pdfDoc.addPage([595.28, 841.89])
+             page = pdfDoc.addPage([595.28, 841.89])
              y = height - 50
         }
 

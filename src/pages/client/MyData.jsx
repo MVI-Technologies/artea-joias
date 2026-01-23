@@ -1,12 +1,14 @@
 
-
 import { useState, useEffect } from 'react'
 import { User, Save, Lock, AlertCircle } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
+import { useToast } from '../../components/common/Toast'
+import './MyData.css'
 
 export default function MyData() {
   const { user } = useAuth()
+  const toast = useToast()
   const [formData, setFormData] = useState({
     nome: '',
     telefone: '',
@@ -69,41 +71,30 @@ export default function MyData() {
     setMessage(null)
     
     try {
-        // Upsert: Atualizar se existir, criar se não
-        // Importante: Precisamos garantir que auth_id seja passado
         const payload = {
             auth_id: user.id,
             nome: formData.nome,
-            telefone: formData.telefone, // Nota: telefone costuma ser chave de busca
-            enderecos: [formData.endereco_completo],
-            // Manter outros campos se necessário
+            telefone: formData.telefone,
+            email: formData.email,
+            enderecos: formData.endereco_completo ? [formData.endereco_completo] : [],
             updated_at: new Date()
         }
         
-        // Se já tivermos o ID do cliente carregado, é update direto. 
-        // Mas como usamos auth_id, o upsert deve lidar se tiver constraint unique em auth_id (ideal).
-        // Se a tabela clients não tiver constraint unique em auth_id, upsert pode duplicar.
-        // O ideal é buscar o ID primeiro (que já fizemos no load).
-        
-        // Estratégia Segura: Update pelo auth_id
         const { error } = await supabase
             .from('clients')
             .update(payload)
             .eq('auth_id', user.id)
             
-        // Se o update falhar porque não existe registro (count 0), então insert
-        // Mas provavelmente o registro existe se o login funcionou (trigger de criação de user)
-        // Se não existir, é um caso de "cadastro incompleto".
-        
         if (error) throw error
 
+        toast.success('Dados atualizados com sucesso!')
         setMessage({ type: 'success', text: 'Dados atualizados com sucesso!' })
         
-        // Limpar mensagem após 3s
         setTimeout(() => setMessage(null), 3000)
 
     } catch (error) {
         console.error(error)
+        toast.error('Erro ao salvar. Verifique sua conexão.')
         setMessage({ type: 'error', text: 'Erro ao salvar. Verifique sua conexão.' })
     } finally {
         setSaving(false)
@@ -111,87 +102,85 @@ export default function MyData() {
   }
 
   if (loading) return (
-      <div className="flex justify-center items-center h-64">
-          <div className="loading-spinner"></div>
+      <div className="my-data-page">
+        <div className="flex justify-center items-center h-64">
+            <div className="loading-spinner"></div>
+        </div>
       </div>
   )
 
   return (
-    <div className="client-page max-w-2xl mx-auto">
-      <div className="page-header mb-8 text-center">
-        <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-400">
+    <div className="my-data-page">
+      <div className="my-data-header">
+        <div className="my-data-avatar">
             <User size={40} />
         </div>
-        <h1 className="text-2xl font-bold text-slate-800">Meus Dados</h1>
-        <p className="text-slate-500">Mantenha suas informações atualizadas para entrega.</p>
+        <h1>Meus Dados</h1>
+        <p>Mantenha suas informações atualizadas para entrega.</p>
       </div>
 
-      <form onSubmit={handleSave} className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 md:p-8">
+      <form onSubmit={handleSave} className="my-data-form">
         
         {message && (
-            <div className={`mb-6 p-4 rounded-lg flex items-center gap-2 ${message.type === 'error' ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-600'}`}>
+            <div className={`my-data-message ${message.type}`}>
                 <AlertCircle size={20} />
                 <span>{message.text}</span>
             </div>
         )}
 
-        <div className="grid grid-cols-1 gap-6">
-            <div className="form-group">
-                <label className="block text-sm font-medium text-slate-700 mb-1">Nome Completo</label>
+        <div className="my-data-form-grid">
+            <div className="my-data-form-group">
+                <label>Nome Completo</label>
                 <input 
                     type="text" 
                     value={formData.nome}
                     onChange={e => setFormData({...formData, nome: e.target.value})}
-                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+                    placeholder="Seu nome completo"
                 />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="form-group">
-                    <label className="block text-sm font-medium text-slate-700 mb-1 flex items-center gap-2">
-                        Telefone (Login) <Lock size={12} className="text-slate-400"/>
-                    </label>
-                    <input 
-                        type="text" 
-                        value={formData.telefone}
-                        disabled
-                        className="w-full px-4 py-2 border border-slate-200 bg-slate-50 text-slate-500 rounded-lg cursor-not-allowed"
-                    />
-                     <p className="text-xs text-slate-400 mt-1">Para alterar, contate o suporte.</p>
-                </div>
-                
-                 <div className="form-group">
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
-                    <input 
-                        type="email" 
-                        value={formData.email}
-                        onChange={e => setFormData({...formData, email: e.target.value})}
-                        className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
-                    />
-                </div>
-            </div>
-
-            <div className="form-group">
-                <label className="block text-sm font-medium text-slate-700 mb-1">Endereço de Entrega Completo</label>
-                <textarea 
-                    rows={3}
-                    value={formData.endereco_completo}
-                    onChange={e => setFormData({...formData, endereco_completo: e.target.value})}
-                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
-                    placeholder="Ex: Rua das Flores, 123, Bairro Centro, Cidade - SP. CEP 12345-000"
+            <div className="my-data-form-group">
+                <label>
+                    Telefone (Login) <Lock size={12} className="lock-icon"/>
+                </label>
+                <input 
+                    type="text" 
+                    value={formData.telefone}
+                    disabled
                 />
+                <p className="help-text">Para alterar, contate o suporte.</p>
             </div>
+        </div>
 
-            <div className="pt-4 border-t border-slate-100 flex justify-end">
-                <button 
-                    type="submit" 
-                    disabled={saving}
-                    className="bg-slate-900 text-white px-6 py-2 rounded-lg font-medium hover:bg-slate-800 flex items-center gap-2 transition-transform active:scale-95"
-                >
-                    <Save size={18} />
-                    {saving ? 'Salvando...' : 'Salvar Alterações'}
-                </button>
-            </div>
+        <div className="my-data-form-group">
+            <label>Email</label>
+            <input 
+                type="email" 
+                value={formData.email}
+                onChange={e => setFormData({...formData, email: e.target.value})}
+                placeholder="seu@email.com"
+            />
+        </div>
+
+        <div className="my-data-form-group">
+            <label>Endereço de Entrega Completo</label>
+            <textarea 
+                rows={3}
+                value={formData.endereco_completo}
+                onChange={e => setFormData({...formData, endereco_completo: e.target.value})}
+                placeholder="Ex: Rua das Flores, 123, Bairro Centro, Cidade - SP. CEP 12345-000"
+            />
+        </div>
+
+        <div className="my-data-form-footer">
+            <button 
+                type="submit" 
+                disabled={saving}
+                className="btn-save"
+            >
+                <Save size={18} />
+                {saving ? 'Salvando...' : 'Salvar Alterações'}
+            </button>
         </div>
       </form>
     </div>
