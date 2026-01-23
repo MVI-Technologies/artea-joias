@@ -1,11 +1,19 @@
-/* ClientLayout.css */
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&display=swap');
+
 :root {
-  --client-header-height: 64px;
+  --client-header-height: 80px; /* Mais altura para luxo */
   --client-bg: #f8fafc;
-  --primary-color: #0f172a;
-  --accent-color: #0ea5e9;
-  --text-primary: #1e293b;
-  --text-secondary: #64748b;
+  --header-bg: #1e293b;
+  --header-text: #ffffff;
+  --accent-color: #38bdf8;
+  --text-secondary: #94a3b8;
+  
+  --font-brand: 'Cinzel', serif; /* Fonte Premium */
+  --font-serif: 'Playfair Display', serif;
+  
+  --container-width: 1280px; /* max-w-7xl */
+  --container-padding-mobile: 24px;
+  --container-padding-desktop: 48px;
 }
 
 .client-layout {
@@ -17,29 +25,69 @@
 
 .client-header {
   height: var(--client-header-height);
-  background: white;
-  border-bottom: 1px solid #e2e8f0;
+  background: var(--header-bg);
+  border-bottom: 1px solid #334155;
   position: sticky;
   top: 0;
   z-index: 50;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.25); /* Sombra mais difusa */
+  color: var(--header-text);
+  /* Transição suave na entrada */
+  animation: slideDown 0.5s ease-out;
+}
+
+@keyframes slideDown {
+    from { transform: translateY(-100%); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+.client-content {
+  flex: 1;
+  max-width: var(--container-width);
+  width: 100%;
+  margin: 0 auto;
+  padding: 32px var(--container-padding-mobile);
+}
+
+@media (min-width: 768px) {
+  .client-content {
+    padding: 48px var(--container-padding-desktop);
+  }
 }
 
 .header-container {
-  max-width: 1200px;
+  max-width: var(--container-width);
   margin: 0 auto;
-  padding: 0 16px;
+  padding: 0 var(--container-padding-mobile);
   height: 100%;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  width: 100%;
+}
+
+@media (min-width: 768px) {
+  .header-container {
+    padding: 0 var(--container-padding-desktop);
+  }
 }
 
 .brand-text {
-  font-weight: 700;
-  font-size: 1.25rem;
-  color: var(--primary-color);
-  letter-spacing: -0.5px;
+  font-family: var(--font-brand);
+  font-weight: 600;
+  font-size: 20px !important; /* Cinzel é larga, 24px é bom */
+  color: #ffffff;
+  letter-spacing: 0.1em; /* Mais espaçamento para elegância */
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+@media (min-width: 768px) {
+    .brand-text {
+        font-size: 32px;
+    }
 }
 
 /* Desktop Nav */
@@ -60,20 +108,27 @@
   gap: 8px;
   padding: 8px 16px;
   border-radius: 8px;
-  color: var(--text-secondary);
+  color: #cbd5e1; /* Slate 300 */
   font-weight: 500;
   text-decoration: none;
-  transition: all 0.2s;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
 }
 
 .nav-link:hover {
-  color: var(--primary-color);
-  background-color: #f1f5f9;
+  color: #ffffff;
+  background-color: rgba(255, 255, 255, 0.1);
 }
 
 .nav-link.active {
-  color: var(--accent-color);
-  background-color: #f0f9ff;
+  color: #ffffff;
+  background-color: rgba(255, 255, 255, 0.15);
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+.nav-link:active {
+    transform: scale(0.98);
 }
 
 .header-actions {
@@ -86,18 +141,55 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  background-color: #22c55e; /* Verde pedido */
+  background-color: #22c55e;
   color: white;
   padding: 8px 16px;
-  border-radius: 99px; /* Pill shape */
+  border-radius: 99px;
   font-weight: 600;
   text-decoration: none;
-  transition: opacity 0.2s;
-  box-shadow: 0 2px 4px rgba(34, 197, 94, 0.2);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+  position: relative;
+  overflow: hidden;
 }
 
 .cart-btn:hover {
-  opacity: 0.9;
+  background-color: #16a34a;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 8px -1px rgba(0, 0, 0, 0.3);
+}
+
+.cart-btn:active {
+    transform: translateY(0);
+}
+
+.cart-badge {
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    background-color: #ef4444; /* Red 500 */
+    color: white;
+    font-size: 10px;
+    font-weight: 800;
+    min-width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #1e293b; /* Match header bg for cutout effect */
+}
+
+@media (min-width: 640px) {
+    .cart-badge {
+        position: static;
+        border: none;
+        background: rgba(0,0,0,0.2);
+        min-width: 20px;
+        height: 20px;
+        margin-left: 4px;
+        font-size: 11px;
+    }
 }
 
 .cart-text {
@@ -115,8 +207,14 @@
   padding: 8px;
   background: none;
   border: none;
-  color: var(--text-secondary);
+  color: #ffffff;
   cursor: pointer;
+  border-radius: 8px;
+  transition: background 0.2s;
+}
+
+.mobile-menu-btn:hover {
+    background-color: rgba(255,255,255,0.1);
 }
 
 @media (min-width: 768px) {
@@ -126,48 +224,51 @@
 }
 
 .mobile-menu {
-  background: white;
-  border-bottom: 1px solid #e2e8f0;
-  padding: 8px;
-  display: flex;
+  background: var(--header-bg);
+  border-bottom: 1px solid #334155;
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  transition: max-height 0.3s ease-out, opacity 0.3s ease-out;
   flex-direction: column;
   gap: 4px;
+  display: flex;
+}
+
+.mobile-menu.open {
+    max-height: 300px;
+    opacity: 1;
+    padding: 16px;
 }
 
 .mobile-nav-link {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px;
+  padding: 12px 16px;
   border-radius: 8px;
   text-decoration: none;
-  color: var(--text-secondary);
+  color: #cbd5e1;
   font-weight: 500;
+  transition: all 0.2s;
 }
 
-.mobile-nav-link.active {
-  background-color: #f0f9ff;
-  color: var(--accent-color);
-}
-
-.client-content {
-  flex: 1;
-  max-width: 1200px;
-  width: 100%;
-  margin: 0 auto;
-  padding: 24px 16px;
+.mobile-nav-link:hover, .mobile-nav-link.active {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
 }
 
 .logout-btn-icon {
   background: none;
   border: none;
-  color: var(--text-secondary);
+  color: #94a3b8;
   cursor: pointer;
   padding: 8px;
   border-radius: 8px;
+  transition: all 0.2s;
 }
 
 .logout-btn-icon:hover {
-  background-color: #fee2e2;
-  color: #ef4444;
+  background-color: rgba(239, 68, 68, 0.15); /* Red tint */
+  color: #f87171;
 }

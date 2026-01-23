@@ -36,7 +36,7 @@ export default function ClientLayout() {
       <header className="client-header">
         <div className="client-header-content">
           <Link to="/cliente" className="client-logo">
-            ARTEA JOIAS
+            Artea Joias
           </Link>
 
           <nav className={`client-nav ${menuOpen ? 'open' : ''}`}>
