@@ -3,7 +3,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext'
 
 // Layouts
 import AdminLayout from './components/layout/AdminLayout'
-import ClientLayout from './components/layout/ClientLayout'
+import ClientLayout from './pages/client/ClientLayout' // Componente Novo
 
 // Auth Pages
 import Login from './pages/auth/Login'
@@ -32,11 +32,13 @@ import Marketing from './pages/admin/marketing/Marketing'
 import Financeiro from './pages/admin/financeiro/Financeiro'
 import UserList from './pages/admin/users/UserList'
 
-// Client Pages
-import ClientDashboard from './pages/client/ClientDashboard'
+// Client Pages (Nova Estrutura)
+import ClientLinks from './pages/client/ClientLinks'
+import Cart from './pages/client/Cart'
+import OrderHistory from './pages/client/OrderHistory'
+import MyData from './pages/client/MyData'
+// Legacy imports mantidos caso precise referenciar, mas rotas apontarão para novos
 import Catalog from './pages/client/Catalog'
-import ClientOrders from './pages/client/ClientOrders'
-import ClientProfile from './pages/client/ClientProfile'
 
 import './styles/index.css'
 
@@ -57,16 +59,19 @@ function ProtectedRoute({ children, requireAdmin = false }) {
   }
 
   if (requireAdmin && !isAdmin) {
-    return <Navigate to="/cliente" replace />
+    return <Navigate to="/app" replace />
   }
 
-  // Se for cliente não aprovado, mostrar mensagem
+  // Se for cliente não aprovado
   if (!requireAdmin && client && !client.approved) {
     return (
       <div className="loading-overlay" style={{ flexDirection: 'column', gap: 16 }}>
         <h2>Cadastro Pendente</h2>
         <p>Seu cadastro ainda está aguardando aprovação.</p>
         <p>Entre em contato com a administração.</p>
+        <button onClick={() => window.location.reload()} className="btn btn-outline">
+            Verificar Status
+        </button>
       </div>
     )
   }
@@ -109,71 +114,62 @@ function AppRoutes() {
         <Route path="lotes/:id/separacao" element={<LotDetail defaultTab="separacao" />} />
         <Route path="lotes/:id/romaneios" element={<LotDetail defaultTab="romaneios" />} />
         
-        {/* Marketing */}
+        {/* Gestão */}
         <Route path="marketing" element={<Marketing />} />
-        
-        {/* Clientes */}
         <Route path="clientes" element={<ClientList />} />
         <Route path="clientes/novo" element={<ClientForm />} />
         <Route path="clientes/:id" element={<ClientForm />} />
         <Route path="clientes/importar" element={<ImportClients />} />
-        
-        {/* Pedidos */}
         <Route path="pedidos" element={<OrderList />} />
         <Route path="compras" element={<OrderList />} />
-        
-        {/* Romaneios */}
         <Route path="romaneios" element={<RomaneioList />} />
         <Route path="romaneios/:id" element={<RomaneioDetail />} />
-        
-        {/* Separação */}
         <Route path="separacao" element={<SeparacaoList />} />
-        
-        {/* Relatórios */}
         <Route path="relatorios" element={<Reports />} />
-        
-        {/* Configurações */}
         <Route path="configuracoes" element={<Settings />} />
-        
-        {/* Marketing e Financeiro */}
-        <Route path="marketing" element={<Marketing />} />
         <Route path="financeiro" element={<Financeiro />} />
         <Route path="usuarios" element={<UserList />} />
-
-        {/* WhatsApp */}\n        <Route path="whatsapp" element={<WhatsApp />} />
+        <Route path="whatsapp" element={<WhatsApp />} />
         
-        {/* Fallback */}
         <Route path="*" element={<Dashboard />} />
       </Route>
 
-      {/* Client Routes */}
+      {/* ROTA DO CLIENTE (NOVA) */}
       <Route
-        path="/cliente"
+        path="/app"
         element={
           <ProtectedRoute>
             <ClientLayout />
           </ProtectedRoute>
         }
       >
-        <Route index element={<ClientDashboard />} />
-        <Route path="catalogo" element={<Catalog />} />
-        <Route path="catalogo/:lotId" element={<Catalog />} />
-        <Route path="pedidos" element={<ClientOrders />} />
-        <Route path="perfil" element={<ClientProfile />} />
+        <Route index element={<ClientLinks />} /> {/* Home do cliente = Lista de Links */}
+        <Route path="carrinho" element={<Cart />} />
+        <Route path="historico" element={<OrderHistory />} />
+        <Route path="perfil" element={<MyData />} />
+        {/* Rota legado de catalogo caso algum link antigo exista, redirecionar ou manter */}
+        <Route path="catalogo/:linkUrl" element={<Catalog />} /> 
       </Route>
 
-      {/* Default redirect - WAIT for loading before redirecting */}
+      {/* Legado /cliente redireciona para /app */}
+      <Route path="/cliente/*" element={<Navigate to="/app" replace />} />
+
+      {/* Rota Pública de Catálogo (Login se necessário) */}
+      <Route path="/catalogo/:linkUrl" element={<Login />} />
+
+      {/* Root Redirect */}
       <Route path="/" element={
         loading ? (
           <div className="loading-overlay">
-            <div className="loading-spinner" style={{ width: 40, height: 40 }} />
+            <div className="loading-spinner" />
           </div>
         ) : user ? (
-          isAdmin ? <Navigate to="/admin" replace /> : <Navigate to="/cliente" replace />
+          isAdmin ? <Navigate to="/admin" replace /> : <Navigate to="/app" replace />
         ) : (
           <Navigate to="/login" replace />
         )
       } />
+      
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )

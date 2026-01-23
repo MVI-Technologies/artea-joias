@@ -184,8 +184,12 @@ export default function ClientList() {
                       {renderStars(client.estrelinhas || 0)}
                     </td>
                     <td>
-                      <button className="btn btn-secondary btn-sm">
-                        Ações
+                      <button 
+                        className={`btn btn-sm ${!client.approved ? 'btn-success' : 'btn-outline-danger'}`}
+                        onClick={() => toggleApproval(client)}
+                        title={client.approved ? "Bloquear Cadastro" : "Aprovar Cadastro"}
+                      >
+                        {client.approved ? "Bloquear" : "Aprovar"}
                       </button>
                     </td>
                   </tr>
