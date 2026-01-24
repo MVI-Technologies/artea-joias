@@ -99,8 +99,8 @@
 .my-data-form-group input:focus,
 .my-data-form-group textarea:focus {
   outline: none;
-  border-color: var(--primary-color);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
 }
 
 .my-data-form-group input:disabled {
@@ -144,7 +144,7 @@
 }
 
 .btn-save {
-  background: var(--primary-color);
+  background: var(--color-primary);
   color: white;
   padding: var(--spacing-sm) var(--spacing-lg);
   border-radius: var(--border-radius);
@@ -159,7 +159,7 @@
 }
 
 .btn-save:hover:not(:disabled) {
-  background: var(--primary-color-dark);
+  background: var(--color-primary-dark);
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }

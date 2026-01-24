@@ -46,7 +46,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    const { romaneioId } = await req.json()
+    const { romaneioId, items: requestItems } = await req.json()
 
     if (!romaneioId) throw new Error('ID do romaneio obrigatório')
 
@@ -55,8 +55,16 @@ Deno.serve(async (req) => {
       .from('romaneios')
       .select(`
         *,
-        lot:lots(nome),
-        client:clients(nome, telefone, email)
+        lot:lots(
+          nome,
+          updated_at,
+          requer_pacote_fechado,
+          chave_pix,
+          nome_beneficiario,
+          telefone_financeiro,
+          mensagem_pagamento
+        ),
+        client:clients(nome, telefone, email, cpf)
       `)
       .eq('id', romaneioId)
       .single()
@@ -79,18 +87,32 @@ Deno.serve(async (req) => {
       }
     }
 
-    // 2. Buscar Itens do Romaneio (Pedidos)
-    const { data: items, error: itemsError } = await supabaseAdmin
-      .from('orders')
-      .select(`
-        *,
-        product:products(nome, codigo_sku)
-      `)
-      .eq('lot_id', romaneio.lot_id)
-      .eq('client_id', romaneio.client_id)
-      .neq('status', 'cancelado')
+    const snapshotItems = (romaneio?.dados && typeof romaneio.dados === 'object')
+      ? (romaneio.dados.items || romaneio.dados.itens)
+      : null
+    let items: any[] = []
+    if (Array.isArray(requestItems)) {
+      items = requestItems
+    } else if (Array.isArray(snapshotItems)) {
+      items = snapshotItems
+    } else {
+      const { data: dbItems, error: itemsError } = await supabaseAdmin
+        .from('orders')
+        .select(`
+          *,
+          product:products(
+            nome,
+            descricao,
+            codigo_sku,
+            category:categories(nome)
+          )
+        `)
+        .eq('romaneio_id', romaneioId)
+        .neq('status', 'cancelado')
 
-    if (itemsError) throw new Error('Erro ao buscar itens')
+      if (itemsError) throw new Error('Erro ao buscar itens')
+      items = dbItems || []
+    }
 
     // 3. Gerar PDF
     const pdfDoc = await PDFDocument.create()
@@ -109,90 +131,334 @@ Deno.serve(async (req) => {
       })
     }
 
-    // --- Header ---
-    page.drawRectangle({
-        x: 0, y: height - 100, width, height: 100,
-        color: rgb(0.06, 0.09, 0.16) // #0f172a (Slate 900)
-    })
-    
-    drawText('ARTEA JOIAS', 50, height - 50, 24, true, rgb(1,1,1))
-    drawText('Romaneio de Conferência', 50, height - 70, 12, false, rgb(0.8,0.8,0.8))
-    
-    // Info Direita
-    drawText(`Nº: ${romaneio.numero_romaneio}`, width - 150, height - 50, 12, true, rgb(1,1,1))
-    drawText(`Data: ${new Date(romaneio.created_at).toLocaleDateString('pt-BR')}`, width - 150, height - 70, 10, false, rgb(0.8,0.8,0.8))
+    const drawCenteredText = (text, y, size = 12, isBold = false, color = rgb(0, 0, 0)) => {
+      const textWidth = (isBold ? fontBold : font).widthOfTextAtSize(String(text), size)
+      const x = (width - textWidth) / 2
+      drawText(text, x, y, size, isBold, color)
+    }
 
-    // --- Cliente Info ---
-    let y = height - 140
-    drawText('DADOS DO CLIENTE', 50, y, 12, true)
-    y -= 20
-    drawText(`Nome: ${romaneio.cliente_nome_snapshot || romaneio.client?.nome}`, 50, y)
-    drawText(`Telefone: ${romaneio.cliente_telefone_snapshot || romaneio.client?.telefone}`, 300, y)
-    y -= 15
-    
-    // Grupo Info
-    y -= 20
-    drawText('DADOS DO GRUPO', 50, y, 12, true)
-    y -= 20
-    drawText(`Grupo: ${romaneio.lot?.nome}`, 50, y)
-    y -= 40
+    const drawTextRight = (text, rightX, y, size = 10, isBold = false, color = rgb(0, 0, 0)) => {
+      const textWidth = (isBold ? fontBold : font).widthOfTextAtSize(String(text), size)
+      drawText(text, rightX - textWidth, y, size, isBold, color)
+    }
 
-    // --- Tabela Header ---
-    const colX = { prod: 50, qtd: 350, unit: 420, total: 500 }
-    
-    page.drawRectangle({ x: 40, y: y - 5, width: width - 80, height: 25, color: rgb(0.95, 0.95, 0.95) })
-    drawText('PRODUTO', colX.prod, y, 10, true)
-    drawText('QTD', colX.qtd, y, 10, true)
-    drawText('UNIT', colX.unit, y, 10, true)
-    drawText('TOTAL', colX.total, y, 10, true)
-    y -= 25
+    const drawLabelValue = (label, value, x, y, size = 10) => {
+      drawText(label, x, y, size, true)
+      const labelWidth = fontBold.widthOfTextAtSize(`${label} `, size)
+      drawText(value || '-', x + labelWidth + 2, y, size, false)
+    }
 
-    // --- Itens ---
-    let totalQtd = 0
-    let totalValor = 0
+    const formatCurrency = (value) => `R$ ${Number(value || 0).toFixed(2)}`
 
-    items.forEach((item) => {
-        if (y < 50) { // Nova página se acabar espaço
-             page = pdfDoc.addPage([595.28, 841.89])
-             y = height - 50
+    const formatDateTime = (date) => {
+      if (!date) return '-'
+      return new Date(date).toLocaleString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      })
+    }
+
+    const formatCpf = (value) => {
+      if (!value) return '-'
+      const digits = String(value).replace(/\D/g, '')
+      if (digits.length === 11) {
+        return digits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')
+      }
+      if (digits.length === 14) {
+        return digits.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5')
+      }
+      return value
+    }
+
+    const formatPhone = (value) => {
+      if (!value) return '-'
+      const digits = String(value).replace(/\D/g, '')
+      if (digits.startsWith('55')) {
+        const d = digits.slice(2)
+        if (d.length === 11) {
+          return `+55 (${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`
         }
+        if (d.length === 10) {
+          return `+55 (${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`
+        }
+      }
+      if (digits.length === 11) {
+        return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`
+      }
+      if (digits.length === 10) {
+        return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`
+      }
+      return value
+    }
 
-        const nomeProd = item.product?.nome || 'Produto Indefinido'
-        const sku = item.product?.codigo_sku ? `(${item.product.codigo_sku})` : ''
-        
-        drawText(`${nomeProd} ${sku}`.substring(0, 50), colX.prod, y)
-        drawText(item.quantidade.toString(), colX.qtd, y)
-        drawText(`R$ ${item.valor_unitario.toFixed(2)}`, colX.unit, y)
-        drawText(`R$ ${item.valor_total.toFixed(2)}`, colX.total, y)
-        
-        // Linha separadora
-        page.drawLine({
-            start: { x: 40, y: y - 5 },
-            end: { x: width - 40, y: y - 5 },
-            thickness: 0.5,
-            color: rgb(0.9, 0.9, 0.9),
-        })
+    const wrapText = (text, maxWidth, size = 10, isBold = false) => {
+      const content = String(text || '')
+      if (!content) return ['']
+      const words = content.split(' ')
+      const lines: string[] = []
+      let current = ''
+      const currentFont = isBold ? fontBold : font
+      words.forEach((word) => {
+        const testLine = current ? `${current} ${word}` : word
+        const testWidth = currentFont.widthOfTextAtSize(testLine, size)
+        if (testWidth <= maxWidth) {
+          current = testLine
+        } else {
+          if (current) lines.push(current)
+          current = word
+        }
+      })
+      if (current) lines.push(current)
+      return lines
+    }
 
-        totalQtd += item.quantidade
-        totalValor += item.valor_total
-        y -= 25
+    const truncateText = (text, maxWidth, size = 10, isBold = false) => {
+      const value = String(text || '')
+      const currentFont = isBold ? fontBold : font
+      if (currentFont.widthOfTextAtSize(value, size) <= maxWidth) return value
+      let truncated = value
+      while (truncated.length > 0) {
+        truncated = truncated.slice(0, -1)
+        const test = `${truncated}...`
+        if (currentFont.widthOfTextAtSize(test, size) <= maxWidth) return test
+      }
+      return ''
+    }
+
+    const lotNome = romaneio.lot?.nome || '-'
+    const requerPacoteTexto = romaneio.lot?.requer_pacote_fechado ? '' : '(Não precisa fechar pacotes)'
+    const pedidoNumero = romaneio.numero_pedido || '-'
+    const clienteNome = romaneio.cliente_nome_snapshot || romaneio.client?.nome || romaneio.dados?.nome || '-'
+    const clienteTelefone = formatPhone(
+      romaneio.cliente_telefone_snapshot || romaneio.client?.telefone || romaneio.dados?.telefone
+    )
+    const clienteEmail = romaneio.client?.email || romaneio.dados?.email || '-'
+    const clienteCpf = formatCpf(
+      romaneio.client?.cpf || romaneio.dados?.cpf || romaneio.dados?.cpf_cnpj || romaneio.dados?.cpfCnpj
+    )
+    const dataFechamento = formatDateTime(romaneio.lot?.updated_at || romaneio.created_at)
+
+    const dadosPagamento = (typeof romaneio.dados_pagamento === 'object' && romaneio.dados_pagamento)
+      ? romaneio.dados_pagamento
+      : (romaneio.dados?.dados_pagamento || romaneio.dados?.pagamento || {})
+    const pixKey = dadosPagamento.chave_pix || romaneio.lot?.chave_pix || ''
+    const nomeBeneficiario = dadosPagamento.nome_beneficiario || romaneio.lot?.nome_beneficiario || ''
+    const telefoneFinanceiro = formatPhone(dadosPagamento.telefone_financeiro || romaneio.lot?.telefone_financeiro)
+
+    const getItemQuantidade = (item) => Number(item.quantidade ?? item.quantity ?? 0)
+    const getItemValorUnitario = (item) => Number(item.valor_unitario ?? item.valorUnitario ?? item.preco ?? 0)
+    const getItemValorTotal = (item) => {
+      if (item.valor_total != null) return Number(item.valor_total)
+      if (item.valorTotal != null) return Number(item.valorTotal)
+      return getItemValorUnitario(item) * getItemQuantidade(item)
+    }
+
+    const totalProdutosFallback = items.reduce((sum, item) => sum + getItemValorTotal(item), 0)
+    const quantidadeItensFallback = items.reduce((sum, item) => sum + getItemQuantidade(item), 0)
+    const valorProdutos = Number(romaneio.valor_produtos ?? totalProdutosFallback)
+    const taxaSeparacao = Number(romaneio.taxa_separacao ?? 0)
+    const descontoCredito = Number(romaneio.desconto_credito ?? 0)
+    const quantidadeItens = Number(romaneio.quantidade_itens ?? quantidadeItensFallback)
+    const valorTotal = Number(romaneio.valor_total ?? (valorProdutos + taxaSeparacao - descontoCredito))
+
+    const margin = 50
+    let y = height - 60
+
+    // Cabeçalho simples
+    drawCenteredText('A', y, 20, true, rgb(0.6, 0.6, 0.6))
+    y -= 24
+    drawCenteredText('ARTEA JOIAS', y, 16, true)
+    y -= 12
+    page.drawLine({
+      start: { x: margin, y },
+      end: { x: width - margin, y },
+      thickness: 1,
+      color: rgb(0.85, 0.85, 0.85),
+    })
+    y -= 20
+
+    drawText(`Romaneio do Link ${lotNome} ${requerPacoteTexto}`.trim(), margin, y, 11, false)
+    drawTextRight(`Pedido nº ${pedidoNumero}`, width - margin, y, 10, false, rgb(0.4, 0.4, 0.4))
+    y -= 18
+
+    // Dados do cliente
+    const clientBoxHeight = 78
+    const clientBoxY = y - clientBoxHeight
+    page.drawRectangle({
+      x: margin,
+      y: clientBoxY,
+      width: width - margin * 2,
+      height: clientBoxHeight,
+      borderColor: rgb(0.85, 0.85, 0.85),
+      borderWidth: 1,
+    })
+    let infoY = y - 16
+    drawLabelValue('Cliente:', clienteNome, margin + 10, infoY, 10)
+    infoY -= 14
+    drawLabelValue('CPF/CNPJ:', clienteCpf, margin + 10, infoY, 10)
+    infoY -= 14
+    drawLabelValue('WhatsApp:', clienteTelefone, margin + 10, infoY, 10)
+    infoY -= 14
+    drawLabelValue('E-mail:', clienteEmail, margin + 10, infoY, 10)
+    infoY -= 14
+    drawLabelValue('Data Fechamento:', dataFechamento, margin + 10, infoY, 10)
+    y = clientBoxY - 20
+
+    const colX = {
+      img: margin,
+      cat: margin + 20,
+      desc: margin + 100,
+      unit: margin + 280,
+      qty: margin + 350,
+      total: margin + 410,
+    }
+
+    const drawTableHeader = () => {
+      page.drawRectangle({
+        x: margin,
+        y: y - 15,
+        width: width - margin * 2,
+        height: 20,
+        borderColor: rgb(0.85, 0.85, 0.85),
+        borderWidth: 0.8,
+        color: rgb(0.97, 0.97, 0.97),
+      })
+      drawText('', colX.img, y - 2, 9, true)
+      drawText('CATEGORIA', colX.cat, y - 2, 9, true)
+      drawText('DESCRIÇÃO', colX.desc, y - 2, 9, true)
+      drawText('VALOR', colX.unit, y + 5, 8, true)
+      drawText('UNITÁRIO', colX.unit, y - 5, 8, true)
+      drawText('QUANTIDADE', colX.qty, y - 2, 8, true)
+      drawText('VALOR', colX.total, y + 5, 8, true)
+      drawText('TOTAL', colX.total, y - 5, 8, true)
+      y -= 24
+    }
+
+    const ensureSpace = (space) => {
+      if (y < space) {
+        page = pdfDoc.addPage([595.28, 841.89])
+        y = height - 60
+        drawTableHeader()
+      }
+    }
+
+    // Tabela de produtos
+    drawTableHeader()
+    items.forEach((item) => {
+      ensureSpace(120)
+      const product = item.product || item.produto || item
+      const categoria = product?.category?.nome || product?.categoria?.nome || product?.categoria_nome || '-'
+      const descricaoBase = product?.descricao || product?.nome || item.descricao || item.nome || 'Produto Indefinido'
+      const descricao = truncateText(descricaoBase, 160, 9, false)
+      const quantidade = getItemQuantidade(item)
+      const valorUnitario = formatCurrency(getItemValorUnitario(item))
+      const valorTotalItem = formatCurrency(getItemValorTotal(item))
+
+      drawText('', colX.img, y, 9)
+      drawText(truncateText(categoria, 70, 9), colX.cat, y, 9)
+      drawText(descricao, colX.desc, y, 9)
+      drawText(valorUnitario, colX.unit, y, 9)
+      drawText(String(quantidade), colX.qty + 10, y, 9)
+      drawText(valorTotalItem, colX.total, y, 9)
+
+      page.drawLine({
+        start: { x: margin, y: y - 6 },
+        end: { x: width - margin, y: y - 6 },
+        thickness: 0.5,
+        color: rgb(0.9, 0.9, 0.9),
+      })
+      y -= 18
     })
 
-    // --- Totais ---
-    y -= 10
-    page.drawRectangle({ x: 300, y: y - 40, width: 250, height: 60, color: rgb(0.98, 0.98, 0.98), borderColor: rgb(0.9,0.9,0.9), borderWidth: 1 })
-    
-    y -= 15
-    drawText('Total Itens:', 320, y, 10, false)
-    drawText(totalQtd.toString(), 500, y, 10, true)
-    
+    y -= 8
+    page.drawLine({
+      start: { x: margin, y },
+      end: { x: width - margin, y },
+      thickness: 1,
+      color: rgb(0, 0, 0),
+    })
     y -= 20
-    drawText('VALOR TOTAL:', 320, y, 12, true)
-    drawText(`R$ ${totalValor.toFixed(2)}`, 500, y, 12, true)
 
-    // Footer Legal
-    drawText('Este documento é um comprovante de conferência de compra coletiva.', 50, 40, 8, false, rgb(0.5,0.5,0.5))
-    drawText('Artea Joias - Sistema de Gestão', 50, 30, 8, false, rgb(0.5,0.5,0.5))
+    if (y < 220) {
+      page = pdfDoc.addPage([595.28, 841.89])
+      y = height - 60
+    }
+
+    // Resumo financeiro
+    drawText(`• Valor Total da Compra: ${formatCurrency(valorTotal)}`, margin, y, 10, true)
+    y -= 16
+    drawText(`• Valor Produtos: ${formatCurrency(valorProdutos)}`, margin + 10, y, 9, false)
+    y -= 14
+    if (descontoCredito > 0) {
+      drawText(`○ Desconto (crédito anterior): ${formatCurrency(descontoCredito)}`, margin + 20, y, 9, false)
+      y -= 14
+    }
+    drawText(`• Custo Separação: ${formatCurrency(taxaSeparacao)}`, margin + 10, y, 9, false)
+    y -= 14
+    drawText(`• Quantidade Total de Produtos: ${quantidadeItens}`, margin + 10, y, 9, false)
+    y -= 22
+
+    // Dados para pagamento
+    const pagamentoWidth = width - margin * 2 - 10
+    type PagamentoLine = { text: string; bold: boolean; color: any }
+    const pagamentoLines: PagamentoLine[] = [
+      { text: 'Dados para o pagamento:', bold: true, color: rgb(0, 0, 0) },
+      { text: 'PAGAMENTO VIA PIX OU CARTÃO DE CRÉDITO.', bold: true, color: rgb(0, 0, 0) },
+    ]
+
+    if (pixKey) pagamentoLines.push({ text: `Chave Pix CNPJ: ${pixKey}`, bold: false, color: rgb(0, 0, 0) })
+    if (nomeBeneficiario) pagamentoLines.push({ text: nomeBeneficiario, bold: false, color: rgb(0, 0, 0) })
+    if (telefoneFinanceiro) {
+      pagamentoLines.push({
+        text: `Comprovante de pagamento deve ser enviado para o setor financeiro ${telefoneFinanceiro}`,
+        bold: false,
+        color: rgb(0, 0, 0),
+      })
+    }
+    pagamentoLines.push({
+      text: 'IMPORTANTE: Atenção ao pagamento, deve ser realizado assim que receber o romaneio.',
+      bold: true,
+      color: rgb(0, 0, 0),
+    })
+    pagamentoLines.push({
+      text: 'Caso o pagamento não seja realizado em até 24hs será removido do grupo e terá seu cadastro bloqueado permanentemente, ficando impossibilitado de realizar novas compras.',
+      bold: false,
+      color: rgb(0.4, 0.4, 0.4),
+    })
+
+    const wrappedPagamento: PagamentoLine[] = []
+    pagamentoLines.forEach((line) => {
+      wrapText(line.text, pagamentoWidth, 9, line.bold).forEach((part) => {
+        wrappedPagamento.push({ text: part, bold: line.bold, color: line.color })
+      })
+    })
+
+    const pagamentoHeight = wrappedPagamento.length * 12 + 10
+    if (y - pagamentoHeight < 60) {
+      page = pdfDoc.addPage([595.28, 841.89])
+      y = height - 60
+    }
+
+    const payTopY = y
+    page.drawRectangle({
+      x: margin - 4,
+      y: payTopY - pagamentoHeight,
+      width: 4,
+      height: pagamentoHeight,
+      color: rgb(0.85, 0.7, 0.2),
+    })
+
+    let payY = payTopY - 12
+    wrappedPagamento.forEach((line) => {
+      drawText(line.text, margin + 6, payY, 9, line.bold, line.color)
+      payY -= 12
+    })
+
+    y = payTopY - pagamentoHeight - 20
 
     const pdfBytes = await pdfDoc.save()
 

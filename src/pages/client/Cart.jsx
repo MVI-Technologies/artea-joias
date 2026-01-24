@@ -107,72 +107,66 @@ export default function Cart() {
     return `ROM-${dateStr}-${random}`
   }
 
-  const handleDownloadRomaneioPDF = async (romaneioId, fileName) => {
+  const handleDownloadRomaneioPDF = async (romaneioId, fileName, items) => {
+    if (!romaneioId) {
+      throw new Error('ID do romaneio não fornecido')
+    }
+
+    console.log('Gerando PDF para romaneio:', romaneioId)
+    
     try {
-      // Usar o método do Supabase que gerencia autenticação automaticamente
-      const { data, error } = await supabase.functions.invoke('generate-romaneio-pdf', {
-        body: { romaneioId }
-      })
-
-      if (error) {
-        // Se der erro, tentar método direto com fetch
-        throw new Error('Erro ao invocar função, tentando método alternativo...')
-      }
-
-      // Se retornou erro no data
-      if (data && data.error) {
-        throw new Error(data.error)
-      }
-
-      // Se chegou aqui, o invoke funcionou mas pode não retornar blob corretamente
-      // Vamos usar fetch direto como fallback
-      throw new Error('Necessário usar fetch direto para blob')
+      const { data: { session } } = await supabase.auth.getSession()
       
-    } catch (error) {
-      // Fallback: usar fetch direto com autenticação do Supabase
-      try {
-        const { data: { session } } = await supabase.auth.getSession()
-        
-        if (!session) {
-          throw new Error('Sessão não encontrada. Faça login novamente.')
-        }
-
-        const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-romaneio-pdf`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`,
-            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ romaneioId })
-        })
-        
-        if (!response.ok) {
-          let errorMessage = 'Falha ao gerar PDF'
-          try {
-            const err = await response.json()
-            errorMessage = err.error || errorMessage
-          } catch {
-            errorMessage = `Erro ${response.status}: ${response.statusText}`
-          }
-          throw new Error(errorMessage)
-        }
-        
-        const blob = await response.blob()
-        const url = window.URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = fileName || `Romaneio-${romaneioId.slice(0, 8)}.pdf`
-        document.body.appendChild(a)
-        a.click()
-        window.URL.revokeObjectURL(url)
-        document.body.removeChild(a)
-        
-        return true
-      } catch (fetchError) {
-        console.error('Erro ao gerar PDF:', fetchError)
-        throw fetchError
+      if (!session) {
+        throw new Error('Sessão não encontrada. Faça login novamente.')
       }
+
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-romaneio-pdf`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ romaneioId, items })
+      })
+      
+      if (!response.ok) {
+        let errorMessage = 'Falha ao gerar PDF'
+        try {
+          const err = await response.json()
+          errorMessage = err.error || errorMessage
+          console.error('Erro da função:', err)
+        } catch {
+          const text = await response.text()
+          console.error('Resposta de erro (texto):', text)
+          errorMessage = `Erro ${response.status}: ${response.statusText}`
+        }
+        throw new Error(errorMessage)
+      }
+      
+      const blob = await response.blob()
+      
+      if (blob.type === 'application/json') {
+        // Se retornou JSON em vez de PDF, é um erro
+        const errorData = await blob.text()
+        const parsed = JSON.parse(errorData)
+        throw new Error(parsed.error || 'Erro ao gerar PDF')
+      }
+      
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = fileName || `Romaneio-${romaneioId.slice(0, 8)}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+      
+      return true
+    } catch (error) {
+      console.error('Erro ao gerar PDF:', error)
+      throw error
     }
   }
 
@@ -204,11 +198,32 @@ export default function Cart() {
             status: 'pendente'
         }))
 
-        const { error: ordersError } = await supabase
+        const itemsSnapshot = group.items.map(item => ({
+          quantidade: item.quantity,
+          valor_unitario: item.preco,
+          valor_total: item.preco * item.quantity,
+          product: {
+            nome: item.nome,
+            descricao: item.descricao,
+            codigo_sku: item.codigo_sku,
+            category: item.category || item.categoria || (item.categoria_nome ? { nome: item.categoria_nome } : null)
+          }
+        }))
+
+        const romaneioSnapshot = {
+          items: itemsSnapshot,
+          cpf: client.cpf || null,
+          email: client.email || null,
+          telefone: client.telefone || null
+        }
+
+        const { data: insertedOrders, error: ordersError } = await supabase
             .from('orders')
             .insert(ordersToInsert)
+            .select('id')
 
         if (ordersError) throw ordersError
+        const insertedOrderIds = (insertedOrders || []).map(order => order.id)
 
         // 4. Criar ou Atualizar Romaneio
         const totalItens = group.items.reduce((sum, item) => sum + item.quantity, 0)
@@ -238,14 +253,24 @@ export default function Cart() {
               cliente_nome_snapshot: client.nome,
               cliente_telefone_snapshot: client.telefone,
               endereco_entrega_snapshot: client.enderecos?.[0] || null,
+              dados: romaneioSnapshot,
               updated_at: new Date().toISOString()
             })
             .eq('id', existingRomaneio.id)
             .select()
             .single()
 
-          if (updateError) throw updateError
+          if (updateError) {
+            console.error('Erro ao atualizar romaneio:', updateError)
+            throw new Error(`Erro ao atualizar romaneio: ${updateError.message}`)
+          }
+          
+          if (!updatedRomaneio || !updatedRomaneio.id) {
+            throw new Error('Romaneio atualizado mas ID não retornado')
+          }
+          
           romaneioId = updatedRomaneio.id
+          console.log('Romaneio atualizado com sucesso:', romaneioId)
         } else {
           // Criar novo romaneio
           const romaneioData = {
@@ -263,7 +288,8 @@ export default function Cart() {
             cliente_nome_snapshot: client.nome,
             cliente_telefone_snapshot: client.telefone,
             endereco_entrega_snapshot: client.enderecos?.[0] || null,
-            dados: {}
+            dados: romaneioSnapshot,
+            numero_pedido: `PED-${Date.now()}`
           }
 
           const { data: newRomaneio, error: insertError } = await supabase
@@ -272,19 +298,71 @@ export default function Cart() {
             .select()
             .single()
 
-          if (insertError) throw insertError
+          if (insertError) {
+            console.error('Erro ao criar romaneio:', insertError)
+            throw new Error(`Erro ao criar romaneio: ${insertError.message}`)
+          }
+          
+          if (!newRomaneio || !newRomaneio.id) {
+            throw new Error('Romaneio criado mas ID não retornado')
+          }
+          
           romaneioId = newRomaneio.id
+          console.log('Romaneio criado com sucesso:', romaneioId)
         }
 
-        // 5. Gerar e baixar PDF do romaneio
-        if (romaneioId) {
-          await handleDownloadRomaneioPDF(romaneioId, `Romaneio-${group.lot.nome}.pdf`)
+        // 5. Vincular pedidos ao romaneio atual
+        if (romaneioId && insertedOrderIds.length > 0) {
+          const { error: updateOrdersError } = await supabase
+            .from('orders')
+            .update({ romaneio_id: romaneioId })
+            .in('id', insertedOrderIds)
+
+          if (updateOrdersError) throw updateOrdersError
         }
 
-        // 5. Limpar Carrinho Local deste lote
+        // 5.5. Verificar se o romaneio foi criado corretamente
+        if (!romaneioId) {
+          throw new Error('Erro ao criar romaneio. Tente novamente.')
+        }
+
+        // Verificar se o romaneio existe no banco antes de gerar PDF (com retry)
+        let verifyRomaneio = null
+        let verifyError = null
+        let retries = 3
+        
+        for (let i = 0; i < retries; i++) {
+          const { data, error } = await supabase
+            .from('romaneios')
+            .select('id')
+            .eq('id', romaneioId)
+            .single()
+          
+          if (!error && data) {
+            verifyRomaneio = data
+            break
+          }
+          
+          verifyError = error
+          if (i < retries - 1) {
+            // Aguardar um pouco antes de tentar novamente
+            await new Promise(resolve => setTimeout(resolve, 500))
+          }
+        }
+
+        if (!verifyRomaneio) {
+          console.error('Erro ao verificar romaneio após retries:', verifyError)
+          console.log('Romaneio ID tentado:', romaneioId)
+          throw new Error('Romaneio criado mas não encontrado. Aguarde alguns segundos e tente baixar o PDF novamente.')
+        }
+
+        // 6. Gerar e baixar PDF do romaneio
+        await handleDownloadRomaneioPDF(romaneioId, `Romaneio-${group.lot.nome}.pdf`, itemsSnapshot)
+
+        // 7. Limpar Carrinho Local deste lote
         localStorage.removeItem(`cart_${lotId}`)
         
-        // 6. Feedback e Redirecionar
+        // 8. Feedback e Redirecionar
         toast.success('Pedido realizado com sucesso! Romaneio gerado.')
         navigate('/app/historico')
 

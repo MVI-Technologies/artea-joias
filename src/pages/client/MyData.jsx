@@ -13,7 +13,7 @@ export default function MyData() {
     nome: '',
     telefone: '',
     email: '',
-    cpf: '', 
+    cpf: '',
     endereco_completo: '',
     observacoes: ''
   })
@@ -45,7 +45,7 @@ export default function MyData() {
             nome: data.nome || '',
             telefone: data.telefone || '',
             email: data.email || user.email || '',
-            cpf: '***.***.***-**', 
+            cpf: data.cpf || '',
             endereco_completo: data.enderecos?.[0] || '', 
             observacoes: '' 
         })
@@ -76,6 +76,7 @@ export default function MyData() {
             nome: formData.nome,
             telefone: formData.telefone,
             email: formData.email,
+            cpf: formData.cpf,
             enderecos: formData.endereco_completo ? [formData.endereco_completo] : [],
             updated_at: new Date()
         }
@@ -160,6 +161,16 @@ export default function MyData() {
                 onChange={e => setFormData({...formData, email: e.target.value})}
                 placeholder="seu@email.com"
             />
+        </div>
+
+        <div className="my-data-form-group">
+          <label>CPF/CNPJ</label>
+          <input
+            type="text"
+            value={formData.cpf}
+            onChange={e => setFormData({ ...formData, cpf: e.target.value })}
+            placeholder="Digite seu CPF ou CNPJ"
+          />
         </div>
 
         <div className="my-data-form-group">
