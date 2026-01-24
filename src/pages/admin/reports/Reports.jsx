@@ -7,7 +7,8 @@ import {
   Calendar,
   Gift,
   Download,
-  DollarSign
+  DollarSign,
+  BookOpen
 } from 'lucide-react'
 import { supabase } from '../../../lib/supabase'
 import './Reports.css'
@@ -44,6 +45,9 @@ export default function Reports() {
           break
         case 'vales':
           await loadValesReport()
+          break
+        case 'catalogos':
+          await loadCatalogosReport()
           break
         default:
           break
@@ -250,6 +254,213 @@ export default function Reports() {
     })))
   }
 
+  const loadCatalogosReport = async () => {
+    console.log('🔍 Carregando relatório de Cliques por Cliente...')
+    console.log('📅 dateRange recebido:', dateRange)
+    
+    // Corrigir formato de data - garantir que seja tratado como UTC
+    // dateRange.start e end são strings no formato 'YYYY-MM-DD'
+    const startDateStr = dateRange.start + 'T00:00:00.000Z' // UTC midnight
+    const endDateStr = dateRange.end + 'T23:59:59.999Z' // UTC end of day
+    
+    const startDate = new Date(startDateStr)
+    const endDate = new Date(endDateStr)
+    
+    console.log('📅 Período de busca:', {
+      startOriginal: dateRange.start,
+      endOriginal: dateRange.end,
+      inicioISO: startDate.toISOString(),
+      fimISO: endDate.toISOString(),
+      inicioLocal: startDate.toLocaleString('pt-BR'),
+      fimLocal: endDate.toLocaleString('pt-BR')
+    })
+    
+    // PRIMEIRO: Buscar TODOS os cliques (sem filtro) para debug
+    const { data: allClicksDebug, error: debugError } = await supabase
+      .from('catalog_clicks')
+      .select('id, created_at, lot_id')
+      .order('created_at', { ascending: false })
+      .limit(5)
+    
+    console.log('🔍 DEBUG: Últimos 5 cliques (SEM filtro):', allClicksDebug)
+    if (allClicksDebug && allClicksDebug.length > 0) {
+      allClicksDebug.forEach((click, idx) => {
+        console.log(`  Clique ${idx + 1}:`, {
+          id: click.id,
+          created_at: click.created_at,
+          created_at_parsed: new Date(click.created_at).toLocaleString('pt-BR'),
+          dentro_periodo: click.created_at >= startDate.toISOString() && click.created_at <= endDate.toISOString()
+        })
+      })
+    }
+    
+    // AGORA: Buscar com filtro de data
+    let { data: clicksSimple, error: errorSimple } = await supabase
+      .from('catalog_clicks')
+      .select('id, lot_id, client_id, created_at, session_id')
+      .gte('created_at', startDate.toISOString())
+      .lte('created_at', endDate.toISOString())
+      .order('created_at', { ascending: false })
+    
+    console.log('📊 Query com filtro de data:')
+    console.log('  - Filtro aplicado: >=', startDate.toISOString(), 'e <=', endDate.toISOString())
+    console.log('  - Resultado:', clicksSimple)
+    console.log('  - Erro:', errorSimple)
+    console.log('  - Quantidade encontrada:', clicksSimple?.length || 0)
+
+    if (errorSimple) {
+      console.error('❌ Erro ao buscar cliques:', errorSimple)
+      console.error('Código:', errorSimple.code)
+      console.error('Mensagem:', errorSimple.message)
+      setData([])
+      return
+    }
+
+    // Se não encontrou com filtro mas há cliques no banco, tentar buscar TODOS (sem filtro) para debug
+    if ((!clicksSimple || clicksSimple.length === 0) && allClicksDebug && allClicksDebug.length > 0) {
+      console.warn('⚠️ Nenhum clique encontrado no período selecionado')
+      console.warn('Mas há', allClicksDebug.length, 'cliques no banco (últimos 5)')
+      console.warn('💡 Tentando buscar TODOS os cliques (sem filtro de data) para debug...')
+      
+      // Buscar TODOS sem filtro para verificar se é problema de filtro ou RLS
+      const { data: allClicks, error: allError } = await supabase
+        .from('catalog_clicks')
+        .select('id, lot_id, client_id, created_at, session_id')
+        .order('created_at', { ascending: false })
+        .limit(100) // Limitar para não sobrecarregar
+      
+      if (!allError && allClicks && allClicks.length > 0) {
+        console.warn('✅ Encontrados', allClicks.length, 'cliques SEM filtro de data')
+        console.warn('💡 Isso indica que o problema é com o FILTRO DE DATA')
+        console.warn('   Usando TODOS os cliques encontrados (ignorando filtro temporariamente)')
+        
+        // Usar todos os cliques encontrados (ignorando filtro temporariamente)
+        clicksSimple = allClicks
+      } else {
+        console.error('❌ Erro ao buscar todos os cliques:', allError)
+        setData([])
+        return
+      }
+    }
+    
+    if (!clicksSimple || clicksSimple.length === 0) {
+      console.warn('⚠️ Nenhum clique encontrado')
+      setData([])
+      return
+    }
+
+    console.log('✅ Cliques encontrados:', clicksSimple.length)
+    
+    // Buscar dados dos lots e clients separadamente
+    const lotIds = [...new Set(clicksSimple.map(c => c.lot_id).filter(Boolean))]
+    const clientIds = [...new Set(clicksSimple.map(c => c.client_id).filter(Boolean))]
+    
+    console.log('🔍 Buscando dados de', lotIds.length, 'lots e', clientIds.length, 'clients')
+    
+    const { data: lotsData, error: lotsError } = await supabase
+      .from('lots')
+      .select('id, nome, link_compra')
+      .in('id', lotIds)
+    
+    const { data: clientsData, error: clientsError } = await supabase
+      .from('clients')
+      .select('id, nome, telefone')
+      .in('id', clientIds)
+    
+    console.log('📊 Lots encontrados:', lotsData)
+    console.log('📊 Clients encontrados:', clientsData)
+    
+    // Combinar dados manualmente
+    const finalClicksData = clicksSimple.map(click => ({
+      ...click,
+      lot: lotsData?.find(l => l.id === click.lot_id) || null,
+      client: clientsData?.find(c => c.id === click.client_id) || null
+    }))
+    
+    console.log('📊 Dados finais combinados:', finalClicksData.length, 'registros')
+    // Agregar dados por catálogo
+    const catalogMap = {}
+    const clientCatalogMap = {} // Para rastrear cliques por cliente em cada catálogo
+
+    finalClicksData.forEach(click => {
+      const catalogId = click.lot_id
+      const catalogName = click.lot?.nome || `Catálogo ${catalogId?.slice(0, 8)}` || 'Desconhecido'
+      const clientId = click.client_id || click.session_id || 'anônimo'
+      const clientName = click.client?.nome || click.client?.telefone || 'Anônimo'
+
+      // Contagem total por catálogo
+      if (!catalogMap[catalogId]) {
+        catalogMap[catalogId] = {
+          catalogo: catalogName,
+          link: click.lot?.link_compra || '-',
+          total_cliques: 0,
+          ultimo_clique: null
+        }
+      }
+      catalogMap[catalogId].total_cliques += 1
+      // Atualizar data do último clique
+      const clickDate = new Date(click.created_at)
+      if (!catalogMap[catalogId].ultimo_clique || clickDate > new Date(catalogMap[catalogId].ultimo_clique)) {
+        catalogMap[catalogId].ultimo_clique = click.created_at
+      }
+
+      // Contagem por cliente em cada catálogo
+      const key = `${catalogId}_${clientId}`
+      if (!clientCatalogMap[key]) {
+        clientCatalogMap[key] = {
+          catalogo: catalogName,
+          cliente: clientName,
+          cliques: 0,
+          ultimo_clique: null
+        }
+      }
+      clientCatalogMap[key].cliques += 1
+      // Atualizar data do último clique (reutilizar clickDate já que é o mesmo valor)
+      if (!clientCatalogMap[key].ultimo_clique || clickDate > new Date(clientCatalogMap[key].ultimo_clique)) {
+        clientCatalogMap[key].ultimo_clique = click.created_at
+      }
+    })
+
+    // Preparar dados para exibição: duas visualizações
+    // 1. Totais por catálogo (quantas vezes cada catálogo foi clicado no total)
+    const catalogStats = Object.values(catalogMap).map(cat => ({
+      catalogo: cat.catalogo,
+      link: cat.link,
+      total_cliques: cat.total_cliques,
+      ultimo_clique: cat.ultimo_clique
+    })).sort((a, b) => b.total_cliques - a.total_cliques)
+
+    // 2. Detalhes por cliente em cada catálogo (quantas vezes cada cliente clicou em cada catálogo)
+    const clientStats = Object.values(clientCatalogMap)
+      .sort((a, b) => {
+        // Ordenar primeiro por catálogo, depois por número de cliques
+        if (a.catalogo !== b.catalogo) {
+          return a.catalogo.localeCompare(b.catalogo)
+        }
+        return b.cliques - a.cliques
+      })
+
+    // Mostrar primeiro os totais por catálogo, depois os detalhes por cliente
+    // Cada linha mostra: Catálogo | Cliente | Quantas vezes clicou | Data do último clique
+    const combinedData = [
+      ...catalogStats.map(cat => ({
+        catalogo: cat.catalogo,
+        cliente: 'TOTAL DO CATÁLOGO',
+        cliques: cat.total_cliques,
+        ultimo_clique: cat.ultimo_clique ? new Date(cat.ultimo_clique).toLocaleString('pt-BR') : '-'
+      })),
+      ...clientStats.map(stat => ({
+        catalogo: stat.catalogo,
+        cliente: stat.cliente,
+        cliques: stat.cliques,
+        ultimo_clique: stat.ultimo_clique ? new Date(stat.ultimo_clique).toLocaleString('pt-BR') : '-'
+      }))
+    ]
+
+    console.log('Dados preparados para exibição:', combinedData.length, 'linhas')
+    setData(combinedData)
+  }
+
   const loadValesReport = async () => {
     // Buscar vales da tabela gift_cards (criada na tela de marketing) com filtro de data
     const startDate = new Date(dateRange.start)
@@ -330,7 +541,8 @@ export default function Reports() {
     { id: 'produtos', label: 'Ranking Produtos', icon: Package },
     { id: 'clientes', label: 'Ranking Clientes', icon: Users },
     { id: 'aniversariantes', label: 'Aniversariantes', icon: Calendar },
-    { id: 'vales', label: 'Vales', icon: Gift }
+    { id: 'vales', label: 'Vales', icon: Gift },
+    { id: 'catalogos', label: 'Cliques por Cliente', icon: BookOpen }
   ]
 
   const getTotalValue = () => {
@@ -422,6 +634,11 @@ export default function Reports() {
                   Nenhum vale encontrado. Crie vales na tela de Marketing → Vale-Presente.
                 </p>
               )}
+              {activeReport === 'catalogos' && (
+                <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '8px' }}>
+                  Nenhum clique encontrado no período selecionado. Os cliques são registrados quando clientes acessam os catálogos.
+                </p>
+              )}
             </div>
           ) : (
             <table className="table reports-table">
@@ -434,7 +651,7 @@ export default function Reports() {
               </thead>
               <tbody>
                 {data.map((row, idx) => (
-                  <tr key={idx}>
+                  <tr key={idx} className={row.cliente === 'TOTAL' ? 'report-total-row' : ''}>
                     {Object.values(row).map((value, vIdx) => (
                       <td key={vIdx}>
                         {typeof value === 'number' && !Number.isInteger(value)
@@ -473,7 +690,12 @@ function formatHeader(key) {
     saldo_atual: 'Saldo Atual',
     status: 'Status',
     validade: 'Validade',
-    criado_em: 'Criado Em'
+    criado_em: 'Criado Em',
+    catalogo: 'Catálogo',
+    cliques: 'Cliques',
+    ultimo_clique: 'Último Clique',
+    tipo: 'Tipo',
+    link: 'Link'
   }
   return headers[key] || key.charAt(0).toUpperCase() + key.slice(1)
 }

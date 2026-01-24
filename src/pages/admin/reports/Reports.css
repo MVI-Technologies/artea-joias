@@ -74,6 +74,17 @@
   font-size: var(--font-size-lg);
 }
 
+/* Total row highlight */
+.report-total-row {
+  background-color: rgba(59, 130, 246, 0.1) !important;
+  font-weight: 600;
+}
+
+.report-total-row td {
+  border-top: 2px solid var(--color-primary);
+  border-bottom: 2px solid var(--color-primary);
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .report-types {
