@@ -13,7 +13,8 @@ import {
   CreditCard,
   X,
   AlertTriangle,
-  MessageCircle 
+  MessageCircle,
+  Trash2 
 } from 'lucide-react'
 import WhatsAppIcon from '../../../components/icons/WhatsAppIcon'
 import { supabase } from '../../../lib/supabase'
@@ -51,6 +52,28 @@ export default function ClientList() {
       console.error('Erro ao carregar clientes:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleDelete = async (client) => {
+    if (!window.confirm(`Tem certeza que deseja excluir o cliente "${client.nome}"? Esta ação não pode ser desfeita.`)) {
+      return
+    }
+
+    try {
+      const { error } = await supabase
+        .from('clients')
+        .delete()
+        .eq('id', client.id)
+
+      if (error) throw error
+      
+      // Update local state directly to avoid refetch flicker
+      setClients(clients.filter(c => c.id !== client.id))
+      // fetchClients() // Optional: refetch to be sure
+    } catch (error) {
+      console.error('Erro ao excluir cliente:', error)
+      alert('Erro ao excluir cliente: ' + error.message)
     }
   }
 
@@ -242,6 +265,15 @@ export default function ClientList() {
                             {client.approved ? "Bloquear" : "Aprovar"}
                           </button>
                       )}
+                      
+                      <button 
+                        className="btn btn-sm btn-outline-danger ml-2"
+                        onClick={() => handleDelete(client)}
+                        title="Excluir Cliente"
+                        style={{marginLeft: '8px'}}
+                      >
+                        <Trash2 size={16} />
+                      </button>
                     </td>
                   </tr>
                 ))

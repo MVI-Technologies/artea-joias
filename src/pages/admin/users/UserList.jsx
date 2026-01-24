@@ -42,6 +42,10 @@ export default function UserList() {
     }
   }
 
+
+
+
+
   const handleSave = async () => {
     if (!formData.nome || !formData.email) {
       alert('Nome e Email são obrigatórios')
@@ -153,9 +157,18 @@ export default function UserList() {
                   </span>
                 </td>
                 <td>
-                  <button className="btn-icon" onClick={() => openEdit(user)}>
-                    <Edit size={16} />
-                  </button>
+                  <div className="actions-cell">
+                    <button className="btn-icon" onClick={() => openEdit(user)} title="Editar">
+                      <Edit size={16} />
+                    </button>
+                    <button 
+                      className="btn-icon text-danger" 
+                      onClick={() => handleDelete(user)} 
+                      title="Excluir"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
