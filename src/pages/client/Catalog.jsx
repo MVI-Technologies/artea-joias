@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, ShoppingCart, Plus, Minus } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
@@ -6,10 +6,19 @@ import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../components/common/Toast'
 import './Catalog.css'
 
+// LOG IMEDIATO AO CARREGAR O ARQUIVO
+console.log('%c📦 ARQUIVO Catalog.jsx CARREGADO', 'background: purple; color: white; font-size: 20px; padding: 10px;')
+window.console.log('%c📦 ARQUIVO Catalog.jsx CARREGADO (window.console)', 'background: purple; color: white; font-size: 20px; padding: 10px;')
+
 export default function Catalog() {
   const { linkUrl } = useParams() 
   const { lotId } = useParams()
   const id = lotId || linkUrl 
+
+  // FORÇAR LOGS - usar window.console para garantir que execute
+  window.console.log('%c🚀🚀🚀 COMPONENTE CATALOG RENDERIZADO 🚀🚀🚀', 'background: #222; color: #bada55; font-size: 20px; padding: 10px;')
+  window.console.log('ID recebido:', id)
+  window.console.log('linkUrl:', linkUrl, 'lotId:', lotId)
 
   const navigate = useNavigate()
   const toast = useToast()
@@ -18,40 +27,322 @@ export default function Catalog() {
   const [loading, setLoading] = useState(true)
   const [addingToCart, setAddingToCart] = useState(null)
   const [quantities, setQuantities] = useState({})
+  // Usar uma key baseada no ID para garantir que cada acesso ao catálogo seja único
+  const clickTracked = useRef(new Map()) // Map<lotId, boolean> para rastrear por catálogo
+
+  const { client } = useAuth()
+  
+  window.console.log('🔍 Estado atual:', { id, loading, lot: lot?.id, client: client?.id })
 
   useEffect(() => {
-    if (id) loadCatalog()
+    window.console.log('%c🔵 useEffect inicial executado', 'background: blue; color: white; padding: 5px;')
+    window.console.log('ID:', id)
+    
+    // SEMPRE resetar tracking quando muda o ID do catálogo
+    // Isso permite que cada acesso ao catálogo seja registrado como um novo clique
+    if (id) {
+      clickTracked.current.delete(id) // Remove tracking anterior deste catálogo
+      window.console.log('🔄 Tracking resetado para este catálogo - permitindo novo registro')
+    }
+    
+    if (id) {
+      window.console.log('Chamando loadCatalog()')
+      loadCatalog()
+    } else {
+      window.console.warn('⚠️ ID não encontrado!')
+    }
   }, [id])
+
+  // Registrar clique no catálogo (sempre que o catálogo é carregado)
+  // REMOVIDO: não usar mais este useEffect para tracking, pois está sendo feito diretamente no loadCatalog
+
+  // Registrar clique no catálogo (versão direta com lotId)
+  const trackCatalogClickDirect = async (lotIdParam) => {
+    try {
+      window.console.log('%c=== TRACKING DIRETO INICIADO ===', 'background: purple; color: white; font-size: 16px; padding: 10px;')
+      window.console.log('Lot ID recebido:', lotIdParam)
+      window.console.log('Client:', client)
+      
+      // Teste imediato de inserção
+      window.console.log('🔍 Tentando inserir clique na tabela catalog_clicks...')
+      
+      if (!lotIdParam) {
+        console.warn('❌ Não é possível registrar clique: lotId não fornecido')
+        return
+      }
+
+      // Gerar session_id único se não houver client_id
+      const sessionId = client?.id ? null : `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      
+      const clickData = {
+        lot_id: lotIdParam,
+        client_id: client?.id || null,
+        session_id: sessionId,
+        ip_address: null,
+        user_agent: navigator.userAgent
+      }
+
+      window.console.log('%c📊 DADOS DO CLIQUE', 'background: orange; color: black; padding: 5px;')
+      window.console.log(clickData)
+      
+      window.console.log('🔍 Fazendo INSERT no Supabase...')
+      window.console.log('Tabela: catalog_clicks')
+      window.console.log('Dados a inserir:', JSON.stringify(clickData, null, 2))
+      
+      const { data, error } = await supabase
+        .from('catalog_clicks')
+        .insert(clickData)
+        .select()
+      
+      window.console.log('📡 Resposta do Supabase recebida')
+      window.console.log('Data retornada:', data)
+      window.console.log('Error retornado:', error)
+
+      if (error) {
+        window.console.error('%c❌❌❌ ERRO AO REGISTRAR CLIQUE ❌❌❌', 'background: red; color: white; font-size: 16px; padding: 10px;')
+        window.console.error('Código:', error.code)
+        window.console.error('Mensagem:', error.message)
+        window.console.error('Detalhes:', error.details)
+        window.console.error('Hint:', error.hint)
+        window.console.error('Erro completo:', JSON.stringify(error, null, 2))
+        
+        // Tentar novamente sem client_id
+        window.console.log('%c🔄 TENTANDO SEM CLIENT_ID', 'background: orange; color: white; padding: 5px;')
+        const { data: retryData, error: retryError } = await supabase
+          .from('catalog_clicks')
+          .insert({
+            lot_id: lotIdParam,
+            client_id: null,
+            session_id: sessionId,
+            ip_address: null,
+            user_agent: navigator.userAgent
+          })
+          .select()
+        
+        if (retryError) {
+          window.console.error('%c❌ ERRO NA TENTATIVA 2', 'background: red; color: white; padding: 5px;')
+          window.console.error(retryError)
+        } else {
+          window.console.log('%c✅✅✅ CLIQUE REGISTRADO COM SUCESSO (SEM CLIENT_ID) ✅✅✅', 'background: green; color: white; font-size: 16px; padding: 10px;')
+          window.console.log('Dados retornados:', retryData)
+          window.console.log('ID do registro:', retryData?.[0]?.id)
+          window.console.log('Created_at:', retryData?.[0]?.created_at)
+          
+          // Verificar se realmente foi salvo fazendo uma query
+          setTimeout(async () => {
+            const { data: verifyData, error: verifyError } = await supabase
+              .from('catalog_clicks')
+              .select('*')
+              .eq('id', retryData?.[0]?.id)
+              .single()
+            
+            if (verifyError) {
+              window.console.error('❌ ERRO ao verificar inserção:', verifyError)
+            } else {
+              window.console.log('✅ VERIFICAÇÃO: Clique confirmado no banco:', verifyData)
+            }
+          }, 1000)
+        }
+      } else {
+        window.console.log('%c✅✅✅ CLIQUE REGISTRADO COM SUCESSO ✅✅✅', 'background: green; color: white; font-size: 16px; padding: 10px;')
+        window.console.log('Dados retornados:', data)
+        window.console.log('ID do registro:', data?.[0]?.id)
+        window.console.log('Created_at:', data?.[0]?.created_at)
+        
+        // Verificar se realmente foi salvo fazendo uma query
+        setTimeout(async () => {
+          const { data: verifyData, error: verifyError } = await supabase
+            .from('catalog_clicks')
+            .select('*')
+            .eq('id', data?.[0]?.id)
+            .single()
+          
+          if (verifyError) {
+            window.console.error('❌ ERRO ao verificar inserção:', verifyError)
+          } else {
+            window.console.log('✅ VERIFICAÇÃO: Clique confirmado no banco:', verifyData)
+          }
+        }, 1000)
+      }
+    } catch (error) {
+      window.console.error('%c❌ ERRO INESPERADO', 'background: red; color: white; padding: 5px;')
+      window.console.error(error)
+      window.console.error('Stack:', error.stack)
+    }
+  }
+
+  // Registrar clique no catálogo
+  const trackCatalogClick = async () => {
+    try {
+      console.log('=== INICIANDO TRACKING DE CLIQUE ===')
+      console.log('Lot:', lot)
+      console.log('Client:', client)
+      
+      if (!lot || !lot.id) {
+        console.warn('❌ Não é possível registrar clique: lot não encontrado', { lot })
+        return
+      }
+
+      // Usar o ID real do lot (UUID), não o linkUrl que pode ser string
+      const lotId = lot.id
+      console.log('Lot ID para tracking:', lotId)
+
+      // Gerar session_id único se não houver client_id
+      const sessionId = client?.id ? null : `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      
+      const clickData = {
+        lot_id: lotId,
+        client_id: client?.id || null,
+        session_id: sessionId,
+        ip_address: null,
+        user_agent: navigator.userAgent
+      }
+
+      console.log('📊 Dados do clique a serem inseridos:', clickData)
+      console.log('🔍 Verificando se tabela catalog_clicks existe...')
+      
+      const { data, error } = await supabase
+        .from('catalog_clicks')
+        .insert(clickData)
+        .select()
+
+      if (error) {
+        console.error('❌ ERRO ao registrar clique:', error)
+        console.error('Código do erro:', error.code)
+        console.error('Mensagem:', error.message)
+        console.error('Detalhes:', error.details)
+        console.error('Hint:', error.hint)
+        
+        // Tentar novamente sem client_id se houver erro de RLS
+        if (error.code === '42501' || error.message?.includes('permission') || error.code === 'PGRST301') {
+          console.log('🔄 Tentando registrar sem client_id devido a erro de permissão')
+          const { data: retryData, error: retryError } = await supabase
+            .from('catalog_clicks')
+            .insert({
+              lot_id: lotId,
+              client_id: null,
+              session_id: sessionId,
+              ip_address: null,
+              user_agent: navigator.userAgent
+            })
+            .select()
+          
+          if (retryError) {
+            console.error('❌ Erro ao registrar clique (tentativa 2):', retryError)
+            console.error('Código:', retryError.code, 'Mensagem:', retryError.message)
+          } else {
+            console.log('✅ Clique registrado com sucesso (sem client_id):', retryData)
+          }
+        }
+      } else {
+        console.log('✅ Clique registrado com sucesso:', data)
+        console.log('=== TRACKING CONCLUÍDO ===')
+      }
+    } catch (error) {
+      console.error('❌ Erro inesperado ao registrar clique:', error)
+      console.error('Stack:', error.stack)
+    }
+  }
 
   const loadCatalog = async () => {
     try {
-      // 1. Carregar Lote
-      const { data: lotData, error: lotError } = await supabase
+      // FORÇAR LOGS - usar window.console e também console direto
+      const logMessage = `🚀 INICIANDO CARREGAMENTO DO CATÁLOGO - ID: ${id}`
+      window.console.log('%c' + logMessage, 'background: #0066cc; color: white; font-size: 18px; font-weight: bold; padding: 10px;')
+      console.log(logMessage) // Duplo log para garantir
+      console.log('ID recebido:', id)
+      window.console.log('ID recebido:', id)
+      window.console.trace('Stack trace do carregamento')
+      
+      // Teste direto de inserção
+      window.console.log('🔍 Testando inserção direta...')
+      
+      // 1. Carregar Lote - tentar primeiro por ID, depois por link_compra
+      let lotData = null
+      let lotError = null
+      
+      // Tentar buscar por ID (UUID)
+      const { data: dataById, error: errorById } = await supabase
         .from('lots')
         .select('*')
         .eq('id', id)
         .single()
 
-      if (lotError) throw lotError
+      if (!errorById && dataById) {
+        lotData = dataById
+        console.log('Catálogo encontrado por ID:', lotData)
+      } else {
+        // Se não encontrou por ID, tentar por link_compra (caso seja string)
+        console.log('Não encontrado por ID, tentando por link_compra:', id)
+        const { data: dataByLink, error: errorByLink } = await supabase
+          .from('lots')
+          .select('*')
+          .eq('link_compra', id)
+          .single()
+
+        if (!errorByLink && dataByLink) {
+          lotData = dataByLink
+          console.log('Catálogo encontrado por link_compra:', lotData)
+        } else {
+          lotError = errorByLink || errorById
+        }
+      }
+
+      if (lotError || !lotData) {
+        console.error('Erro ao buscar catálogo:', lotError)
+        throw lotError || new Error('Catálogo não encontrado')
+      }
+
+      // IMPORTANTE: Setar o lot ANTES de carregar produtos para que o tracking funcione
+      window.console.log('%c🟡 SETANDO LOT NO ESTADO', 'background: yellow; color: black; padding: 5px;')
+      window.console.log('Lot ID:', lotData.id)
       setLot(lotData)
+      window.console.log('%c✅ LOT SETADO', 'background: green; color: white; padding: 5px;')
+      
+      // SEMPRE executar tracking quando o catálogo é carregado
+      // Cada acesso ao catálogo deve registrar um novo clique (acumular)
+      // O clickTracked.current evita apenas múltiplos registros no mesmo carregamento da página
+      const lotIdForTracking = lotData.id
+      const alreadyTracked = clickTracked.current.get(lotIdForTracking)
+      
+      if (!alreadyTracked) {
+        window.console.log('%c🎯🎯🎯 REGISTRANDO NOVO CLIQUE NO CATÁLOGO 🎯🎯🎯', 'background: green; color: white; font-size: 16px; font-weight: bold; padding: 10px;')
+        window.console.log('Cada acesso ao catálogo será registrado como um novo clique')
+        clickTracked.current.set(lotIdForTracking, true) // Marcar como tracked apenas para evitar múltiplos registros no mesmo carregamento
+        
+        // Executar tracking IMEDIATAMENTE
+        trackCatalogClickDirect(lotIdForTracking).catch(err => {
+          window.console.error('Erro no tracking direto:', err)
+          // Se der erro, permitir tentar novamente
+          clickTracked.current.delete(lotIdForTracking)
+        })
+      } else {
+        window.console.log('ℹ️ Tracking já executado neste carregamento da página (evitando duplicata no mesmo render)')
+        window.console.log('💡 Quando você voltar e acessar novamente, será registrado um novo clique')
+      }
 
       // 2. Carregar Produtos do Lote
+      const lotIdForProducts = lotData.id // Usar o ID real do lot encontrado
       const { data: prodData, error: prodError } = await supabase
         .from('lot_products')
         .select(`
             *,
             product:products (*)
         `)
-        .eq('lot_id', id)
+        .eq('lot_id', lotIdForProducts)
       
-      if (prodError) throw prodError
-      
-      const mapped = prodData.map(lp => ({
-          ...lp.product,
-          lp_id: lp.id,
-      }))
-
-      setProducts(mapped)
+      if (prodError) {
+        console.error('Erro ao buscar produtos:', prodError)
+        // Não lançar erro aqui - deixar produtos vazios mas permitir tracking
+        setProducts([])
+      } else {
+        const mapped = (prodData || []).map(lp => ({
+            ...lp.product,
+            lp_id: lp.id,
+        }))
+        setProducts(mapped)
+        console.log('Produtos carregados:', mapped.length)
+      }
 
     } catch (error) {
       console.error('Erro ao carregar catalogo:', error)

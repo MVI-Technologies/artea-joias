@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Favicon inspirado em joias - Anel com gema -->
+  <defs>
+    <linearGradient id="ringGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#d4af37;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#ffd700;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#d4af37;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="gemGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ff6b9d;stop-opacity:1" />
+      <stop offset="50%" style="stop-color:#ff8fab;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#c44569;stop-opacity:1" />
+    </linearGradient>
+    <radialGradient id="gemShine" cx="40%" cy="30%">
+      <stop offset="0%" style="stop-color:#fff;stop-opacity:0.9" />
+      <stop offset="100%" style="stop-color:#fff;stop-opacity:0" />
+    </radialGradient>
+  </defs>
+  
+  <!-- Fundo circular suave -->
+  <circle cx="50" cy="50" r="48" fill="#f8f9fa"/>
+  
+  <!-- Anel externo -->
+  <circle cx="50" cy="50" r="38" fill="none" stroke="url(#ringGradient)" stroke-width="3.5" stroke-linecap="round"/>
+  <circle cx="50" cy="50" r="32" fill="none" stroke="url(#ringGradient)" stroke-width="2.5" stroke-linecap="round"/>
+  
+  <!-- Gema central (diamante/joia) -->
+  <path d="M 50 25 L 62 42 L 50 55 L 38 42 Z" fill="url(#gemGradient)" stroke="#c44569" stroke-width="0.5"/>
+  <path d="M 50 25 L 62 42 L 50 55" fill="url(#gemShine)"/>
+  
+  <!-- Brilhos -->
+  <circle cx="46" cy="32" r="2.5" fill="#fff" opacity="0.9"/>
+  <circle cx="56" cy="38" r="1.8" fill="#fff" opacity="0.7"/>
+  <circle cx="52" cy="45" r="1.2" fill="#fff" opacity="0.6"/>
+  
+  <!-- Detalhes do anel -->
+  <circle cx="50" cy="20" r="1.5" fill="#d4af37" opacity="0.8"/>
+  <circle cx="50" cy="80" r="1.5" fill="#d4af37" opacity="0.8"/>
+</svg>
