@@ -555,12 +555,6 @@ export default function Settings() {
       case 'contato':
         return (
           <div className="settings-form">
-            <div className="info-banner">
-              <p className="text-muted">
-                Os dados abaixo serão usados nas mensagens automáticas e e-mails enviados pelo sistema. 
-                Todos os dados abaixo referem-se a empresa.
-              </p>
-            </div>
 
             {/* Nome e CNPJ */}
             <div className="form-row-2">
@@ -575,7 +569,6 @@ export default function Settings() {
               </div>
               <div className="form-group">
                 <label className="form-label">CNPJ/CPF</label>
-                <span className="label-hint">Opcional, usado na Nota Promissória</span>
                 <input
                   type="text"
                   className="form-input"
