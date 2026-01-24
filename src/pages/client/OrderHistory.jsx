@@ -2,9 +2,12 @@ import { useState, useEffect } from 'react'
 import { Clock, FileText, CheckCircle, Package, Truck, Download, MessageCircle } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
+import { useToast } from '../../components/common/Toast'
+import './OrderHistory.css'
 
 export default function OrderHistory() {
   const { client } = useAuth()
+  const toast = useToast()
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
   const [romaneios, setRomaneios] = useState([])
@@ -44,23 +47,9 @@ export default function OrderHistory() {
     }
   }
 
-  const getStatusBadge = (status) => {
-      const styles = {
-          'pendente': 'bg-amber-100 text-amber-700',
-          'aguardando_pagamento': 'bg-amber-100 text-amber-700',
-          'pago': 'bg-green-100 text-green-700',
-          'em_preparacao': 'bg-blue-100 text-blue-700',
-          'enviado': 'bg-purple-100 text-purple-700',
-          'entregue': 'bg-slate-100 text-slate-700 line-through opacity-75'
-      }
-      return styles[status] || 'bg-slate-100 text-slate-700'
-  }
-
   const getRomaneioUrl = (lotId) => {
       const romaneio = romaneios.find(r => r.lot_id === lotId)
       if (!romaneio) return null
-      // Aqui chamaríamos a Edge Function para gerar o PDF ou baixar do Storage se salvo
-      // Por enquanto, placeholder alert
       return romaneio.id
   }
 
@@ -102,7 +91,7 @@ export default function OrderHistory() {
          
          if (!response.ok) {
              const err = await response.json()
-             alert(`Erro: ${err.error || 'Falha ao gerar PDF'}`)
+             toast.error(`Erro: ${err.error || 'Falha ao gerar PDF'}`)
              return
          }
          
@@ -120,59 +109,68 @@ export default function OrderHistory() {
       }
   }
 
-  if (loading) return <div className="p-8 text-center text-slate-500">Carregando histórico...</div>
+  if (loading) return (
+    <div className="order-history-page">
+      <div className="text-center py-16 text-slate-500">Carregando histórico...</div>
+    </div>
+  )
 
   return (
-    <div className="client-page">
-      <div className="page-header mb-8">
-        <h1 className="text-2xl font-bold text-slate-800">Histórico de Pedidos</h1>
-        <p className="text-slate-500">Acompanhe suas compras e comprovantes.</p>
+    <div className="order-history-page">
+      <div className="order-history-header">
+        <h1>Histórico de Pedidos</h1>
+        <p>Acompanhe suas compras e comprovantes.</p>
       </div>
 
-      <div className="space-y-6">
+      <div className="order-history-list">
         {orders.length === 0 ? (
-          <div className="bg-white rounded-xl border border-dashed border-slate-200 p-12 text-center">
-             <Clock size={40} className="mx-auto mb-4 text-slate-300" />
-             <p className="text-slate-500">Nenhum pedido realizado ainda.</p>
+          <div className="order-history-empty">
+             <Clock size={40} className="order-history-empty-icon" />
+             <p>Nenhum pedido realizado ainda.</p>
           </div>
         ) : (
-           // Agrupar visualmente por Lote poderia ser legal, mas lista plana por data funciona bem como histórico
            orders.map(order => {
                const romaneioId = getRomaneioUrl(order.lot_id)
                
                return (
-                <div key={order.id} className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 flex flex-col md:flex-row gap-4 items-start md:items-center">
+                <div key={order.id} className="order-card">
                     {/* Imagem */}
-                    <div className="w-16 h-16 bg-slate-100 rounded-lg overflow-hidden flex-shrink-0">
-                         {order.product?.imagem1 && <img src={order.product.imagem1} className="w-full h-full object-cover" />}
+                    <div className="order-card-image">
+                         {order.product?.imagem1 ? (
+                           <img src={order.product.imagem1} alt={order.product.nome} />
+                         ) : (
+                           <div className="flex items-center justify-center h-full text-slate-300">
+                             <Package size={24} />
+                           </div>
+                         )}
                     </div>
                     
                     {/* Info Central */}
-                    <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${getStatusBadge(order.status)}`}>
+                    <div className="order-card-content">
+                        <div className="order-card-header">
+                            <span className={`order-status-badge ${order.status}`}>
                                 {order.status?.replace('_', ' ')}
                             </span>
-                            <span className="text-xs text-slate-400">
+                            <span className="order-date">
                                 {new Date(order.created_at).toLocaleDateString('pt-BR')}
                             </span>
                         </div>
-                        <h3 className="font-bold text-slate-800 text-sm mb-1">{order.product?.nome}</h3>
-                        <p className="text-xs text-slate-500">
-                            Grupo: {order.lot?.nome} • Qtd: {order.quantidade}
+                        <h3 className="order-product-name">{order.product?.nome || 'Produto não encontrado'}</h3>
+                        <p className="order-product-details">
+                            Grupo: {order.lot?.nome || 'N/A'} • Qtd: {order.quantidade}
                         </p>
                     </div>
 
                     {/* Preço e Ações */}
-                    <div className="flex flex-col items-end gap-2 min-w-[120px]">
-                        <span className="font-bold text-slate-900">R$ {order.valor_total?.toFixed(2)}</span>
+                    <div className="order-card-footer">
+                        <span className="order-total">R$ {order.valor_total?.toFixed(2) || '0.00'}</span>
                         
-                        <div className="flex items-center gap-2">
+                        <div className="order-actions">
                             {/* Se tiver romaneio liberado */}
                             {romaneioId && (
                                 <button 
                                     onClick={() => handleDownloadRomaneio(romaneioId, `Romaneio-${order.lot?.nome}.pdf`)}
-                                    className="p-2 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors tooltip"
+                                    className="order-action-btn download"
                                     title="Baixar Romaneio (PDF)"
                                 >
                                     <FileText size={18} />
@@ -181,12 +179,12 @@ export default function OrderHistory() {
                             
                             {/* Botão Copiar Resumo (Zap) */}
                             <button 
-                                className="p-2 text-slate-500 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                                className="order-action-btn copy"
                                 title="Copiar Resumo"
                                 onClick={() => {
-                                    const text = `Pedido: ${order.product?.nome} (x${order.quantity})\nTotal: R$ ${order.valor_total}\nStatus: ${order.status}`
+                                    const text = `Pedido: ${order.product?.nome} (x${order.quantidade})\nTotal: R$ ${order.valor_total}\nStatus: ${order.status}`
                                     navigator.clipboard.writeText(text)
-                                    alert('Resumo copiado!')
+                                    toast.success('Resumo copiado!')
                                 }}
                             >
                                 <MessageCircle size={18} />

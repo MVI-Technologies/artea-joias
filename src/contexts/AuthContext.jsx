@@ -20,14 +20,19 @@ export function AuthProvider({ children }) {
     // Listener para mudanças de auth
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log('🔄 Auth state changed:', event)
         if (session?.user) {
           setUser(session.user)
-          await fetchClientProfile(session.user) // Passar objeto completo
+          // Não aguardar fetchClientProfile para não travar o loading
+          fetchClientProfile(session.user).catch(err => {
+            console.warn('Erro ao buscar perfil (não crítico):', err)
+          })
         } else {
           setUser(null)
           setClient(null)
           setIsAdmin(false)
         }
+        // Sempre definir loading como false após mudança de auth
         setLoading(false)
       }
     )
@@ -40,11 +45,15 @@ export function AuthProvider({ children }) {
       const { data: { session } } = await supabase.auth.getSession()
       if (session?.user) {
         setUser(session.user)
-        await fetchClientProfile(session.user) // Passar objeto completo
+        // Não aguardar fetchClientProfile para não travar o loading
+        fetchClientProfile(session.user).catch(err => {
+          console.warn('Erro ao buscar perfil (não crítico):', err)
+        })
       }
     } catch (error) {
       console.error('Erro ao verificar usuário:', error)
     } finally {
+      // Sempre definir loading como false
       setLoading(false)
     }
   }
@@ -68,17 +77,12 @@ export function AuthProvider({ children }) {
       // ✅ PRIORITY 2: Buscar perfil completo da tabela clients (dados adicionais)
       console.log('📊 Consultando tabela clients...')
       
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Timeout ao buscar perfil')), 5000)
-      )
-      
-      const queryPromise = supabase
-        .from('clients')
-        .select('*')
-        .eq('auth_id', authUser.id)
-        .single()
-      
-      const { data, error } = await Promise.race([queryPromise, timeoutPromise])
+      try {
+        const { data, error } = await supabase
+          .from('clients')
+          .select('*')
+          .eq('auth_id', authUser.id)
+          .single()
 
       if (error && error.code !== 'PGRST116') {
         console.error('❌ Erro ao buscar perfil da tabela:', error)
@@ -118,6 +122,14 @@ export function AuthProvider({ children }) {
       } else {
         console.log('ℹ️ Perfil não encontrado no DB, mas temos metadata')
       }
+      } catch (queryError) {
+        // Se der erro na query, não é crítico se temos metadata
+        if (roleFromMetadata) {
+          console.warn('⚠️ Erro ao buscar perfil do DB, mas temos metadata. Continuando...')
+        } else {
+          console.warn('⚠️ Erro ao buscar perfil:', queryError)
+        }
+      }
     } catch (error) {
       console.error('❌ Exceção ao buscar perfil:', error)
       console.error('❌ Tipo de erro:', error.name)
@@ -130,25 +142,82 @@ export function AuthProvider({ children }) {
     try {
       console.log('📞 Tentando login com telefone:', telefone)
       
-      // Usar telefone como email para simplificar
-      // Em produção, use phone auth ou adapte conforme necessário
-      const email = `${telefone.replace(/\D/g, '')}@artea.local`
-      console.log('📧 Email gerado:', email)
+      // Remover formatação do telefone (parênteses, espaços, hífens)
+      const telefoneLimpo = telefone.replace(/\D/g, '')
+      console.log('📞 Telefone limpo:', telefoneLimpo)
       
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password: senha
-      })
+      // Tentar diferentes variações do email
+      const emailVariations = [
+        `${telefoneLimpo}@artea.local`,           // Formato padrão
+        `+55${telefoneLimpo}@artea.local`,        // Com código do país
+        `55${telefoneLimpo}@artea.local`,         // Com código sem +
+        telefoneLimpo.length === 11 ? `${telefoneLimpo.slice(0, 2)}${telefoneLimpo.slice(2)}@artea.local` : null, // Com DDD separado
+      ].filter(Boolean)
+      
+      console.log('📧 Tentando emails:', emailVariations)
+      
+      // Tentar cada variação até encontrar uma que funcione
+      let lastError = null
+      for (const email of emailVariations) {
+        try {
+          console.log(`🔄 Tentando login com email: ${email}`)
+          
+          const { data, error } = await supabase.auth.signInWithPassword({
+            email,
+            password: senha
+          })
 
-      if (error) {
-        console.error('❌ Erro no login:', error)
-        throw error
+          if (!error) {
+            console.log('✅ Login bem-sucedido!', data)
+            console.log(`✅ Email correto encontrado: ${email}`)
+            return { data, error: null }
+          }
+          
+          lastError = error
+          console.log(`❌ Falhou com ${email}:`, error.message)
+        } catch (err) {
+          lastError = err
+          console.log(`❌ Exceção com ${email}:`, err.message)
+        }
+      }
+      
+      // Se nenhuma variação funcionou, retornar o último erro
+      if (lastError) {
+        console.error('❌ Todas as tentativas falharam')
+        console.error('❌ Último erro:', lastError)
+        console.error('❌ Código do erro:', lastError.status || lastError.code)
+        console.error('❌ Mensagem:', lastError.message)
+        
+        // Verificar se o usuário existe no banco de dados
+        try {
+          const { data: clientData } = await supabase
+            .from('clients')
+            .select('telefone, auth_id')
+            .or(`telefone.eq.${telefoneLimpo},telefone.eq.${telefoneLimpo.slice(2)},telefone.eq.+55${telefoneLimpo}`)
+            .limit(1)
+          
+          if (clientData && clientData.length > 0) {
+            console.log('⚠️ Cliente encontrado no banco:', clientData[0])
+            console.log('⚠️ Mas não foi possível fazer login no Supabase Auth')
+            console.log('⚠️ Possíveis causas:')
+            console.log('   1. Email no Auth não corresponde ao telefone')
+            console.log('   2. Senha está incorreta')
+            console.log('   3. Usuário não existe no Supabase Auth')
+          } else {
+            console.log('⚠️ Cliente não encontrado no banco de dados')
+          }
+        } catch (checkError) {
+          console.error('Erro ao verificar cliente:', checkError)
+        }
+        
+        throw lastError
       }
 
-      console.log('✅ Login bem-sucedido!', data)
-      return { data, error: null }
+      return { data: null, error: new Error('Não foi possível fazer login') }
     } catch (error) {
       console.error('❌ Exceção no signIn:', error)
+      console.error('❌ Tipo:', error.name)
+      console.error('❌ Mensagem completa:', error.message)
       return { data: null, error }
     }
   }
@@ -207,7 +276,7 @@ export function AuthProvider({ children }) {
     signIn,
     signUp,
     signOut,
-    refreshProfile: () => user && fetchClientProfile(user.id)
+    refreshProfile: () => user && fetchClientProfile(user)
   }
 
   return (

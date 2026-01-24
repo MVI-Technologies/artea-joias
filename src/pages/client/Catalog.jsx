@@ -79,7 +79,10 @@ export default function Catalog() {
         localStorage.setItem(cartKey, JSON.stringify(newCart))
         
         // Pequeno feedback visual
-        await new Promise(r => setTimeout(r, 500))
+        await new Promise(r => setTimeout(r, 300))
+        
+        // Navegar para o carrinho após adicionar
+        navigate('/app/carrinho')
         
     } catch (e) {
         console.error(e)
@@ -112,7 +115,11 @@ export default function Catalog() {
       {/* Grid de Produtos */}
       <div className="products-grid">
         {products.map(product => (
-            <div key={product.id} className="product-card">
+            <div 
+              key={product.id} 
+              className={`product-card ${addingToCart === product.id ? 'adding' : ''}`}
+              onClick={() => addToCart(product)}
+            >
                 <div className="product-image-area">
                     {product.imagem1 ? (
                         <img src={product.imagem1} alt={product.nome} className="product-img" />
@@ -133,7 +140,10 @@ export default function Catalog() {
                         </div>
                         
                         <button 
-                            onClick={() => addToCart(product)}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              addToCart(product)
+                            }}
                             disabled={addingToCart === product.id}
                             className={`btn-add-cart ${addingToCart === product.id ? 'added' : ''}`}
                         >
