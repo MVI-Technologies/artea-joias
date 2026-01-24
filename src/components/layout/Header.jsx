@@ -1,4 +1,4 @@
-import { Bell, Search, Menu } from 'lucide-react'
+import { Search, Menu } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import './Header.css'
 
@@ -27,11 +27,6 @@ export default function Header({ onMenuToggle, title }) {
           <Search size={18} />
           <input type="text" placeholder="Pesquisar..." />
         </div>
-
-        <button className="header-notification">
-          <Bell size={20} />
-          <span className="notification-badge">3</span>
-        </button>
 
         <div className="header-user">
           <div className="user-avatar">

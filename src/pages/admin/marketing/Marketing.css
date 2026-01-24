@@ -66,6 +66,7 @@
 .tab-dark {
   background: #374151;
   color: white;
+  position: relative;
 }
 
 .tab-dark:hover {
@@ -73,7 +74,12 @@
 }
 
 .tab-dark.active {
-  background: #1f2937;
+  background: #3b82f6;
+  color: white;
+  border-left: 4px solid #2563eb;
+  padding-left: 12px;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
 }
 
 /* Table container */

@@ -64,13 +64,13 @@ const menuItems = [
     label: 'Usuários',
     icon: Users,
     path: '/admin/usuarios',
-    badge: 1
+    badge: null
   },
   {
     label: 'Configurações',
     icon: Settings,
     path: '/admin/configuracoes',
-    badge: 1
+    badge: null
   }
 ]
 
