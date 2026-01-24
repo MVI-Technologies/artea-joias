@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import { Plus, Search, Edit, Trash2, Shield, User, Mail, Phone, CheckCircle, XCircle } from 'lucide-react'
+import { Plus, Search, Edit, Trash2, Shield, User, Mail, CheckCircle, XCircle } from 'lucide-react'
+import WhatsAppIcon from '../../../components/icons/WhatsAppIcon'
 import { supabase } from '../../../lib/supabase'
 import './UserList.css'
 
@@ -137,7 +138,7 @@ export default function UserList() {
                 </td>
                 <td>
                   <div className="contact-cell">
-                    <span><Phone size={12} /> {user.telefone}</span>
+                    <span><WhatsAppIcon size={12} /> {user.telefone}</span>
                   </div>
                 </td>
                 <td>

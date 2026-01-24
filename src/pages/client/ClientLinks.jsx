@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom' 
-import { ShoppingBag, ChevronRight, Clock, AlertTriangle, CheckCircle } from 'lucide-react'
+import { ShoppingBag, ChevronRight, Clock } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import './ClientLinks.css' // Importando CSS customizado
 
@@ -28,25 +28,9 @@ export default function ClientLinks() {
       if (error) throw error
       
       const processed = (data || []).map(lot => {
-          const meta = 12 
-          let totalVendido = 0
-          if (lot.lot_products) {
-              totalVendido = lot.lot_products.reduce((acc, lp) => acc + (lp.quantidade_pedidos || 0), 0)
-          }
-
-          const falta = Math.max(0, meta - totalVendido)
-          const progresso = Math.min(100, (totalVendido / meta) * 100)
-          
-          return {
-              ...lot,
-              stats: {
-                  meta,
-                  vendido: totalVendido,
-                  falta,
-                  progresso,
-                  completo: falta === 0
-              }
-          }
+        return {
+            ...lot
+        }
       })
       
       setLinks(processed)
@@ -99,26 +83,7 @@ export default function ClientLinks() {
                   
                   <p className="list-item-description">{link.descricao || 'Sem descrição.'}</p>
                   
-                  {/* Progress Inline */}
-                  <div className="progress-inline">
-                    <div className="progress-track-mini">
-                      <div 
-                        className={`progress-fill ${link.stats.completo ? 'bg-success' : 'bg-warning'}`}
-                        style={{ width: `${link.stats.progresso}%` }}
-                      />
-                    </div>
-                    <span className="progress-text-mini">
-                      {link.stats.completo ? (
-                        <span className="text-success">
-                          <CheckCircle size={14} /> Mínimo Atingido
-                        </span>
-                      ) : (
-                        <span className="text-warning">
-                          <AlertTriangle size={14} /> Faltam {link.stats.falta} pçs
-                        </span>
-                      )}
-                    </span>
-                  </div>
+
                 </div>
                 
                 {/* Action Button */}

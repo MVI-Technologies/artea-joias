@@ -1,12 +1,77 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1'
 import { PDFDocument, rgb, StandardFonts } from 'https://esm.sh/pdf-lib@^1.17.1?target=deno'
+import QRCode from 'https://esm.sh/qrcode@1.5.3'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 }
+
+// === PIX BR CODE HELPERS ===
+function crc16(payload: string): string {
+  let crc = 0xffff
+  for (let i = 0; i < payload.length; i++) {
+    crc ^= payload.charCodeAt(i) << 8
+    for (let j = 0; j < 8; j++) {
+      if ((crc & 0x8000) !== 0) crc = (crc << 1) ^ 0x1021
+      else crc = crc << 1
+    }
+  }
+  return (crc & 0xffff).toString(16).toUpperCase().padStart(4, '0')
+}
+
+function formatField(id: string, value: string): string {
+  const len = value.length.toString().padStart(2, '0')
+  return `${id}${len}${value}`
+}
+
+function generatePixPayload({
+  key,
+  name,
+  city = 'BRASIL',
+  amount,
+  txtId = '***',
+}: {
+  key: string
+  name: string
+  city?: string
+  amount?: number
+  txtId?: string
+}): string {
+  const cleanKey = key.trim()
+  const cleanName = name.substring(0, 25).trim() // Max 25 chars
+  const cleanCity = city.substring(0, 15).trim() // Max 15 chars
+  const cleanTxtId = txtId.substring(0, 25).trim() || '***'
+
+  let payload =
+    formatField('00', '01') + // Format Indicator
+    formatField('26', // Merchant Account Information
+      formatField('00', 'BR.GOV.BCB.PIX') +
+      formatField('01', cleanKey)
+    ) +
+    formatField('52', '0000') + // Merchant Category Code
+    formatField('53', '986') // Transaction Currency (BRL)
+
+  if (amount && amount > 0) {
+    payload += formatField('54', amount.toFixed(2)) // Transaction Amount
+  }
+
+  payload +=
+    formatField('58', 'BR') + // Country Code
+    formatField('59', cleanName) + // Merchant Name
+    formatField('60', cleanCity) + // Merchant City
+    formatField('62', // Additional Data Field Template
+      formatField('05', cleanTxtId) // Reference Label
+    ) +
+    '6304' // CRC16 ID + Length placeholder
+
+  // Calculate CRC
+  payload += crc16(payload)
+  return payload
+}
+// ==========================
 
 Deno.serve(async (req) => {
   // Handle CORS preflight
@@ -66,10 +131,6 @@ Deno.serve(async (req) => {
     const pixConfig = pixIntegration?.config || {}
     const mpConfig = mpIntegration?.config || {}
 
-    console.log('=== INTEGRATIONS CONFIG ===')
-    console.log('PIX Config:', JSON.stringify(pixConfig, null, 2))
-    console.log('MP Config:', JSON.stringify(mpConfig, null, 2))
-
     // 1. Buscar Dados do Romaneio Completo
     const { data: romaneio, error: romError } = await supabaseAdmin
       .from('romaneios')
@@ -92,14 +153,6 @@ Deno.serve(async (req) => {
       .single()
 
     if (romError || !romaneio) throw new Error('Romaneio não encontrado')
-
-    // DEBUG: Log para verificar dados do lot
-    console.log('=== DEBUG ROMANEIO ===')
-    console.log('Romaneio ID:', romaneioId)
-    console.log('Lot:', JSON.stringify(romaneio.lot, null, 2))
-    console.log('Lot chave_pix:', romaneio.lot?.chave_pix)
-    console.log('dados_pagamento:', JSON.stringify(romaneio.dados_pagamento, null, 2))
-    console.log('=== FIM DEBUG ===')
 
     // Se tiver userId, verificar acesso
     if (userId) {
@@ -282,18 +335,9 @@ Deno.serve(async (req) => {
     // Usar pixConfig da tabela integrations como fonte principal
     const pixKey = pixConfig.chave || pixData.chave || pixData.chave_pix || dadosPagamento.chave_pix || romaneio.lot?.chave_pix || ''
     const nomeBeneficiario = pixConfig.nome_beneficiario || pixData.nome_beneficiario || dadosPagamento.nome_beneficiario || romaneio.lot?.nome_beneficiario || ''
-    const cidadeBeneficiario = pixConfig.cidade || ''
+    const cidadeBeneficiario = pixConfig.cidade || 'BRASIL'
     const telefoneFinanceiro = formatPhone(pixData.telefone_financeiro || dadosPagamento.telefone_financeiro || romaneio.lot?.telefone_financeiro)
     const mensagemPagamento = pixData.mensagem || dadosPagamento.mensagem_pagamento || romaneio.lot?.mensagem_pagamento || ''
-
-    // DEBUG: Valores finais usados no PDF
-    console.log('=== VALORES PAGAMENTO PDF ===')
-    console.log('pixKey (final):', pixKey)
-    console.log('nomeBeneficiario (final):', nomeBeneficiario)
-    console.log('cidadeBeneficiario:', cidadeBeneficiario)
-    console.log('telefoneFinanceiro:', telefoneFinanceiro)
-    console.log('mensagemPagamento:', mensagemPagamento)
-    console.log('=== FIM VALORES ===')
 
     const getItemQuantidade = (item) => Number(item.quantidade ?? item.quantity ?? 0)
     const getItemValorUnitario = (item) => Number(item.valor_unitario ?? item.valorUnitario ?? item.preco ?? 0)
@@ -429,7 +473,7 @@ Deno.serve(async (req) => {
     })
     y -= 20
 
-    if (y < 220) {
+    if (y < 250) { // Precisa de espaço para resumo + pagamento + QR Code
       page = pdfDoc.addPage([595.28, 841.89])
       y = height - 60
     }
@@ -448,61 +492,55 @@ Deno.serve(async (req) => {
     drawText(`• Quantidade Total de Produtos: ${quantidadeItens}`, margin + 10, y, 9, false)
     y -= 22
 
-    // Dados para pagamento
+    // Dados para pagamento com QR Code
     const pagamentoWidth = width - margin * 2 - 10
-    type PagamentoLine = { text: string; bold: boolean; color: any }
-    const pagamentoLines: PagamentoLine[] = [
+    
+    // Gerar QR Code se tiver chave PIX
+    let qrBuffer = null
+    let pixPayload = ''
+    if (pixKey) {
+        try {
+            pixPayload = generatePixPayload({
+                key: pixKey,
+                name: nomeBeneficiario || 'ARTEA JOIAS',
+                city: cidadeBeneficiario || 'BRASIL',
+                amount: valorTotal > 0 ? valorTotal : undefined,
+                txtId: romaneio.numero_romaneio || 'ROMANEIO'
+            })
+            const qrBase64 = await QRCode.toDataURL(pixPayload, { errorCorrectionLevel: 'M' })
+            const base64Data = qrBase64.replace(/^data:image\/png;base64,/, '')
+            qrBuffer = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0))
+        } catch (e) {
+            console.error('Erro ao gerar QR Code:', e)
+        }
+    }
+
+    const payTopY = y
+    // Area de texto (esquerda) e QR Code (direita)
+    // Calcula altura necessária
+    const pagamentoLines = [
       { text: 'Dados para o pagamento:', bold: true, color: rgb(0, 0, 0) },
       { text: 'PAGAMENTO VIA PIX OU CARTÃO DE CRÉDITO.', bold: true, color: rgb(0, 0, 0) },
     ]
-
-    if (pixKey) {
-      pagamentoLines.push({ text: `Chave Pix: ${pixKey}`, bold: true, color: rgb(0, 0, 0) })
-    }
-    if (nomeBeneficiario) {
-      pagamentoLines.push({ text: `Beneficiário: ${nomeBeneficiario}`, bold: false, color: rgb(0, 0, 0) })
-    }
+    if (pixKey) pagamentoLines.push({ text: `Chave Pix: ${pixKey}`, bold: true, color: rgb(0, 0, 0) })
+    if (nomeBeneficiario) pagamentoLines.push({ text: `Beneficiário: ${nomeBeneficiario}`, bold: false, color: rgb(0, 0, 0) })
+    
     if (telefoneFinanceiro && telefoneFinanceiro !== '-') {
-      pagamentoLines.push({
-        text: `Comprovante de pagamento deve ser enviado para o setor financeiro: ${telefoneFinanceiro}`,
-        bold: false,
-        color: rgb(0, 0, 0),
-      })
-    } else {
-      pagamentoLines.push({
-        text: 'Comprovante de pagamento deve ser enviado para o setor financeiro -',
-        bold: false,
-        color: rgb(0, 0, 0),
-      })
+      pagamentoLines.push({ text: `Comprovante: ${telefoneFinanceiro}`, bold: false, color: rgb(0, 0, 0) })
     }
-    if (mensagemPagamento) {
-      pagamentoLines.push({ text: mensagemPagamento, bold: false, color: rgb(0, 0, 0) })
-    }
-    pagamentoLines.push({
-      text: 'IMPORTANTE: Atenção ao pagamento, deve ser realizado assim que receber o romaneio.',
-      bold: true,
-      color: rgb(0, 0, 0),
-    })
-    pagamentoLines.push({
-      text: 'Caso o pagamento não seja realizado em até 24hs será removido do grupo e terá seu cadastro bloqueado permanentemente, ficando impossibilitado de realizar novas compras.',
-      bold: false,
-      color: rgb(0.4, 0.4, 0.4),
-    })
-
-    const wrappedPagamento: PagamentoLine[] = []
+    
+    const wrappedPagamento: any[] = []
+    // Deixar 120px para o QR Code na direita
+    const textWidthLimits = qrBuffer ? pagamentoWidth - 130 : pagamentoWidth
+    
     pagamentoLines.forEach((line) => {
-      wrapText(line.text, pagamentoWidth, 9, line.bold).forEach((part) => {
+      wrapText(line.text, textWidthLimits, 9, line.bold).forEach((part) => {
         wrappedPagamento.push({ text: part, bold: line.bold, color: line.color })
       })
     })
 
-    const pagamentoHeight = wrappedPagamento.length * 12 + 10
-    if (y - pagamentoHeight < 60) {
-      page = pdfDoc.addPage([595.28, 841.89])
-      y = height - 60
-    }
-
-    const payTopY = y
+    const pagamentoHeight = Math.max(wrappedPagamento.length * 12 + 20, qrBuffer ? 120 : 60)
+    
     page.drawRectangle({
       x: margin - 4,
       y: payTopY - pagamentoHeight,
@@ -516,8 +554,34 @@ Deno.serve(async (req) => {
       drawText(line.text, margin + 6, payY, 9, line.bold, line.color)
       payY -= 12
     })
+    
+    // Desenhar QR Code
+    if (qrBuffer) {
+        const qrImage = await pdfDoc.embedPng(qrBuffer)
+        const qrSize = 100
+        page.drawImage(qrImage, {
+            x: width - margin - qrSize - 10,
+            y: payTopY - qrSize - 10,
+            width: qrSize,
+            height: qrSize
+        })
+        drawText('Pix Copia e Cola:', width - margin - qrSize - 10, payTopY - qrSize - 22, 8, true)
+    }
 
     y = payTopY - pagamentoHeight - 20
+    
+    // Avisos Finais
+    const avisos: any[] = []
+    if (mensagemPagamento) avisos.push({ text: mensagemPagamento, bold: false })
+    avisos.push({ text: 'IMPORTANTE: Atenção ao pagamento, deve ser realizado assim que receber o romaneio.', bold: true })
+    avisos.push({ text: 'Caso o pagamento não seja realizado em até 24hs será removido do grupo.', bold: false })
+    
+    avisos.forEach(aviso => {
+         wrapText(aviso.text, width - margin * 2, 9, aviso.bold).forEach(line => {
+             drawText(line, margin, y, 9, aviso.bold, rgb(0.3, 0.3, 0.3))
+             y -= 12
+         })
+    })
 
     const pdfBytes = await pdfDoc.save()
 

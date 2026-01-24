@@ -5,7 +5,6 @@ import {
   Plus, 
   Search, 
   Users,
-  Phone,
   ChevronDown,
   BarChart3,
   Edit2,
@@ -13,8 +12,10 @@ import {
   DollarSign,
   CreditCard,
   X,
-  AlertTriangle
+  AlertTriangle,
+  MessageCircle 
 } from 'lucide-react'
+import WhatsAppIcon from '../../../components/icons/WhatsAppIcon'
 import { supabase } from '../../../lib/supabase'
 import './ClientList.css'
 
@@ -201,7 +202,7 @@ export default function ClientList() {
                     <td>
                       <div className="client-phone">
                         {client.telefone}
-                        <Phone size={14} className="text-muted" />
+                        <WhatsAppIcon size={14} className="text-muted" />
                       </div>
                     </td>
                     <td>

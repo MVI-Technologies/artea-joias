@@ -292,12 +292,7 @@ export default function LotList() {
          <button className="btn btn-primary" onClick={() => navigate('/admin/lotes/novo')}>
            <Plus size={16} /> Catálogo
          </button>
-         <button className="btn btn-dark">
-           Notificações
-         </button>
-         <button className="btn btn-dark dropdown-toggle">
-           Ações <ChevronDown size={14} />
-         </button>
+
       </div>
 
       {/* Tabela de grupos */}
