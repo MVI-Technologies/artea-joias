@@ -38,6 +38,7 @@ import ClientLinks from './pages/client/ClientLinks'
 import Cart from './pages/client/Cart'
 import OrderHistory from './pages/client/OrderHistory'
 import MyData from './pages/client/MyData'
+import ClientRomaneioDetail from './pages/client/RomaneioDetail'
 // Legacy imports mantidos caso precise referenciar, mas rotas apontarão para novos
 import Catalog from './pages/client/Catalog'
 
@@ -147,6 +148,7 @@ function AppRoutes() {
         <Route index element={<ClientLinks />} /> {/* Home do cliente = Lista de Links */}
         <Route path="carrinho" element={<Cart />} />
         <Route path="historico" element={<OrderHistory />} />
+        <Route path="romaneio/:romaneioId" element={<ClientRomaneioDetail />} />
         <Route path="perfil" element={<MyData />} />
         {/* Rota legado de catalogo caso algum link antigo exista, redirecionar ou manter */}
         <Route path="catalogo/:linkUrl" element={<Catalog />} /> 

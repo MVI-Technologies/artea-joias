@@ -50,19 +50,41 @@ Deno.serve(async (req) => {
 
     if (!romaneioId) throw new Error('ID do romaneio obrigatório')
 
+    // 0. Buscar configurações de pagamento da tabela integrations
+    const { data: pixIntegration } = await supabaseAdmin
+      .from('integrations')
+      .select('config')
+      .eq('type', 'pix')
+      .single()
+
+    const { data: mpIntegration } = await supabaseAdmin
+      .from('integrations')
+      .select('config')
+      .eq('type', 'mercadopago')
+      .single()
+
+    const pixConfig = pixIntegration?.config || {}
+    const mpConfig = mpIntegration?.config || {}
+
+    console.log('=== INTEGRATIONS CONFIG ===')
+    console.log('PIX Config:', JSON.stringify(pixConfig, null, 2))
+    console.log('MP Config:', JSON.stringify(mpConfig, null, 2))
+
     // 1. Buscar Dados do Romaneio Completo
     const { data: romaneio, error: romError } = await supabaseAdmin
       .from('romaneios')
       .select(`
         *,
         lot:lots(
+          id,
           nome,
           updated_at,
           requer_pacote_fechado,
           chave_pix,
           nome_beneficiario,
           telefone_financeiro,
-          mensagem_pagamento
+          mensagem_pagamento,
+          observacoes_rodape
         ),
         client:clients(nome, telefone, email, cpf)
       `)
@@ -70,6 +92,14 @@ Deno.serve(async (req) => {
       .single()
 
     if (romError || !romaneio) throw new Error('Romaneio não encontrado')
+
+    // DEBUG: Log para verificar dados do lot
+    console.log('=== DEBUG ROMANEIO ===')
+    console.log('Romaneio ID:', romaneioId)
+    console.log('Lot:', JSON.stringify(romaneio.lot, null, 2))
+    console.log('Lot chave_pix:', romaneio.lot?.chave_pix)
+    console.log('dados_pagamento:', JSON.stringify(romaneio.dados_pagamento, null, 2))
+    console.log('=== FIM DEBUG ===')
 
     // Se tiver userId, verificar acesso
     if (userId) {
@@ -245,9 +275,25 @@ Deno.serve(async (req) => {
     const dadosPagamento = (typeof romaneio.dados_pagamento === 'object' && romaneio.dados_pagamento)
       ? romaneio.dados_pagamento
       : (romaneio.dados?.dados_pagamento || romaneio.dados?.pagamento || {})
-    const pixKey = dadosPagamento.chave_pix || romaneio.lot?.chave_pix || ''
-    const nomeBeneficiario = dadosPagamento.nome_beneficiario || romaneio.lot?.nome_beneficiario || ''
-    const telefoneFinanceiro = formatPhone(dadosPagamento.telefone_financeiro || romaneio.lot?.telefone_financeiro)
+    
+    // PRIORIDADE: 1. Integrations (config global) > 2. dados_pagamento do romaneio > 3. lot
+    const pixData = dadosPagamento.pix || dadosPagamento
+    
+    // Usar pixConfig da tabela integrations como fonte principal
+    const pixKey = pixConfig.chave || pixData.chave || pixData.chave_pix || dadosPagamento.chave_pix || romaneio.lot?.chave_pix || ''
+    const nomeBeneficiario = pixConfig.nome_beneficiario || pixData.nome_beneficiario || dadosPagamento.nome_beneficiario || romaneio.lot?.nome_beneficiario || ''
+    const cidadeBeneficiario = pixConfig.cidade || ''
+    const telefoneFinanceiro = formatPhone(pixData.telefone_financeiro || dadosPagamento.telefone_financeiro || romaneio.lot?.telefone_financeiro)
+    const mensagemPagamento = pixData.mensagem || dadosPagamento.mensagem_pagamento || romaneio.lot?.mensagem_pagamento || ''
+
+    // DEBUG: Valores finais usados no PDF
+    console.log('=== VALORES PAGAMENTO PDF ===')
+    console.log('pixKey (final):', pixKey)
+    console.log('nomeBeneficiario (final):', nomeBeneficiario)
+    console.log('cidadeBeneficiario:', cidadeBeneficiario)
+    console.log('telefoneFinanceiro:', telefoneFinanceiro)
+    console.log('mensagemPagamento:', mensagemPagamento)
+    console.log('=== FIM VALORES ===')
 
     const getItemQuantidade = (item) => Number(item.quantidade ?? item.quantity ?? 0)
     const getItemValorUnitario = (item) => Number(item.valor_unitario ?? item.valorUnitario ?? item.preco ?? 0)
@@ -410,14 +456,27 @@ Deno.serve(async (req) => {
       { text: 'PAGAMENTO VIA PIX OU CARTÃO DE CRÉDITO.', bold: true, color: rgb(0, 0, 0) },
     ]
 
-    if (pixKey) pagamentoLines.push({ text: `Chave Pix CNPJ: ${pixKey}`, bold: false, color: rgb(0, 0, 0) })
-    if (nomeBeneficiario) pagamentoLines.push({ text: nomeBeneficiario, bold: false, color: rgb(0, 0, 0) })
-    if (telefoneFinanceiro) {
+    if (pixKey) {
+      pagamentoLines.push({ text: `Chave Pix: ${pixKey}`, bold: true, color: rgb(0, 0, 0) })
+    }
+    if (nomeBeneficiario) {
+      pagamentoLines.push({ text: `Beneficiário: ${nomeBeneficiario}`, bold: false, color: rgb(0, 0, 0) })
+    }
+    if (telefoneFinanceiro && telefoneFinanceiro !== '-') {
       pagamentoLines.push({
-        text: `Comprovante de pagamento deve ser enviado para o setor financeiro ${telefoneFinanceiro}`,
+        text: `Comprovante de pagamento deve ser enviado para o setor financeiro: ${telefoneFinanceiro}`,
         bold: false,
         color: rgb(0, 0, 0),
       })
+    } else {
+      pagamentoLines.push({
+        text: 'Comprovante de pagamento deve ser enviado para o setor financeiro -',
+        bold: false,
+        color: rgb(0, 0, 0),
+      })
+    }
+    if (mensagemPagamento) {
+      pagamentoLines.push({ text: mensagemPagamento, bold: false, color: rgb(0, 0, 0) })
     }
     pagamentoLines.push({
       text: 'IMPORTANTE: Atenção ao pagamento, deve ser realizado assim que receber o romaneio.',

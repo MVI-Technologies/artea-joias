@@ -175,30 +175,45 @@ export default function Cart() {
     try {
         const group = groupedItems[lotId]
         
-        // 1. Validação final de Status
-        if (group.lot.status !== 'aberto') {
-            toast.error('Este grupo de compras já fechou. Não é possível finalizar.')
-            return
-        }
-
-        // 2. Preparar Inserts
         if (!user || !client) {
             toast.error('Erro de autenticação. Recarregue a página.')
             return
         }
 
-        // 3. Criar Pedidos
-        const ordersToInsert = group.items.map(item => ({
-            lot_id: lotId,
-            client_id: client.id,
+        // 1. Preparar Payload para RPC
+        const itemsPayload = group.items.map(item => ({
             product_id: item.id,
-            quantidade: item.quantity,
-            valor_unitario: item.preco,
-            valor_total: item.preco * item.quantity,
-            status: 'pendente'
+            quantity: item.quantity,
+            valor_unitario: item.preco
         }))
 
-        const itemsSnapshot = group.items.map(item => ({
+        const clientSnapshot = {
+            nome: client.nome,
+            telefone: client.telefone,
+            endereco: client.enderecos?.[0] || null
+        }
+
+        // 2. Chamar RPC Transacional
+        console.log('Chamando checkout_romaneio RPC...')
+        const { data: romaneio, error: rpcError } = await supabase.rpc('checkout_romaneio', {
+            p_lot_id: lotId,
+            p_items: itemsPayload,
+            p_client_snapshot: clientSnapshot
+        })
+
+        if (rpcError) {
+            console.error('Erro RPC:', rpcError)
+            throw new Error(rpcError.message)
+        }
+
+        if (!romaneio || !romaneio.id) {
+            throw new Error('Erro: Romaneio não retornado pelo servidor.')
+        }
+
+        console.log('Romaneio criado/atualizado com sucesso:', romaneio.id)
+
+        // 3. Preparar itens para PDF (Snapshots visuais)
+        const itemsForPDF = group.items.map(item => ({
           quantidade: item.quantity,
           valor_unitario: item.preco,
           valor_total: item.preco * item.quantity,
@@ -210,159 +225,13 @@ export default function Cart() {
           }
         }))
 
-        const romaneioSnapshot = {
-          items: itemsSnapshot,
-          cpf: client.cpf || null,
-          email: client.email || null,
-          telefone: client.telefone || null
-        }
+        // 4. Gerar e baixar PDF
+        await handleDownloadRomaneioPDF(romaneio.id, `Romaneio-${group.lot.nome}.pdf`, itemsForPDF)
 
-        const { data: insertedOrders, error: ordersError } = await supabase
-            .from('orders')
-            .insert(ordersToInsert)
-            .select('id')
-
-        if (ordersError) throw ordersError
-        const insertedOrderIds = (insertedOrders || []).map(order => order.id)
-
-        // 4. Criar ou Atualizar Romaneio
-        const totalItens = group.items.reduce((sum, item) => sum + item.quantity, 0)
-        const subtotal = group.total
-        
-        // Verificar se já existe romaneio
-        const { data: existingRomaneio } = await supabase
-          .from('romaneios')
-          .select('*')
-          .eq('lot_id', lotId)
-          .eq('client_id', client.id)
-          .maybeSingle()
-
-        let romaneioId
-
-        if (existingRomaneio) {
-          // Atualizar romaneio existente
-          const { data: updatedRomaneio, error: updateError } = await supabase
-            .from('romaneios')
-            .update({
-              total_itens: totalItens,
-              subtotal: subtotal,
-              total: subtotal,
-              quantidade_itens: totalItens,
-              valor_produtos: subtotal,
-              valor_total: subtotal,
-              cliente_nome_snapshot: client.nome,
-              cliente_telefone_snapshot: client.telefone,
-              endereco_entrega_snapshot: client.enderecos?.[0] || null,
-              dados: romaneioSnapshot,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', existingRomaneio.id)
-            .select()
-            .single()
-
-          if (updateError) {
-            console.error('Erro ao atualizar romaneio:', updateError)
-            throw new Error(`Erro ao atualizar romaneio: ${updateError.message}`)
-          }
-          
-          if (!updatedRomaneio || !updatedRomaneio.id) {
-            throw new Error('Romaneio atualizado mas ID não retornado')
-          }
-          
-          romaneioId = updatedRomaneio.id
-          console.log('Romaneio atualizado com sucesso:', romaneioId)
-        } else {
-          // Criar novo romaneio
-          const romaneioData = {
-            lot_id: lotId,
-            client_id: client.id,
-            numero_romaneio: generateRomaneioNumber(),
-            total_itens: totalItens,
-            subtotal: subtotal,
-            total: subtotal,
-            quantidade_itens: totalItens,
-            valor_produtos: subtotal,
-            valor_total: subtotal,
-            status: 'gerado',
-            status_pagamento: 'pendente',
-            cliente_nome_snapshot: client.nome,
-            cliente_telefone_snapshot: client.telefone,
-            endereco_entrega_snapshot: client.enderecos?.[0] || null,
-            dados: romaneioSnapshot,
-            numero_pedido: `PED-${Date.now()}`
-          }
-
-          const { data: newRomaneio, error: insertError } = await supabase
-            .from('romaneios')
-            .insert(romaneioData)
-            .select()
-            .single()
-
-          if (insertError) {
-            console.error('Erro ao criar romaneio:', insertError)
-            throw new Error(`Erro ao criar romaneio: ${insertError.message}`)
-          }
-          
-          if (!newRomaneio || !newRomaneio.id) {
-            throw new Error('Romaneio criado mas ID não retornado')
-          }
-          
-          romaneioId = newRomaneio.id
-          console.log('Romaneio criado com sucesso:', romaneioId)
-        }
-
-        // 5. Vincular pedidos ao romaneio atual
-        if (romaneioId && insertedOrderIds.length > 0) {
-          const { error: updateOrdersError } = await supabase
-            .from('orders')
-            .update({ romaneio_id: romaneioId })
-            .in('id', insertedOrderIds)
-
-          if (updateOrdersError) throw updateOrdersError
-        }
-
-        // 5.5. Verificar se o romaneio foi criado corretamente
-        if (!romaneioId) {
-          throw new Error('Erro ao criar romaneio. Tente novamente.')
-        }
-
-        // Verificar se o romaneio existe no banco antes de gerar PDF (com retry)
-        let verifyRomaneio = null
-        let verifyError = null
-        let retries = 3
-        
-        for (let i = 0; i < retries; i++) {
-          const { data, error } = await supabase
-            .from('romaneios')
-            .select('id')
-            .eq('id', romaneioId)
-            .single()
-          
-          if (!error && data) {
-            verifyRomaneio = data
-            break
-          }
-          
-          verifyError = error
-          if (i < retries - 1) {
-            // Aguardar um pouco antes de tentar novamente
-            await new Promise(resolve => setTimeout(resolve, 500))
-          }
-        }
-
-        if (!verifyRomaneio) {
-          console.error('Erro ao verificar romaneio após retries:', verifyError)
-          console.log('Romaneio ID tentado:', romaneioId)
-          throw new Error('Romaneio criado mas não encontrado. Aguarde alguns segundos e tente baixar o PDF novamente.')
-        }
-
-        // 6. Gerar e baixar PDF do romaneio
-        await handleDownloadRomaneioPDF(romaneioId, `Romaneio-${group.lot.nome}.pdf`, itemsSnapshot)
-
-        // 7. Limpar Carrinho Local deste lote
+        // 5. Limpar Carrinho Local
         localStorage.removeItem(`cart_${lotId}`)
         
-        // 8. Feedback e Redirecionar
+        // 6. Sucesso
         toast.success('Pedido realizado com sucesso! Romaneio gerado.')
         navigate('/app/historico')
 

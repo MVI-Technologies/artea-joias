@@ -14,7 +14,8 @@ export default function UserList() {
     email: '',
     telefone: '',
     role: 'admin', // admin ou cliente (mas aqui focamos em gestão)
-    status: 'completo'
+    role: 'admin',
+    cadastro_status: 'completo'
   })
   const [saving, setSaving] = useState(false)
 
@@ -83,7 +84,7 @@ export default function UserList() {
       email: user.email,
       telefone: user.telefone,
       role: user.role,
-      status: user.cadastro_status || 'completo'
+      cadastro_status: user.cadastro_status || 'completo'
     })
     setShowModal(true)
   }

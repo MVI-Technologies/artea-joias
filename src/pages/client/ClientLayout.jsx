@@ -7,7 +7,7 @@ import {
   LogOut, 
   Menu, 
   X,
-  CreditCard,
+  ShoppingCart,
   Package 
 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
@@ -86,7 +86,7 @@ export default function ClientLayout() {
                 className={`cart-btn ${cartCount > 0 ? 'has-items' : ''}`}
                 aria-label={`Carrinho com ${cartCount} itens`}
             >
-              <CreditCard size={20} />
+              <ShoppingCart size={20} />
               <span className="cart-text">Carrinho</span>
               {cartCount > 0 && (
                   <span className="cart-badge">{cartCount}</span>

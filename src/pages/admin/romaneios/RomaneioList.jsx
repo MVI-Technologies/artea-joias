@@ -13,7 +13,10 @@ import {
   DollarSign,
   ChevronDown,
   Filter,
-  ArrowLeft
+  ArrowLeft,
+  Package,
+  Truck,
+  Check
 } from 'lucide-react'
 import { supabase } from '../../../lib/supabase'
 import './RomaneioList.css'
@@ -33,10 +36,10 @@ export default function RomaneioList() {
 
   const fetchLots = async () => {
     try {
+      // Buscar TODOS os lots que tenham romaneios (remover filtro de status)
       const { data, error } = await supabase
         .from('lots')
         .select('*')
-        .in('status', ['fechado', 'preparacao', 'pago', 'enviado', 'concluido'])
         .order('updated_at', { ascending: false })
 
       if (error) throw error
@@ -84,8 +87,14 @@ export default function RomaneioList() {
     const statusMap = {
       'pendente': { label: 'Pendente', class: 'status-pendente', icon: Clock },
       'aguardando': { label: 'Aguardando', class: 'status-aguardando', icon: Clock },
+      'aguardando_pagamento': { label: 'Aguardando Pagamento', class: 'status-aguardando', icon: Clock },
       'pago': { label: 'Pago', class: 'status-pago', icon: CheckCircle },
+      'em_separacao': { label: 'Em Separação', class: 'status-em_separacao', icon: Package }, // status-em_separacao uses new dynamic CSS or we map to badge-primary
+      'enviado': { label: 'Enviado', class: 'status-enviado', icon: Truck },
+      'concluido': { label: 'Concluído', class: 'status-concluido', icon: Check },
       'cancelado': { label: 'Cancelado', class: 'status-cancelado', icon: DollarSign },
+      'admin_purchase': { label: 'Compra Admin', class: 'status-admin_purchase', icon: CheckCircle },
+      'fechado_insuficiente': { label: 'Fechado (Insuficiente)', class: 'status-fechado', icon: DollarSign },
     }
     return statusMap[status] || statusMap.pendente
   }
@@ -131,12 +140,13 @@ export default function RomaneioList() {
   })
 
   // Calcular estatísticas
+  // Calcular estatísticas
   const stats = {
     total: romaneios.length,
-    pagos: romaneios.filter(r => r.status_pagamento === 'pago').length,
-    aguardando: romaneios.filter(r => r.status_pagamento === 'aguardando').length,
+    pagos: romaneios.filter(r => ['pago', 'enviado', 'concluido', 'em_separacao', 'admin_purchase'].includes(r.status_pagamento)).length,
+    aguardando: romaneios.filter(r => ['aguardando', 'aguardando_pagamento'].includes(r.status_pagamento)).length,
     valorTotal: romaneios.reduce((sum, r) => sum + (r.valor_total || 0), 0),
-    valorPago: romaneios.filter(r => r.status_pagamento === 'pago').reduce((sum, r) => sum + (r.valor_total || 0), 0)
+    valorPago: romaneios.filter(r => ['pago', 'enviado', 'concluido', 'em_separacao', 'admin_purchase'].includes(r.status_pagamento)).reduce((sum, r) => sum + (r.valor_total || 0), 0)
   }
 
   return (
@@ -156,7 +166,7 @@ export default function RomaneioList() {
         {/* Sidebar: Lista de Links */}
         <div className="romaneio-sidebar">
           <div className="sidebar-header">
-            <h3>Links Fechados</h3>
+            <h3>Todos os Links</h3>
           </div>
           <div className="sidebar-content">
             {loading ? (
@@ -230,9 +240,13 @@ export default function RomaneioList() {
                   onChange={(e) => setStatusFilter(e.target.value)}
                 >
                   <option value="todos">Todos os status</option>
-                  <option value="aguardando">⏳ Aguardando Pagamento</option>
+                  <option value="aguardando_pagamento">⏳ Aguardando Pagamento</option>
                   <option value="pago">✅ Pago</option>
-                  <option value="pendente">⚪ Pendente</option>
+                  <option value="em_separacao">📦 Em Separação</option>
+                  <option value="enviado">🚚 Enviado</option>
+                  <option value="concluido">🏁 Concluído</option>
+                  <option value="admin_purchase">🏢 Compra Admin</option>
+                  <option value="cancelado">❌ Cancelado</option>
                 </select>
               </div>
 
@@ -259,6 +273,9 @@ export default function RomaneioList() {
                           <div className="client-info">
                             <h4>{romaneio.client?.nome || 'Cliente'}</h4>
                             <span>{romaneio.client?.telefone}</span>
+                            {romaneio.is_admin_purchase && (
+                                <span className="badge-admin" style={{ marginLeft: 8, fontSize: 10 }}>ADMIN</span>
+                            )}
                           </div>
                           <span className={`status-badge ${statusBadge.class}`}>
                             <StatusIcon size={14} />

@@ -64,6 +64,14 @@ export default function LotDetail({ defaultTab }) {
   const [sendingNotification, setSendingNotification] = useState(false)
   const [notification, setNotification] = useState(null)
   
+  // States para status de produtos fracionados
+  const [productCompletionStatus, setProductCompletionStatus] = useState({
+    total: 0,
+    complete: 0,
+    incomplete: 0,
+    fractionalProducts: []
+  })
+  
   // States para gerenciamento de produtos
   const [showProductModal, setShowProductModal] = useState(false)
   const [editingProduct, setEditingProduct] = useState(null)
@@ -74,7 +82,18 @@ export default function LotDetail({ defaultTab }) {
     categoria_id: '',
     tipo_venda: 'individual',
     quantidade_pacote: 12,
-    imagem1: ''
+    imagem1: '',
+    variacoes: '',
+    observacoes: '',
+    qtd_minima_fornecedor: 1,
+    qtd_maxima_fornecedor: '',
+    qtd_minima_cliente: 1,
+    multiplo_pacote: 1,
+    posicao_catalogo: 0,
+    anotacoes_internas: '',
+    revisar_produto: false,
+    registrar_peso: false,
+    registrar_preco_custo: false
   })
   const [savingProduct, setSavingProduct] = useState(false)
 
@@ -147,11 +166,54 @@ export default function LotDetail({ defaultTab }) {
         .order('nome')
 
       setCategories(cats || [])
+      
+      // Calcular status de produtos fracionados
+      calculateProductCompletionStatus(lotProducts || [])
     } catch (error) {
       console.error('Erro:', error)
     } finally {
       setLoading(false)
     }
+  }
+  
+  // Calcular status de completude dos produtos fracionados
+  const calculateProductCompletionStatus = (lotProducts) => {
+    const fractionalProducts = lotProducts.filter(lp => 
+      lp.product?.tipo_venda === 'pacote'
+    )
+    
+    if (fractionalProducts.length === 0) {
+      setProductCompletionStatus({
+        total: 0,
+        complete: 0,
+        incomplete: 0,
+        fractionalProducts: []
+      })
+      return
+    }
+    
+    const statusData = fractionalProducts.map(lp => {
+      const minimo = lp.product?.quantidade_pacote || 12
+      const atual = lp.quantidade_pedidos || 0
+      const complete = atual >= minimo
+      
+      return {
+        id: lp.product.id,
+        nome: lp.product.nome,
+        minimo,
+        atual,
+        faltam: Math.max(0, minimo - atual),
+        progresso: Math.min(100, (atual / minimo) * 100),
+        complete
+      }
+    })
+    
+    setProductCompletionStatus({
+      total: fractionalProducts.length,
+      complete: statusData.filter(p => p.complete).length,
+      incomplete: statusData.filter(p => !p.complete).length,
+      fractionalProducts: statusData
+    })
   }
 
   const fetchAvailableProducts = async () => {

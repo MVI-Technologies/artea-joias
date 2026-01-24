@@ -66,6 +66,7 @@ export default function LotList() {
         .order('created_at', { ascending: false })
 
       if (error) throw error
+      console.log('DEBUG LOTS DATA:', data) // Debug solicitado
       setLots(data || [])
     } catch (error) {
       console.error('Erro ao carregar grupos:', error)
@@ -75,16 +76,31 @@ export default function LotList() {
   }
 
   const getStatusBadge = (status) => {
+    // Garantir string
+    const raw = String(status || '')
+    // Remover tudo que não é letra/número para chave (ex: ' fechado ' -> 'fechado')
+    const key = raw.toLowerCase().replace(/[^a-z0-9]/g, '')
+    
     const statusMap = {
       'aberto': { label: 'Aberto', class: 'badge-green' },
+      'open': { label: 'Aberto', class: 'badge-green' },
       'fechado': { label: 'Fechado', class: 'badge-red' },
+      'closed': { label: 'Fechado', class: 'badge-red' },
       'preparacao': { label: 'Em preparação', class: 'badge-orange' },
       'pago': { label: 'Pago', class: 'badge-blue' },
       'enviado': { label: 'Enviado', class: 'badge-purple' },
       'concluido': { label: 'Concluído', class: 'badge-gray' },
       'cancelado': { label: 'Cancelado', class: 'badge-red' },
     }
-    return statusMap[status] || { label: status || 'Aberto', class: 'badge-green' }
+    
+    // Se a chave processada bater com o mapa, retorna
+    if (statusMap[key]) return statusMap[key]
+    
+    // Fallback Inteligente
+    if (!key || key === 'null' || key === 'undefined') return { label: 'Aberto', class: 'badge-green' }
+    
+    // Se tem valor mas não mapeou, mostra cinza
+    return { label: raw, class: 'badge-gray' } 
   }
 
   const formatDate = (date) => {
@@ -92,39 +108,48 @@ export default function LotList() {
     return new Date(date).toLocaleDateString('pt-BR')
   }
 
+
   const handleAction = (action, lot) => {
     setOpenDropdown(null)
+    
     switch (action) {
-      case 'configuracoes':
-        openConfigModal(lot)
+      case 'editar':
+        navigate(`/admin/lotes/${lot.id}/editar`)
+        break
+      case 'privacidade':
+        setShowConfigModal(lot)
+        setConfigData(lot)
         break
       case 'duplicar':
         setShowConfirmModal({ type: 'duplicar', lot })
         break
-      case 'fechar':
-        if (lot.status === 'fechado') {
-          showToast('warning', 'Este grupo já está fechado!')
-          return
-        }
-        setNotifyOnClose(true)
-        setShowConfirmModal({ type: 'fechar', lot })
+      case 'relatorio':
+        navigate(`/admin/relatorios?lotId=${lot.id}&type=produtos`)
+        break
+      case 'romaneios':
+        navigate(`/admin/romaneios?lot=${lot.id}`)
+        break
+      case 'separacao':
+        navigate(`/admin/separacao?lot=${lot.id}`)
         break
       default:
         break
     }
   }
 
-  const openConfigModal = async (lot) => {
+  const openConfigModal = (lot) => {
+    setShowConfigModal(lot)
     setConfigData({
-      id: lot.id,
       nome: lot.nome || '',
       descricao: lot.descricao || '',
       data_fim: lot.data_fim || '',
       taxa_separacao: lot.taxa_separacao || 0,
+      requer_pacote_fechado: lot.requer_pacote_fechado || false,
       chave_pix: lot.chave_pix || '',
-      nome_beneficiario: lot.nome_beneficiario || ''
+      nome_beneficiario: lot.nome_beneficiario || '',
+      mensagem_pagamento: lot.mensagem_pagamento || '',
+      telefone_financeiro: lot.telefone_financeiro || ''
     })
-    setShowConfigModal(lot)
   }
 
   const saveConfig = async () => {
@@ -132,83 +157,65 @@ export default function LotList() {
     try {
       const { error } = await supabase
         .from('lots')
-        .update({
-          nome: configData.nome,
-          descricao: configData.descricao,
-          data_fim: configData.data_fim || null,
-          taxa_separacao: configData.taxa_separacao,
-          chave_pix: configData.chave_pix,
-          nome_beneficiario: configData.nome_beneficiario
-        })
-        .eq('id', configData.id)
-      
+        .update(configData)
+        .eq('id', showConfigModal.id)
+
       if (error) throw error
-      
-      showToast('success', 'Configurações salvas com sucesso!')
+
       setShowConfigModal(null)
       fetchLots()
+      showToast('success', 'Configurações salvas com sucesso!')
     } catch (error) {
       console.error('Erro ao salvar:', error)
-      showToast('error', 'Erro ao salvar: ' + error.message)
+      showToast('error', 'Erro ao salvar configurações')
     } finally {
       setProcessing(false)
     }
   }
 
   const closeLot = async () => {
-    const lot = showConfirmModal?.lot
-    if (!lot) return
-    
+    setShowConfirmModal(null)
     setProcessing(true)
+    
     try {
       const { error } = await supabase
         .from('lots')
         .update({ status: 'fechado' })
-        .eq('id', lot.id)
-      
+        .eq('id', showConfirmModal.lot.id)
+
       if (error) throw error
-      
-      showToast('success', 'Grupo fechado com sucesso!')
-      
-      // Enviar notificação WhatsApp se marcado
+
+      // Enviar notificação se marcado
       if (notifyOnClose) {
-        try {
-          const { data: clients } = await supabase
-            .from('clients')
-            .select('id, nome, telefone')
-            .eq('role', 'cliente')
-            .not('telefone', 'is', null)
-          
-          if (clients && clients.length > 0) {
-            const result = await notifyCatalogClosed(lot, clients)
-            if (result.success) {
-              showToast('success', `Notificação enviada para ${clients.length} cliente(s)!`)
-            }
-          }
-        } catch (notifyError) {
-          console.error('Erro ao notificar:', notifyError)
+        const { data: clients } = await supabase
+          .from('clients')
+          .select('id, nome, telefone')
+          .eq('role', 'cliente')
+          .not('telefone', 'is', null)
+        
+        if (clients && clients.length > 0) {
+          await notifyCatalogClosed(showConfirmModal.lot, clients)
         }
       }
-      
+
       fetchLots()
+      showToast('success', 'Grupo fechado com sucesso!')
     } catch (error) {
-      console.error('Erro ao fechar grupo:', error)
-      showToast('error', 'Erro ao fechar: ' + error.message)
+      console.error('Erro ao fechar:', error)
+      showToast('error', 'Erro ao fechar grupo')
     } finally {
       setProcessing(false)
-      setShowConfirmModal(null)
     }
   }
 
   const duplicateLot = async () => {
-    const lot = showConfirmModal?.lot
-    if (!lot) return
-    
+    setShowConfirmModal(null)
     setProcessing(true)
+    
     try {
       const newLot = {
-        nome: `${lot.nome} (cópia)`,
-        descricao: lot.descricao,
+        nome: `${showConfirmModal.lot.nome} (cópia)`,
+        descricao: showConfirmModal.lot.descricao,
         status: 'aberto',
         link_compra: `grupo-${Date.now()}`
       }
@@ -220,38 +227,22 @@ export default function LotList() {
         .single()
       
       if (error) throw error
-      
-      // Copiar produtos do lote original
-      const { data: lotProducts } = await supabase
-        .from('lot_products')
-        .select('product_id')
-        .eq('lot_id', lot.id)
-      
-      if (lotProducts && lotProducts.length > 0) {
-        const newLotProducts = lotProducts.map(lp => ({
-          lot_id: data.id,
-          product_id: lp.product_id,
-          quantidade_pedidos: 0,
-          quantidade_clientes: 0
-        }))
-        
-        await supabase.from('lot_products').insert(newLotProducts)
-      }
-      
-      showToast('success', 'Catálogo duplicado com sucesso!')
+
       fetchLots()
+      showToast('success', 'Grupo duplicado com sucesso!')
+      navigate(`/admin/lotes/${data.id}`)
     } catch (error) {
       console.error('Erro ao duplicar:', error)
-      showToast('error', 'Erro ao duplicar catálogo')
+      showToast('error', 'Erro ao duplicar grupo')
     } finally {
       setProcessing(false)
-      setShowConfirmModal(null)
     }
   }
 
   const filteredLots = lots.filter(lot => {
     const matchSearch = lot.nome?.toLowerCase().includes(search.toLowerCase())
-    const matchStatus = statusFilter === 'todos' || lot.status === statusFilter
+    const s = (lot.status || '').toLowerCase()
+    const matchStatus = statusFilter === 'todos' || s === statusFilter
     return matchSearch && matchStatus
   })
 
@@ -269,13 +260,14 @@ export default function LotList() {
       <div className="toolbar">
         <div className="toolbar-left">
           <div className="search-box">
-            <input 
-              type="text" 
-              placeholder="Buscar nome" 
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-            <Search size={16} className="search-icon" />
+             {/* ... search input ... */}
+             <input 
+               type="text" 
+               placeholder="Buscar nome" 
+               value={search}
+               onChange={(e) => setSearch(e.target.value)}
+             />
+             <Search size={16} className="search-icon" />
           </div>
         </div>
         <div className="toolbar-right">
@@ -290,22 +282,22 @@ export default function LotList() {
             <option value="preparacao">Em preparação</option>
             <option value="pago">Pago</option>
             <option value="enviado">Enviado</option>
-            <option value="concluido">Concluído</option>
           </select>
         </div>
       </div>
 
       {/* Botões de ação */}
       <div className="action-buttons">
-        <button className="btn btn-primary" onClick={() => navigate('/admin/lotes/novo')}>
-          <Plus size={16} /> Catálogo
-        </button>
-        <button className="btn btn-dark">
-          Notificações
-        </button>
-        <button className="btn btn-dark dropdown-toggle">
-          Ações <ChevronDown size={14} />
-        </button>
+         {/* ... buttons ... */}
+         <button className="btn btn-primary" onClick={() => navigate('/admin/lotes/novo')}>
+           <Plus size={16} /> Catálogo
+         </button>
+         <button className="btn btn-dark">
+           Notificações
+         </button>
+         <button className="btn btn-dark dropdown-toggle">
+           Ações <ChevronDown size={14} />
+         </button>
       </div>
 
       {/* Tabela de grupos */}
@@ -314,6 +306,7 @@ export default function LotList() {
           <thead>
             <tr>
               <th className="col-nome text-white">Nome</th>
+              <th className="col-status text-white">Status</th>
               <th className="col-data text-white">Data início</th>
               <th className="col-data text-white">Encerramento</th>
               <th className="col-acoes text-white">Ações</th>
@@ -325,6 +318,9 @@ export default function LotList() {
               <tr className="row-highlight">
                 <td className="col-nome">
                   <span className="nome-text">{prontaEntrega.nome}</span>
+                </td>
+                <td className="col-status">
+                   <span className="status-badge badge-green">Aberto</span>
                 </td>
                 <td className="col-data"></td>
                 <td className="col-data"></td>
@@ -359,13 +355,15 @@ export default function LotList() {
 
             {/* Lotes regulares */}
             {regularLots.map((lot) => {
-              const status = getStatusBadge(lot.status)
+              const badgeInfo = getStatusBadge(lot.status)
               return (
                 <tr key={lot.id} className="row-regular">
                   <td className="col-nome">
                     <span className="nome-text">{lot.nome}</span>
-                    <span className={`status-badge ${status.class}`}>
-                      {status.label}
+                  </td>
+                  <td className="col-status">
+                    <span className={`status-badge ${badgeInfo.class}`}>
+                      {badgeInfo.label}
                     </span>
                   </td>
                   <td className="col-data">{formatDate(lot.created_at)}</td>
@@ -382,13 +380,13 @@ export default function LotList() {
                           type="button"
                           className="btn-action btn-acoes"
                           onClick={(e) => {
-                            if (openDropdown === lot.id) {
-                              setOpenDropdown(null)
-                            } else {
-                              const rect = e.currentTarget.getBoundingClientRect()
-                              setDropdownPos({ top: rect.bottom + 4, left: rect.right - 180 })
-                              setOpenDropdown(lot.id)
-                            }
+                             if (openDropdown === lot.id) {
+                               setOpenDropdown(null)
+                             } else {
+                               const rect = e.currentTarget.getBoundingClientRect()
+                               setDropdownPos({ top: rect.bottom + 4, left: rect.right - 180 })
+                               setOpenDropdown(lot.id)
+                             }
                           }}
                         >
                           Ações <ChevronDown size={12} />
@@ -402,7 +400,7 @@ export default function LotList() {
 
             {filteredLots.length === 0 && (
               <tr>
-                <td colSpan="4" className="empty-message">
+                <td colSpan="5" className="empty-message">
                   Nenhum grupo de compras encontrado
                 </td>
               </tr>
@@ -608,14 +606,23 @@ export default function LotList() {
           className="dropdown-menu-fixed"
           style={{ top: dropdownPos.top, left: dropdownPos.left }}
         >
-          <button type="button" onClick={() => handleAction('configuracoes', lots.find(l => l.id === openDropdown))}>
-            <Settings size={14} /> Configurações
+          <button type="button" onMouseDown={(e) => { e.preventDefault(); handleAction('editar', lots.find(l => l.id === openDropdown)); }}>
+            <Edit size={14} /> Editar
           </button>
-          <button type="button" onClick={() => handleAction('duplicar', lots.find(l => l.id === openDropdown))}>
+          <button type="button" onMouseDown={(e) => { e.preventDefault(); handleAction('privacidade', lots.find(l => l.id === openDropdown)); }}>
+            <Settings size={14} /> Privacidade
+          </button>
+          <button type="button" onMouseDown={(e) => { e.preventDefault(); handleAction('duplicar', lots.find(l => l.id === openDropdown)); }}>
             <Copy size={14} /> Duplicar
           </button>
-          <button type="button" onClick={() => handleAction('fechar', lots.find(l => l.id === openDropdown))}>
-            <Lock size={14} /> Fechar Grupo
+          <button type="button" onMouseDown={(e) => { e.preventDefault(); handleAction('relatorio', lots.find(l => l.id === openDropdown)); }}>
+            <FileText size={14} /> Relatório Produtos
+          </button>
+          <button type="button" onMouseDown={(e) => { e.preventDefault(); handleAction('romaneios', lots.find(l => l.id === openDropdown)); }}>
+            <Package size={14} /> Romaneios
+          </button>
+          <button type="button" onMouseDown={(e) => { e.preventDefault(); handleAction('separacao', lots.find(l => l.id === openDropdown)); }}>
+            <Scissors size={14} /> Separação
           </button>
         </div>
       )}

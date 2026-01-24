@@ -1,22 +1,36 @@
+
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { 
   Plus, 
   Search, 
   Users,
   Phone,
-  Star,
   ChevronDown,
-  BarChart3
+  BarChart3,
+  Edit2,
+  Calendar,
+  DollarSign,
+  CreditCard,
+  X,
+  AlertTriangle
 } from 'lucide-react'
 import { supabase } from '../../../lib/supabase'
 import './ClientList.css'
 
 export default function ClientList() {
+  const navigate = useNavigate()
   const [clients, setClients] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
+  
+  // Modal State
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [editingClient, setEditingClient] = useState(null)
+  const [modalMode, setModalMode] = useState('') // 'saldo', 'credito', 'ultima_compra'
+  const [modalValue, setModalValue] = useState('')
+  const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     fetchClients()
@@ -41,9 +55,15 @@ export default function ClientList() {
 
   const toggleApproval = async (client) => {
     try {
+      // Se estiver aprovando, também marca cadastro como completo se estiver pendente
+      const updates = { approved: !client.approved }
+      if (!client.approved && client.cadastro_status === 'pendente') {
+        updates.cadastro_status = 'completo'
+      }
+
       const { error } = await supabase
         .from('clients')
-        .update({ approved: !client.approved })
+        .update(updates)
         .eq('id', client.id)
 
       if (error) throw error
@@ -54,35 +74,64 @@ export default function ClientList() {
   }
 
   const getStatusBadge = (client) => {
+    if (client.approved) {
+        return <span className="badge badge-completo">Aprovado</span>
+    }
     if (client.cadastro_status === 'pendente') {
       return <span className="badge badge-pendente">Pendente</span>
     }
     if (client.cadastro_status === 'incompleto') {
-      return <span className="badge badge-incompleto">Cadastro Incompleto</span>
+      return <span className="badge badge-incompleto">Incompleto</span>
     }
-    return <span className="badge badge-completo">Cadastro Completo</span>
+    return <span className="badge badge-pendente">Aguardando</span>
   }
 
   const filteredClients = clients.filter(client => {
     const matchesSearch = client.nome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           client.telefone?.includes(searchTerm)
-    const matchesStatus = !filterStatus || client.cadastro_status === filterStatus
-    return matchesSearch && matchesStatus
+    // Filter status logic can be refined if needed
+    return matchesSearch
   })
 
-  const renderStars = (count) => {
-    return (
-      <div className="stars">
-        {[...Array(5)].map((_, i) => (
-          <Star 
-            key={i} 
-            size={14} 
-            fill={i < count ? '#ffc107' : 'none'}
-            color={i < count ? '#ffc107' : '#ddd'}
-          />
-        ))}
-      </div>
-    )
+  // Modal Handlers
+  const openModal = (client, mode) => {
+      // Data agora é automática, apenas info
+      if (mode === 'ultima_compra') return 
+
+      setEditingClient(client)
+      setModalMode(mode)
+      
+      if (mode === 'saldo') setModalValue(client.saldo_devedor || 0)
+      if (mode === 'credito') setModalValue(client.credito_disponivel || 0)
+      
+      setIsModalOpen(true)
+  }
+
+  const handleSave = async () => {
+      if (!editingClient) return
+      setSaving(true)
+      try {
+          const updates = {}
+          if (modalMode === 'saldo') updates.saldo_devedor = parseFloat(modalValue)
+          if (modalMode === 'credito') updates.credito_disponivel = parseFloat(modalValue)
+          if (modalMode === 'ultima_compra') updates.ultima_compra = modalValue ? new Date(modalValue).toISOString() : null
+
+          const { error } = await supabase
+              .from('clients')
+              .update(updates)
+              .eq('id', editingClient.id)
+
+          if (error) throw error
+          
+          // Update local state
+          setClients(clients.map(c => c.id === editingClient.id ? { ...c, ...updates } : c))
+          setIsModalOpen(false)
+      } catch (error) {
+          console.error('Erro ao salvar:', error)
+          alert('Erro ao salvar alterações.')
+      } finally {
+          setSaving(false)
+      }
   }
 
   return (
@@ -96,14 +145,8 @@ export default function ClientList() {
         <div className="toolbar-left">
           <Link to="/admin/clientes/novo" className="btn btn-success">
             <Plus size={18} />
-            Cliente
+            Novo Cliente
           </Link>
-          <div className="dropdown">
-            <button className="btn btn-secondary">
-              <BarChart3 size={18} />
-              Relatórios <ChevronDown size={14} />
-            </button>
-          </div>
         </div>
 
         <div className="toolbar-right">
@@ -126,24 +169,23 @@ export default function ClientList() {
             <thead>
               <tr>
                 <th>Nome</th>
-                <th>WhatsApp</th>
-                <th>Saldo Devedor</th>
-                <th>Crédito Disponível</th>
+                <th>Contato</th>
+                <th>Financeiro</th>
                 <th>Última Compra</th>
-                <th></th>
+                <th>Status</th>
                 <th>Ações</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan="7" className="text-center">
+                  <td colSpan="6" className="text-center">
                     <div className="loading-spinner" />
                   </td>
                 </tr>
               ) : filteredClients.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="text-center text-muted">
+                  <td colSpan="6" className="text-center text-muted">
                     Nenhum cliente encontrado
                   </td>
                 </tr>
@@ -152,9 +194,8 @@ export default function ClientList() {
                   <tr key={client.id}>
                     <td>
                       <div className="client-name-cell">
-                        <span className="client-group-badge">Grupo Compras</span>
                         <span className="client-name">{client.nome}</span>
-                        {getStatusBadge(client)}
+                        <span className="text-muted text-sm">{client.grupo}</span>
                       </div>
                     </td>
                     <td>
@@ -164,33 +205,42 @@ export default function ClientList() {
                       </div>
                     </td>
                     <td>
-                      <a href="#" className="text-danger">
-                        R$ {(client.saldo_devedor || 0).toFixed(2)}
-                      </a>
-                      {' '}
-                      <a href="#" className="text-primary">Pagamentos</a>
+                      <div className="financial-cell">
+                        <div className="financial-row text-danger" onClick={() => openModal(client, 'saldo')} title="Editar Saldo Devedor" style={{cursor: 'pointer'}}>
+                            <DollarSign size={14} /> Devedor: R$ {(client.saldo_devedor || 0).toFixed(2)} <Edit2 size={10} />
+                        </div>
+                        <div className="financial-row text-success" onClick={() => openModal(client, 'credito')} title="Editar Crédito" style={{cursor: 'pointer'}}>
+                            <CreditCard size={14} /> Crédito: R$ {(client.credito_disponivel || 0).toFixed(2)} <Edit2 size={10} />
+                        </div>
+                      </div>
                     </td>
                     <td>
-                      <a href="#" className="text-primary">
-                        R$ {(client.credito_disponivel || 0).toFixed(2)}
-                      </a>
-                      {' '}
-                      <a href="#" className="text-primary">Gerenciar</a>
+                        <div className="date-cell" title="Atualizado via Romaneios">
+                            {client.ultima_compra ? new Date(client.ultima_compra).toLocaleDateString('pt-BR') : '-'}
+                        </div>
                     </td>
                     <td>
-                      <a href="#" className="text-primary">Gerenciar</a>
+                        {getStatusBadge(client)}
                     </td>
                     <td>
-                      {renderStars(client.estrelinhas || 0)}
-                    </td>
-                    <td>
-                      <button 
-                        className={`btn btn-sm ${!client.approved ? 'btn-success' : 'btn-outline-danger'}`}
-                        onClick={() => toggleApproval(client)}
-                        title={client.approved ? "Bloquear Cadastro" : "Aprovar Cadastro"}
-                      >
-                        {client.approved ? "Bloquear" : "Aprovar"}
-                      </button>
+                      {/* Se cadastro incompleto, força edição */}
+                      {client.cadastro_status === 'incompleto' ? (
+                          <button 
+                            className="btn btn-sm btn-warning"
+                            onClick={() => navigate(`/admin/clientes/${client.id}`)}
+                            title="Completar dados cadastrais"
+                          >
+                            <AlertTriangle size={12} style={{marginRight: 4}}/> Atualizar
+                          </button>
+                      ) : (
+                          <button 
+                            className={`btn btn-sm ${!client.approved ? 'btn-success' : 'btn-outline-danger'}`}
+                            onClick={() => toggleApproval(client)}
+                            title={client.approved ? "Bloquear Cadastro" : "Aprovar Cadastro"}
+                          >
+                            {client.approved ? "Bloquear" : "Aprovar"}
+                          </button>
+                      )}
                     </td>
                   </tr>
                 ))
@@ -198,13 +248,48 @@ export default function ClientList() {
             </tbody>
           </table>
         </div>
-        
-        <div className="table-footer">
-          <span className="text-muted">
-            Página 1 / 1 - {filteredClients.length} resultados
-          </span>
-        </div>
       </div>
+
+      {/* Edit Modal */}
+      {isModalOpen && (
+          <div className="modal-overlay">
+              <div className="modal-content">
+                  <div className="modal-header">
+                      <h3>
+                          {modalMode === 'saldo' && 'Gerenciar Saldo Devedor'}
+                          {modalMode === 'credito' && 'Gerenciar Crédito'}
+                          {modalMode === 'ultima_compra' && 'Data Última Compra'}
+                      </h3>
+                      <button className="btn-close" onClick={() => setIsModalOpen(false)}>
+                          <X size={20} />
+                      </button>
+                  </div>
+                  <div className="modal-body">
+                      <p>Cliente: <strong>{editingClient?.nome}</strong></p>
+                      
+                      <div className="form-group">
+                          <label>
+                              {modalMode === 'saldo' && 'Valor Devido (R$)'}
+                              {modalMode === 'credito' && 'Crédito Disponível (R$)'}
+                          </label>
+                          <input 
+                              type="number"
+                              step="0.01"
+                              className="form-control"
+                              value={modalValue}
+                              onChange={e => setModalValue(e.target.value)}
+                          />
+                      </div>
+                  </div>
+                  <div className="modal-footer">
+                      <button className="btn btn-secondary" onClick={() => setIsModalOpen(false)}>Cancelar</button>
+                      <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
+                          {saving ? 'Salvando...' : 'Salvar'}
+                      </button>
+                  </div>
+              </div>
+          </div>
+      )}
     </div>
   )
 }

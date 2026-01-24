@@ -70,7 +70,7 @@ export default function ClientLinks() {
         <p className="client-subtitle">Participe dos grupos abertos e garanta preços de atacado.</p>
       </div>
 
-      <div className="links-grid">
+      <div className="links-list">
         {links.length === 0 ? (
           <div className="empty-state">
             <ShoppingBag size={48} className="mx-auto mb-4 opacity-30" />
@@ -79,74 +79,56 @@ export default function ClientLinks() {
           </div>
         ) : (
           links.map(link => (
-            <div key={link.id} className="link-card">
-               {/* Capa */}
-               <div className="card-image-container">
-                  {link.imagem_capa ? (
-                    <img 
-                        src={link.imagem_capa} 
-                        alt={link.nome} 
-                        className="card-image" 
-                    />
-                  ) : (
-                    <div className="h-full flex items-center justify-center text-slate-400">
-                      <ShoppingBag size={40} opacity={0.2} />
+            <div key={link.id} className="list-item">
+              <div className="list-item-main">
+                {/* Status Badge */}
+                <div className="status-badge-list">
+                  <div className="status-dot"></div>
+                  ABERTO
+                </div>
+                
+                {/* Content */}
+                <div className="list-item-content">
+                  <div className="list-item-header">
+                    <h3 className="list-item-title">{link.nome}</h3>
+                    <div className="date-info-inline">
+                      <Clock size={14} />
+                      <span>Encerra: {link.data_fim ? new Date(link.data_fim).toLocaleDateString('pt-BR') : 'Em breve'}</span>
                     </div>
-                  )}
-                  
-                  <div className="status-badge">
-                    <div className="status-dot"></div>
-                    ABERTO
                   </div>
-               </div>
-               
-               {/* Conteúdo */}
-               <div className="card-content">
-                 <h3 className="card-title">{link.nome}</h3>
-                 <p className="card-description">{link.descricao || 'Sem descrição.'}</p>
-                 
-                 {/* Barra de Progresso */}
-                 <div className="progress-container">
-                    <div className="progress-header">
-                        <span className="progress-label">Progresso do Grupo</span>
-                        {link.stats.completo ? (
-                            <span className="progress-status status-success">
-                                <CheckCircle size={12} /> Mínimo Atingido!
-                            </span>
-                        ) : (
-                            <span className="progress-status status-warning">
-                                <AlertTriangle size={12} /> Faltam {link.stats.falta} pçs
-                            </span>
-                        )}
+                  
+                  <p className="list-item-description">{link.descricao || 'Sem descrição.'}</p>
+                  
+                  {/* Progress Inline */}
+                  <div className="progress-inline">
+                    <div className="progress-track-mini">
+                      <div 
+                        className={`progress-fill ${link.stats.completo ? 'bg-success' : 'bg-warning'}`}
+                        style={{ width: `${link.stats.progresso}%` }}
+                      />
                     </div>
-                    <div className="progress-track">
-                        <div 
-                            className={`progress-fill ${link.stats.completo ? 'bg-success' : 'bg-warning'}`}
-                            style={{ width: `${link.stats.progresso}%` }}
-                        />
-                    </div>
-                    <p className="progress-text">
-                        {link.stats.completo 
-                            ? "✨ Sucesso! O grupo já garantiu o envio." 
-                            : `🔥 Faltam apenas ${link.stats.falta} para fechar o pedido!`}
-                    </p>
-                 </div>
-                 
-                 {/* Footer */}
-                 <div className="card-footer">
-                    <div className="date-info">
-                        <Clock size={14} />
-                        <span>Encerra: {link.data_fim ? new Date(link.data_fim).toLocaleDateString('pt-BR') : 'Em breve'}</span>
-                    </div>
-                 </div>
-
-                 <Link 
-                    to={`/app/catalogo/${link.id}`} 
-                    className="btn-view-products"
-                 >
-                   Ver Produtos <ChevronRight size={18} />
-                 </Link>
-               </div>
+                    <span className="progress-text-mini">
+                      {link.stats.completo ? (
+                        <span className="text-success">
+                          <CheckCircle size={14} /> Mínimo Atingido
+                        </span>
+                      ) : (
+                        <span className="text-warning">
+                          <AlertTriangle size={14} /> Faltam {link.stats.falta} pçs
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                </div>
+                
+                {/* Action Button */}
+                <Link 
+                  to={`/app/catalogo/${link.id}`} 
+                  className="btn-view-list"
+                >
+                  Ver Produtos <ChevronRight size={18} />
+                </Link>
+              </div>
             </div>
           ))
         )}

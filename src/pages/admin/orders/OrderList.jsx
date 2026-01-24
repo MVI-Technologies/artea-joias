@@ -15,6 +15,13 @@ import {
 import { supabase } from '../../../lib/supabase'
 import './OrderList.css'
 
+/**
+ * ⚠️ DEPRECATED: This page references the 'orders' table which has been removed.
+ * Orders are now managed through Romaneios.
+ * Consider removing this page or redirecting to /admin/romaneios
+ * See migration 030_remove_orders_table.sql
+ */
+
 const statusOptions = [
   { value: '', label: 'Todos os Status' },
   { value: 'pendente', label: 'Pendente' },

@@ -126,7 +126,7 @@ export default function ClientForm() {
 
   return (
     <div className="client-form-page">
-      <div className="page-header">
+      <div className="page-header" style={{flexDirection: 'column', alignItems: 'flex-start', gap: '1rem'}}>
         <Link to="/admin/clientes" className="btn btn-outline btn-sm">
           <ArrowLeft size={16} /> Voltar
         </Link>
@@ -289,18 +289,19 @@ export default function ClientForm() {
             </div>
 
             <div className="form-group mt-md">
-              <label className="flex items-center gap-sm">
+              <label className="flex items-center gap-sm" style={{display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer'}}>
                 <input
                   type="checkbox"
                   checked={formData.approved}
                   onChange={e => setFormData({...formData, approved: e.target.checked})}
+                  style={{width: 'auto', margin: 0}}
                 />
                 Cliente aprovado para compras
               </label>
             </div>
           </div>
 
-          <div className="card-footer">
+          <div className="card-footer" style={{display: 'flex', justifyContent: 'flex-end', gap: '10px'}}>
             <button type="button" className="btn btn-secondary" onClick={() => navigate('/admin/clientes')}>
               Cancelar
             </button>

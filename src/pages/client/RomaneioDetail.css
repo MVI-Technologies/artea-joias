@@ -1,0 +1,500 @@
+/* Romaneio Detail - Client View */
+
+.romaneio-detail-page {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+.romaneio-detail-page .page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.romaneio-detail-page .header-title h1 {
+  font-size: 24px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
+}
+
+.romaneio-detail-page .subtitle {
+  color: #64748b;
+  font-size: 14px;
+  margin-top: 4px;
+}
+
+/* Status Banner */
+.status-banner {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px;
+  border-radius: 12px;
+  margin-bottom: 24px;
+  border-left: 4px solid;
+}
+
+.status-banner.status-warning {
+  background: #fef3c7;
+  border-color: #f59e0b;
+  color: #92400e;
+}
+
+.status-banner.status-success {
+  background: #d1fae5;
+  border-color: #10b981;
+  color: #065f46;
+}
+
+.status-banner.status-error {
+  background: #fee2e2;
+  border-color: #ef4444;
+  color: #991b1b;
+}
+
+.status-banner.status-secondary {
+  background: #f1f5f9;
+  border-color: #64748b;
+  color: #334155;
+}
+
+.status-banner h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.status-banner p {
+  margin: 4px 0 0 0;
+  font-size: 14px;
+  opacity: 0.9;
+}
+
+/* Cards */
+.card {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 20px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  border: 1px solid #e2e8f0;
+}
+
+.card h2 {
+  font-size: 20px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 20px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Payment Section - THE CRITICAL FIX */
+.payment-section {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+}
+
+.payment-section h2,
+.payment-section h3 {
+  color: white;
+}
+
+.payment-method {
+  background: rgba(255,255,255,0.1);
+  backdrop-filter: blur(10px);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.payment-method:last-of-type {
+  margin-bottom: 0;
+}
+
+.payment-method h3 {
+  margin: 0 0 16px 0;
+  font-size: 18px;
+}
+
+/* PIX Payment */
+.pix-details {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.qr-code-container {
+  background: white;
+  padding: 16px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pix-info {
+  flex: 1;
+  min-width: 250px;
+}
+
+.info-item {
+  margin-bottom: 16px;
+}
+
+.info-item .label {
+  display: block;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  opacity: 0.9;
+  margin-bottom: 6px;
+}
+
+.pix-key-copy {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255,255,255,0.2);
+  padding: 10px 12px;
+  border-radius: 8px;
+}
+
+.pix-key-copy code {
+  flex: 1;
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+  word-break: break-all;
+}
+
+.btn-copy {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(255,255,255,0.3);
+  border: none;
+  color: white;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  white-space: nowrap;
+  transition: background 0.2s;
+}
+
+.btn-copy:hover {
+  background: rgba(255,255,255,0.4);
+}
+
+.valor-destaque {
+  background: rgba(255,255,255,0.15);
+  padding: 12px;
+  border-radius: 8px;
+  border-left: 3px solid rgba(255,255,255,0.5);
+}
+
+.valor-destaque .valor {
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.info-item.prazo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  opacity: 0.9;
+  font-size: 14px;
+}
+
+.payment-message {
+  margin-top: 16px;
+  padding: 12px;
+  background: rgba(255,255,255,0.15);
+  border-radius: 8px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* Mercado Pago */
+.payment-method.mercadopago p {
+  margin: 0 0 16px 0;
+  opacity: 0.9;
+}
+
+.btn-mercadopago {
+  width: 100%;
+  background: #009ee3;
+  border: none;
+  color: white;
+  padding: 14px 20px;
+  font-size: 16px;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: background 0.2s;
+}
+
+.btn-mercadopago:hover {
+  background: #0088cc;
+}
+
+.payment-method.mercadopago small {
+  display: block;
+  margin-top: 8px;
+  text-align: center;
+  opacity: 0.8;
+  font-size: 12px;
+}
+
+/* Upload Proof */
+.upload-proof {
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid rgba(255,255,255,0.2);
+}
+
+.upload-proof h4 {
+  margin: 0 0 8px 0;
+  font-size: 16px;
+}
+
+.upload-proof p {
+  margin: 0 0 16px 0;
+  font-size: 14px;
+  opacity: 0.9;
+}
+
+.btn-upload {
+  background: rgba(255,255,255,0.2);
+  border: 2px dashed rgba(255,255,255,0.5);
+  color: white;
+  padding: 12px 20px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-upload:hover {
+  background: rgba(255,255,255,0.3);
+  border-color: rgba(255,255,255,0.7);
+}
+
+.proof-uploaded {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 10px;
+  background: rgba(16, 185, 129, 0.2);
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+/* Alerts */
+.alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.alert-error {
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fca5a5;
+}
+
+.alert strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.alert p {
+  margin: 0;
+  font-size: 14px;
+}
+
+/* Order Summary */
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.summary-item span {
+  font-size: 14px;
+  color: #64748b;
+}
+
+.summary-item strong {
+  font-size: 16px;
+  color: #0f172a;
+}
+
+/* Products List */
+.product-item {
+  display: flex;
+  gap: 16px;
+  padding: 16px 0;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.product-item:last-child {
+  border-bottom: none;
+}
+
+.product-img {
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 8px;
+  background: #f1f5f9;
+}
+
+.product-info {
+  flex: 1;
+}
+
+.product-info h4 {
+  margin: 0 0 4px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.product-info .sku {
+  font-size: 13px;
+  color: #94a3b8;
+  margin: 0 0 8px 0;
+}
+
+.product-info .quantity {
+  font-size: 14px;
+  color: #64748b;
+  margin: 0;
+}
+
+.product-price {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.unit-price {
+  font-size: 13px;
+  color: #94a3b8;
+}
+
+.total-price {
+  font-size: 18px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+/* Financial Breakdown */
+.breakdown-items {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.breakdown-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 15px;
+}
+
+.breakdown-item.discount {
+  color: #10b981;
+}
+
+.breakdown-item.total {
+  margin-top: 12px;
+  padding-top: 16px;
+  border-top: 2px solid #e2e8f0;
+  font-size: 18px;
+}
+
+/* Loading & Error States */
+.loading-container,
+.error-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  gap: 16px;
+  color: #64748b;
+}
+
+.spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid #e2e8f0;
+  border-top-color: #667eea;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .romaneio-detail-page {
+    padding: 16px 12px;
+  }
+
+  .romaneio-detail-page .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .pix-details {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .qr-code-container {
+    width: 100%;
+    max-width: 250px;
+  }
+
+  .summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .product-item {
+    flex-wrap: wrap;
+  }
+
+  .product-img {
+    width: 100%;
+    height: 200px;
+  }
+}

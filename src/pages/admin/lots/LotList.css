@@ -152,6 +152,11 @@
   min-width: 300px;
 }
 
+.col-status {
+  width: 140px;
+  text-align: start;
+}
+
 .col-data {
   width: 120px;
   text-align: start;
@@ -181,44 +186,51 @@
   margin-right: 10px;
 }
 
-/* Status Badges */
-.status-badge {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 11px;
-  font-weight: 500;
-  text-transform: capitalize;
+/* Status Badges - Scoped to grupos-table to avoid conflicts */
+.grupos-table .status-badge {
+  display: inline-block !important;
+  padding: 2px 8px !important;
+  border-radius: 4px !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  text-transform: capitalize !important;
+  background-color: #9ca3af !important; /* Fallback color */
+  color: white !important; /* Ensure text is visible */
+  position: static !important; /* Override any absolute positioning */
 }
 
-.badge-green {
-  background: #22c55e;
-  color: white;
+.grupos-table .status-badge::before {
+  content: none !important; /* Remove any pseudo-elements */
 }
 
-.badge-red {
-  background: #ef4444;
-  color: white;
+.grupos-table .badge-green {
+  background: #22c55e !important;
+  color: white !important;
 }
 
-.badge-orange {
-  background: #f97316;
-  color: white;
+.grupos-table .badge-red {
+  background: #ef4444 !important;
+  color: white !important;
 }
 
-.badge-blue {
-  background: #3b82f6;
-  color: white;
+.grupos-table .badge-orange {
+  background: #f97316 !important;
+  color: white !important;
 }
 
-.badge-purple {
-  background: #8b5cf6;
-  color: white;
+.grupos-table .badge-blue {
+  background: #3b82f6 !important;
+  color: white !important;
 }
 
-.badge-gray {
-  background: #6b7280;
-  color: white;
+.grupos-table .badge-purple {
+  background: #8b5cf6 !important;
+  color: white !important;
+}
+
+.grupos-table .badge-gray {
+  background: #6b7280 !important;
+  color: white !important;
 }
 
 /* Action Buttons in Table */

@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react'
-import { Clock, FileText, CheckCircle, Package, Truck, Download, MessageCircle } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { Clock, FileText, CheckCircle, Package, Truck, Download, MessageCircle, Eye } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../components/common/Toast'
 import './OrderHistory.css'
 
 export default function OrderHistory() {
+  const navigate = useNavigate()
   const { client } = useAuth()
   const toast = useToast()
   const [orders, setOrders] = useState([])
@@ -168,13 +170,22 @@ export default function OrderHistory() {
                         <div className="order-actions">
                             {/* Se tiver romaneio liberado */}
                             {romaneioId && (
-                                <button 
-                                    onClick={() => handleDownloadRomaneio(romaneioId, `Romaneio-${order.lot?.nome}.pdf`)}
-                                    className="order-action-btn download"
-                                    title="Baixar Romaneio (PDF)"
-                                >
-                                    <FileText size={18} />
-                                </button>
+                                <>
+                                    <button 
+                                        onClick={() => navigate(`/app/romaneio/${romaneioId}`)}
+                                        className="order-action-btn view"
+                                        title="Ver Romaneio e Pagamento"
+                                    >
+                                        <Eye size={18} />
+                                    </button>
+                                    <button 
+                                        onClick={() => handleDownloadRomaneio(romaneioId, `Romaneio-${order.lot?.nome}.pdf`)}
+                                        className="order-action-btn download"
+                                        title="Baixar PDF"
+                                    >
+                                        <Download size={18} />
+                                    </button>
+                                </>
                             )}
                             
                             {/* Botão Copiar Resumo (Zap) */}

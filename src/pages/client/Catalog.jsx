@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, ShoppingCart, Search, Filter } from 'lucide-react'
+import { ArrowLeft, ShoppingCart, Plus, Minus } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
+import { useToast } from '../../components/common/Toast'
 import './Catalog.css'
 
 export default function Catalog() {
@@ -11,10 +12,12 @@ export default function Catalog() {
   const id = lotId || linkUrl 
 
   const navigate = useNavigate()
+  const toast = useToast()
   const [lot, setLot] = useState(null)
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
   const [addingToCart, setAddingToCart] = useState(null)
+  const [quantities, setQuantities] = useState({})
 
   useEffect(() => {
     if (id) loadCatalog()
@@ -52,12 +55,31 @@ export default function Catalog() {
 
     } catch (error) {
       console.error('Erro ao carregar catalogo:', error)
+      toast.error('Erro ao carregar catálogo. Tente novamente.')
     } finally {
       setLoading(false)
     }
   }
 
+  // Funções para controlar quantidade
+  const getQuantity = (productId) => quantities[productId] || 1
+  
+  const incrementQuantity = (productId) => {
+    setQuantities(prev => ({
+      ...prev,
+      [productId]: (prev[productId] || 1) + 1
+    }))
+  }
+  
+  const decrementQuantity = (productId) => {
+    setQuantities(prev => ({
+      ...prev,
+      [productId]: Math.max(1, (prev[productId] || 1) - 1)
+    }))
+  }
+
   const addToCart = async (product) => {
+    const qty = getQuantity(product.id)
     setAddingToCart(product.id)
     try {
         const cartKey = `cart_${id}`
@@ -69,30 +91,50 @@ export default function Catalog() {
         if (existingInfo) {
             newCart = currentCart.map(item => 
                 item.id === product.id 
-                ? { ...item, quantity: item.quantity + 1 }
+                ? { ...item, quantity: item.quantity + qty }
                 : item
             )
         } else {
-            newCart = [...currentCart, { ...product, quantity: 1, lot_id: id }]
+            newCart = [...currentCart, { ...product, quantity: qty, lot_id: id }]
         }
         
         localStorage.setItem(cartKey, JSON.stringify(newCart))
         
+        // Resetar quantidade para 1 após adicionar
+        setQuantities(prev => ({ ...prev, [product.id]: 1 }))
+        
+        // Mostrar toast de sucesso
+        toast.success(`${qty}x ${product.nome} adicionado ao carrinho!`)
+        
         // Pequeno feedback visual
         await new Promise(r => setTimeout(r, 300))
         
-        // Navegar para o carrinho após adicionar
-        navigate('/app/carrinho')
-        
     } catch (e) {
         console.error(e)
+        toast.error('Erro ao adicionar produto ao carrinho')
     } finally {
         setAddingToCart(null)
     }
   }
 
-  if (loading) return <div className="p-8 text-center text-slate-500">Carregando catálogo...</div>
-  if (!lot) return <div className="p-8 text-center text-slate-500">Grupo não encontrado.</div>
+  if (loading) {
+    return (
+      <div className="client-page p-8 flex items-center justify-center">
+        <div className="text-slate-500">Carregando catálogo...</div>
+      </div>
+    )
+  }
+
+  if (!lot) {
+    return (
+      <div className="client-page p-8 flex flex-col items-center justify-center gap-4">
+        <div className="text-red-500">Não foi possível carregar o catálogo.</div>
+        <button onClick={() => navigate('/app')} className="text-blue-500 underline">
+          Voltar
+        </button>
+      </div>
+    )
+  }
 
   return (
     <div className="client-page">
@@ -108,7 +150,19 @@ export default function Catalog() {
                     <span className="status-text">● Grupo Aberto</span>
                 </div>
             </div>
-            {/* Carrinho Flutuante poderia ser aqui */}
+            {/* Botão do Carrinho */}
+            <button 
+              onClick={() => navigate('/app/carrinho')} 
+              className="btn-cart-header"
+            >
+              <ShoppingCart size={20} />
+              {(() => {
+                const cartKey = `cart_${id}`
+                const cart = JSON.parse(localStorage.getItem(cartKey) || '[]')
+                const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0)
+                return totalItems > 0 ? <span className="cart-badge">{totalItems}</span> : null
+              })()}
+            </button>
         </div>
       </header>
 
@@ -118,7 +172,6 @@ export default function Catalog() {
             <div 
               key={product.id} 
               className={`product-card ${addingToCart === product.id ? 'adding' : ''}`}
-              onClick={() => addToCart(product)}
             >
                 <div className="product-image-area">
                     {product.imagem1 ? (
@@ -139,11 +192,25 @@ export default function Catalog() {
                             R$ {parseFloat(product.preco).toFixed(2)}
                         </div>
                         
+                        <div className="quantity-controls">
+                            <button 
+                                onClick={() => decrementQuantity(product.id)}
+                                className="qty-btn"
+                                disabled={getQuantity(product.id) <= 1}
+                            >
+                                <Minus size={14} />
+                            </button>
+                            <span className="qty-value">{getQuantity(product.id)}</span>
+                            <button 
+                                onClick={() => incrementQuantity(product.id)}
+                                className="qty-btn"
+                            >
+                                <Plus size={14} />
+                            </button>
+                        </div>
+                        
                         <button 
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              addToCart(product)
-                            }}
+                            onClick={() => addToCart(product)}
                             disabled={addingToCart === product.id}
                             className={`btn-add-cart ${addingToCart === product.id ? 'added' : ''}`}
                         >
