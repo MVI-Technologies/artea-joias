@@ -23,7 +23,7 @@ export default function Reports() {
 
   useEffect(() => {
     loadReport()
-  }, [activeReport, dateRange])
+  }, [activeReport])
 
   const loadReport = async () => {
     setLoading(true)
@@ -50,6 +50,7 @@ export default function Reports() {
       }
     } catch (error) {
       console.error('Erro ao carregar relatório:', error)
+      setData([])
     } finally {
       setLoading(false)
     }
@@ -57,6 +58,11 @@ export default function Reports() {
 
   // Novo Report usando View otimizada
   const loadFinanceiroReport = async () => {
+    const startDate = new Date(dateRange.start)
+    startDate.setHours(0, 0, 0, 0)
+    const endDate = new Date(dateRange.end)
+    endDate.setHours(23, 59, 59, 999)
+    
     const { data, error } = await supabase
       .from('report_financial_daily')
       .select('*')
@@ -65,100 +71,236 @@ export default function Reports() {
 
     if (error) {
       console.error('Erro financeiro:', error)
+      setData([])
+      return
+    }
+
+    if (!data || data.length === 0) {
+      console.log('Nenhum dado financeiro encontrado no período')
+      setData([])
       return
     }
 
     setData(data.map(d => ({
       data: new Date(d.data_venda).toLocaleDateString('pt-BR', { timeZone: 'UTC' }),
-      pedidos: d.total_pedidos,
-      itens: d.itens_vendidos,
-      receita: d.receita_total
+      pedidos: d.total_pedidos || 0,
+      itens: d.itens_vendidos || 0,
+      receita: d.receita_total || 0
     })))
   }
 
   const loadProdutosReport = async () => {
-    const { data, error } = await supabase
-      .from('report_ranking_products')
-      .select('*')
-      .limit(100)
+    // Buscar diretamente da tabela orders com filtro de data
+    const startDate = new Date(dateRange.start)
+    startDate.setHours(0, 0, 0, 0)
+    const endDate = new Date(dateRange.end)
+    endDate.setHours(23, 59, 59, 999)
+    
+    const { data: ordersData, error } = await supabase
+      .from('orders')
+      .select(`
+        quantidade,
+        valor_total,
+        created_at,
+        product:products(nome, codigo_sku)
+      `)
+      .eq('status', 'pago')
+      .gte('created_at', startDate.toISOString())
+      .lte('created_at', endDate.toISOString())
 
     if (error) {
-       console.error('Erro produtos:', error)
-       return
-    }
-
-    setData(data.map(d => ({
-      produto: d.produto_nome,
-      sku: d.sku || '-',
-      vendidos: d.total_vendido,
-      receita: d.receita_gerada
-    })))
-  }
-
-  const loadClientesReport = async () => {
-    const { data, error } = await supabase
-      .from('report_ranking_clients')
-      .select('*')
-      .limit(100)
-
-    if (error) {
-      console.error('Error clientes:', error)
+      console.error('Erro produtos:', error)
+      setData([])
       return
     }
 
-    setData(data.map(d => ({
-      cliente: d.cliente_nome,
-      telefone: d.telefone,
-      pedidos: d.total_pedidos,
-      total_gasto: d.total_gasto,
-      ultima_compra: new Date(d.ultima_compra).toLocaleDateString('pt-BR')
-    })))
+    if (!ordersData || ordersData.length === 0) {
+      console.log('Nenhum produto encontrado no ranking no período selecionado')
+      setData([])
+      return
+    }
+
+    // Agregar por produto
+    const productMap = {}
+    ordersData.forEach(order => {
+      if (!order.product) return
+      const productId = order.product.nome
+      if (!productMap[productId]) {
+        productMap[productId] = {
+          produto: order.product.nome || '-',
+          sku: order.product.codigo_sku || '-',
+          vendidos: 0,
+          receita: 0
+        }
+      }
+      productMap[productId].vendidos += order.quantidade || 0
+      productMap[productId].receita += parseFloat(order.valor_total || 0)
+    })
+
+    const sorted = Object.values(productMap)
+      .sort((a, b) => b.vendidos - a.vendidos)
+      .slice(0, 100)
+
+    setData(sorted)
+  }
+
+  const loadClientesReport = async () => {
+    // Buscar diretamente da tabela orders com filtro de data
+    const startDate = new Date(dateRange.start)
+    startDate.setHours(0, 0, 0, 0)
+    const endDate = new Date(dateRange.end)
+    endDate.setHours(23, 59, 59, 999)
+    
+    const { data: ordersData, error } = await supabase
+      .from('orders')
+      .select(`
+        id,
+        valor_total,
+        created_at,
+        client:clients(nome, telefone)
+      `)
+      .eq('status', 'pago')
+      .gte('created_at', startDate.toISOString())
+      .lte('created_at', endDate.toISOString())
+
+    if (error) {
+      console.error('Erro clientes:', error)
+      setData([])
+      return
+    }
+
+    if (!ordersData || ordersData.length === 0) {
+      console.log('Nenhum cliente encontrado no ranking no período selecionado')
+      setData([])
+      return
+    }
+
+    // Agregar por cliente
+    const clientMap = {}
+    ordersData.forEach(order => {
+      if (!order.client) return
+      const clientId = order.client.nome
+      if (!clientMap[clientId]) {
+        clientMap[clientId] = {
+          cliente: order.client.nome || '-',
+          telefone: order.client.telefone || '-',
+          pedidos: 0,
+          total_gasto: 0,
+          ultima_compra: null
+        }
+      }
+      clientMap[clientId].pedidos += 1
+      clientMap[clientId].total_gasto += parseFloat(order.valor_total || 0)
+      const orderDate = new Date(order.created_at)
+      if (!clientMap[clientId].ultima_compra || orderDate > clientMap[clientId].ultima_compra) {
+        clientMap[clientId].ultima_compra = orderDate
+      }
+    })
+
+    const sorted = Object.values(clientMap)
+      .map(c => ({
+        ...c,
+        ultima_compra: c.ultima_compra ? c.ultima_compra.toLocaleDateString('pt-BR') : '-'
+      }))
+      .sort((a, b) => b.total_gasto - a.total_gasto)
+      .slice(0, 100)
+
+    setData(sorted)
   }
 
   const loadAniversariantesReport = async () => {
     const currentMonth = new Date().getMonth() + 1
+    const currentYear = new Date().getFullYear()
+    
+    // Buscar todos os clientes com aniversário
     const { data, error } = await supabase
       .from('clients')
       .select('nome, telefone, aniversario')
       .eq('role', 'cliente')
       .not('aniversario', 'is', null)
 
-    if (error) throw error
+    if (error) {
+      console.error('Erro aniversariantes:', error)
+      setData([])
+      return
+    }
 
-    // Filtrar no JS pois aniversario é DATE
+    if (!data || data.length === 0) {
+      console.log('Nenhum cliente com aniversário cadastrado')
+      setData([])
+      return
+    }
+
+    // Filtrar no JS pois aniversario é DATE - filtrar pelo mês atual
     const filtered = data.filter(client => {
-      const month = parseInt(client.aniversario.split('-')[1])
-      return month === currentMonth
+      if (!client.aniversario) return false
+      try {
+        const month = parseInt(client.aniversario.split('-')[1])
+        return month === currentMonth
+      } catch (e) {
+        console.warn('Erro ao processar aniversário:', client.aniversario)
+        return false
+      }
     })
 
     setData(filtered.map(c => ({
-      nome: c.nome,
-      telefone: c.telefone,
-      aniversario: new Date(c.aniversario + 'T12:00:00').toLocaleDateString('pt-BR')
+      nome: c.nome || '-',
+      telefone: c.telefone || '-',
+      aniversario: c.aniversario ? new Date(c.aniversario + 'T12:00:00').toLocaleDateString('pt-BR') : '-'
     })))
   }
 
   const loadValesReport = async () => {
+    // Buscar vales da tabela gift_cards (criada na tela de marketing) com filtro de data
+    const startDate = new Date(dateRange.start)
+    startDate.setHours(0, 0, 0, 0)
+    const endDate = new Date(dateRange.end)
+    endDate.setHours(23, 59, 59, 999)
+    
     const { data, error } = await supabase
-      .from('gift_certificates') // Se existir tabela, senão vai dar erro (ok lidar depois)
-      .select(`
-        codigo, valor, usado, validade,
-        client:clients(nome)
-      `)
+      .from('gift_cards')
+      .select('codigo, valor_original, saldo_atual, cliente_nome, cliente_id, ativo, data_validade, created_at')
+      .gte('created_at', startDate.toISOString())
+      .lte('created_at', endDate.toISOString())
       .order('created_at', { ascending: false })
 
     if (error) {
-      // Se não existir tabela, retorna vazio sem travar
-      console.warn('Tabela gift_certificates possivelmente inexistente')
-      return 
+      console.error('Erro ao buscar vales:', error)
+      setData([])
+      return
+    }
+
+    if (!data || data.length === 0) {
+      console.log('Nenhum vale encontrado')
+      setData([])
+      return
+    }
+
+    // Se houver cliente_id, buscar nome do cliente
+    const clientIds = data.filter(v => v.cliente_id).map(v => v.cliente_id)
+    let clientNames = {}
+    
+    if (clientIds.length > 0) {
+      const { data: clients } = await supabase
+        .from('clients')
+        .select('id, nome')
+        .in('id', clientIds)
+      
+      if (clients) {
+        clients.forEach(c => {
+          clientNames[c.id] = c.nome
+        })
+      }
     }
 
     setData(data.map(v => ({
-      codigo: v.codigo,
-      cliente: v.client?.nome,
-      valor: v.valor,
-      usado: v.usado ? 'Sim' : 'Não',
-      validade: v.validade ? new Date(v.validade).toLocaleDateString('pt-BR') : '-'
+      codigo: v.codigo || '-',
+      cliente: v.cliente_nome || clientNames[v.cliente_id] || '-',
+      valor_original: v.valor_original || 0,
+      saldo_atual: v.saldo_atual || 0,
+      status: v.ativo ? 'Ativo' : 'Inativo',
+      validade: v.data_validade ? new Date(v.data_validade).toLocaleDateString('pt-BR') : '-',
+      criado_em: v.created_at ? new Date(v.created_at).toLocaleDateString('pt-BR') : '-'
     })))
   }
 
@@ -260,6 +402,26 @@ export default function Reports() {
           ) : data.length === 0 ? (
             <div className="empty-state">
               <p>Nenhum dado encontrado.</p>
+              {activeReport === 'produtos' && (
+                <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '8px' }}>
+                  O ranking mostra produtos com pedidos pagos. Verifique se há pedidos com status "pago".
+                </p>
+              )}
+              {activeReport === 'clientes' && (
+                <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '8px' }}>
+                  O ranking mostra clientes com pedidos pagos. Verifique se há pedidos com status "pago".
+                </p>
+              )}
+              {activeReport === 'aniversariantes' && (
+                <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '8px' }}>
+                  Mostrando aniversariantes do mês atual. Verifique se os clientes têm data de aniversário cadastrada.
+                </p>
+              )}
+              {activeReport === 'vales' && (
+                <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '8px' }}>
+                  Nenhum vale encontrado. Crie vales na tela de Marketing → Vale-Presente.
+                </p>
+              )}
             </div>
           ) : (
             <table className="table reports-table">
@@ -303,7 +465,15 @@ function formatHeader(key) {
     cliente: 'Cliente',
     telefone: 'Telefone',
     total_gasto: 'Total Gasto',
-    ultima_compra: 'Última Compra'
+    ultima_compra: 'Última Compra',
+    nome: 'Nome',
+    aniversario: 'Aniversário',
+    codigo: 'Código',
+    valor_original: 'Valor Original',
+    saldo_atual: 'Saldo Atual',
+    status: 'Status',
+    validade: 'Validade',
+    criado_em: 'Criado Em'
   }
   return headers[key] || key.charAt(0).toUpperCase() + key.slice(1)
 }
