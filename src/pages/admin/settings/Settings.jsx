@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Settings as SettingsIcon, Save, Building, Phone, MapPin, Globe, Download, X, Loader2 } from 'lucide-react'
+import { Settings as SettingsIcon, Save, Building, Phone, MapPin, Globe, Download, X, Loader2, ContactRound, Plug, FileSpreadsheet, CreditCard, Truck } from 'lucide-react'
 import { supabase } from '../../../lib/supabase'
 import { useToast } from '../../../components/common/Toast'
 import MercadoPagoService from '../../../services/integrations/mercadopago'
@@ -9,9 +9,9 @@ import * as XLSX from 'xlsx'
 import './Settings.css'
 
 const tabs = [
-  { id: 'contato', label: 'Contato' },
-  { id: 'integracoes', label: 'Integrações' },
-  { id: 'importacao', label: 'Importação' }
+  { id: 'contato', label: 'Contato', icon: ContactRound },
+  { id: 'integracoes', label: 'Integrações', icon: Plug },
+  { id: 'importacao', label: 'Importação', icon: FileSpreadsheet }
 ]
 
 const ESTADOS_BRASIL = [
@@ -555,10 +555,6 @@ export default function Settings() {
       case 'contato':
         return (
           <div className="settings-form">
-            <p className="text-muted mb-lg">
-              Os dados abaixo serão usados nas mensagens automáticas e e-mails enviados pelo sistema. 
-              Todos os dados abaixo referem-se a empresa
-            </p>
 
             {/* Nome e CNPJ */}
             <div className="form-row-2">
@@ -573,7 +569,6 @@ export default function Settings() {
               </div>
               <div className="form-group">
                 <label className="form-label">CNPJ/CPF</label>
-                <span className="label-hint">Opcional, usado na Nota Promissória</span>
                 <input
                   type="text"
                   className="form-input"
@@ -775,10 +770,10 @@ export default function Settings() {
               </div>
             </div>
 
-            <div className="mt-lg">
-              <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
-                <Save size={16} />
-                {saving ? 'Salvando...' : 'Salvar'}
+            <div className="settings-actions">
+              <button className="btn btn-primary btn-lg" onClick={handleSave} disabled={saving}>
+                <Save size={18} />
+                {saving ? 'Salvando...' : 'Salvar Alterações'}
               </button>
             </div>
           </div>
@@ -787,38 +782,57 @@ export default function Settings() {
       case 'integracoes':
         return (
           <div className="settings-form">
-            <h3 className="mb-md">Pagamento</h3>
-            <div className="integration-list">
-              <div 
-                className={`integration-item clickable ${integrations.pix.configured ? 'highlight' : ''}`}
-                onClick={() => setActiveModal('pix')}
-              >
-                <span>PIX</span>
-                <span className={`badge ${integrations.pix.configured ? 'badge-success' : 'badge-secondary'}`}>
-                  {integrations.pix.configured ? 'Configurado' : 'Não configurado'}
-                </span>
-              </div>
-              <div 
-                className={`integration-item clickable ${integrations.mercadopago.configured ? 'highlight' : ''}`}
-                onClick={() => setActiveModal('mercadopago')}
-              >
-                <span>Mercado Pago</span>
-                <span className={`badge ${integrations.mercadopago.configured ? 'badge-success' : 'badge-secondary'}`}>
-                  {integrations.mercadopago.configured ? 'Configurado' : 'Não configurado'}
-                </span>
+            <div className="integration-section">
+              <h3 className="section-header">
+                <CreditCard size={20} />
+                <span>Pagamento</span>
+              </h3>
+              <div className="integration-list">
+                <div 
+                  className={`integration-item clickable ${integrations.pix.configured ? 'highlight' : ''}`}
+                  onClick={() => setActiveModal('pix')}
+                >
+                  <div className="integration-info">
+                    <span className="integration-name">PIX</span>
+                    <span className="integration-desc">Pagamento instantâneo</span>
+                  </div>
+                  <span className={`badge ${integrations.pix.configured ? 'badge-success' : 'badge-secondary'}`}>
+                    {integrations.pix.configured ? 'Configurado' : 'Não configurado'}
+                  </span>
+                </div>
+                <div 
+                  className={`integration-item clickable ${integrations.mercadopago.configured ? 'highlight' : ''}`}
+                  onClick={() => setActiveModal('mercadopago')}
+                >
+                  <div className="integration-info">
+                    <span className="integration-name">Mercado Pago</span>
+                    <span className="integration-desc">Múltiplas formas de pagamento</span>
+                  </div>
+                  <span className={`badge ${integrations.mercadopago.configured ? 'badge-success' : 'badge-secondary'}`}>
+                    {integrations.mercadopago.configured ? 'Configurado' : 'Não configurado'}
+                  </span>
+                </div>
               </div>
             </div>
 
-            <h3 className="mb-md mt-lg">Entrega</h3>
-            <div className="integration-list">
-              <div 
-                className={`integration-item clickable ${integrations.correios.configured ? 'highlight' : ''}`}
-                onClick={() => setActiveModal('correios')}
-              >
-                <span>Correios</span>
-                <span className={`badge ${integrations.correios.configured ? 'badge-success' : 'badge-secondary'}`}>
-                  {integrations.correios.configured ? 'Configurado' : 'Não configurado'}
-                </span>
+            <div className="integration-section">
+              <h3 className="section-header">
+                <Truck size={20} />
+                <span>Entrega</span>
+              </h3>
+              <div className="integration-list">
+                <div 
+                  className={`integration-item clickable ${integrations.correios.configured ? 'highlight' : ''}`}
+                  onClick={() => setActiveModal('correios')}
+                >
+                  <div className="integration-info">
+                    <span className="integration-name">Correios</span>
+                    <span className="integration-desc">Cálculo de frete e etiquetas</span>
+                  </div>
+                  <span className={`badge ${integrations.correios.configured ? 'badge-success' : 'badge-secondary'}`}>
+                    {integrations.correios.configured ? 'Configurado' : 'Não configurado'}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
@@ -880,14 +894,14 @@ export default function Settings() {
               />
             </div>
 
-            <div className="mt-lg">
+            <div className="settings-actions">
               <button 
-                className="btn btn-primary" 
+                className="btn btn-primary btn-lg" 
                 onClick={handleImportSave} 
                 disabled={importing}
               >
-                <Save size={16} />
-                {importing ? 'Importando...' : 'Salvar'}
+                <Save size={18} />
+                {importing ? 'Importando...' : 'Importar Dados'}
               </button>
             </div>
           </div>
@@ -910,18 +924,22 @@ export default function Settings() {
         <h1><SettingsIcon size={24} /> Configurações</h1>
       </div>
 
-      <div className="card">
+      <div className="card settings-card">
         {/* Tabs */}
-        <div className="tabs">
-          {tabs.map(tab => (
-            <button
-              key={tab.id}
-              className={`tab ${activeTab === tab.id ? 'active' : ''}`}
-              onClick={() => setActiveTab(tab.id)}
-            >
-              {tab.label}
-            </button>
-          ))}
+        <div className="tabs" data-active={activeTab}>
+          {tabs.map(tab => {
+            const Icon = tab.icon
+            return (
+              <button
+                key={tab.id}
+                className={`tab ${activeTab === tab.id ? 'active' : ''}`}
+                onClick={() => setActiveTab(tab.id)}
+              >
+                <Icon size={18} />
+                <span>{tab.label}</span>
+              </button>
+            )
+          })}
         </div>
 
         {/* Content */}

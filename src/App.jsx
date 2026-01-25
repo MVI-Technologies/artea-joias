@@ -10,6 +10,7 @@ import ClientLayout from './pages/client/ClientLayout' // Componente Novo
 import Login from './pages/auth/Login'
 import Register from './pages/auth/Register'
 import ForgotPassword from './pages/auth/ForgotPassword'
+import ResetPassword from './pages/auth/ResetPassword'
 
 // Admin Pages
 import Dashboard from './pages/admin/Dashboard'
@@ -90,6 +91,7 @@ function AppRoutes() {
       <Route path="/login" element={<Login />} />
       <Route path="/cadastro" element={<Register />} />
       <Route path="/esqueci-senha" element={<ForgotPassword />} />
+      <Route path="/redefinir-senha" element={<ResetPassword />} />
       
       {/* Admin Routes */}
       <Route

@@ -1,9 +1,14 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Mail, ArrowLeft } from 'lucide-react'
+import { supabase } from '../../lib/supabase'
+import { sendWhatsAppMessage } from '../../services/whatsapp'
+import { useToast } from '../../components/common/Toast'
 import './ForgotPassword.css'
 
 export default function ForgotPassword() {
+  const navigate = useNavigate()
+  const toast = useToast()
   const [telefone, setTelefone] = useState('')
   const [sent, setSent] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -15,15 +20,93 @@ export default function ForgotPassword() {
     return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7, 11)}`
   }
 
+  const generateResetCode = () => {
+    // Gerar código de 6 dígitos
+    return Math.floor(100000 + Math.random() * 900000).toString()
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)
 
-    // Simular envio (implementar integração real depois)
-    setTimeout(() => {
+    try {
+      const telefoneLimpo = telefone.replace(/\D/g, '')
+      
+      // Verificar se o cliente existe
+      const { data: clientData, error: clientError } = await supabase
+        .from('clients')
+        .select('id, nome, telefone')
+        .or(`telefone.eq.${telefoneLimpo},telefone.eq.${telefoneLimpo.slice(2)},telefone.eq.+55${telefoneLimpo}`)
+        .limit(1)
+        .single()
+      
+      if (clientError || !clientData) {
+        toast.error('Telefone não encontrado no sistema')
+        setLoading(false)
+        return
+      }
+      
+      // Gerar código de recuperação
+      const resetCode = generateResetCode()
+      const expiresAt = new Date()
+      expiresAt.setMinutes(expiresAt.getMinutes() + 15) // Expira em 15 minutos
+      
+      // Salvar código no banco
+      const { error: codeError } = await supabase
+        .from('password_reset_codes')
+        .insert({
+          client_id: clientData.id,
+          telefone: telefoneLimpo,
+          code: resetCode,
+          expires_at: expiresAt.toISOString(),
+          used: false
+        })
+      
+      if (codeError) {
+        console.error('Erro ao salvar código:', codeError)
+        toast.error('Erro ao gerar código de recuperação')
+        setLoading(false)
+        return
+      }
+      
+      // Enviar código via WhatsApp
+      const message = `🔐 *Recuperação de Senha - Artea Joias*
+
+Olá ${clientData.nome}!
+
+Você solicitou a recuperação de senha.
+
+Seu código de verificação é:
+*${resetCode}*
+
+Este código expira em 15 minutos.
+
+Se você não solicitou esta recuperação, ignore esta mensagem.
+
+_Artea Joias - Sistema de Compras Coletivas_`
+      
+      const whatsappResult = await sendWhatsAppMessage(clientData.telefone, message)
+      
+      if (!whatsappResult.success) {
+        toast.error('Erro ao enviar código via WhatsApp. Tente novamente.')
+        setLoading(false)
+        return
+      }
+      
       setSent(true)
+      toast.success('Código enviado com sucesso!')
+      
+      // Redirecionar para tela de reset após 2 segundos
+      setTimeout(() => {
+        navigate(`/redefinir-senha?telefone=${encodeURIComponent(telefone)}&code=${resetCode}`)
+      }, 2000)
+      
+    } catch (error) {
+      console.error('Erro ao processar recuperação:', error)
+      toast.error('Erro ao processar solicitação. Tente novamente.')
+    } finally {
       setLoading(false)
-    }, 1500)
+    }
   }
 
   return (
@@ -78,13 +161,13 @@ export default function ForgotPassword() {
         ) : (
           <div className="success-message">
             <div className="success-icon">✓</div>
-            <h2>Instruções Enviadas!</h2>
+            <h2>Código Enviado!</h2>
             <p>
-              Enviamos as instruções de recuperação para o WhatsApp cadastrado no número {telefone}.
+              Enviamos um código de 6 dígitos para o WhatsApp cadastrado no número {telefone}.
             </p>
-            <Link to="/login" className="btn btn-primary">
-              Voltar para Login
-            </Link>
+            <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginTop: '8px' }}>
+              Você será redirecionado para a tela de redefinição de senha...
+            </p>
           </div>
         )}
       </div>
