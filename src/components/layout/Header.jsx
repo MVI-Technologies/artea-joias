@@ -1,9 +1,16 @@
-import { Search, Menu } from 'lucide-react'
+import { Search, Menu, LogOut } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
+import { useNavigate } from 'react-router-dom'
 import './Header.css'
 
 export default function Header({ onMenuToggle, title }) {
-  const { user } = useAuth()
+  const { user, signOut } = useAuth()
+  const navigate = useNavigate()
+
+  const handleLogout = async () => {
+    await signOut()
+    navigate('/login')
+  }
 
   return (
     <header className="header">
@@ -28,15 +35,9 @@ export default function Header({ onMenuToggle, title }) {
           <input type="text" placeholder="Pesquisar..." />
         </div>
 
-        <div className="header-user">
-          <div className="user-avatar">
-            {user?.nome?.charAt(0)?.toUpperCase() || 'A'}
-          </div>
-          <div className="user-info">
-            <span className="user-name">{user?.nome || 'Administrador'}</span>
-            <span className="user-role">Admin</span>
-          </div>
-        </div>
+        <button className="header-logout-btn" onClick={handleLogout} title="Sair">
+          <LogOut size={18} />
+        </button>
       </div>
     </header>
   )

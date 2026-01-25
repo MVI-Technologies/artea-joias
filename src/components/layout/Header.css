@@ -113,48 +113,24 @@
   text-align: center;
 }
 
-/* User */
-.header-user {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
+/* Logout Button */
+.header-logout-btn {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.7);
   cursor: pointer;
-  padding: var(--spacing-xs) var(--spacing-sm);
+  padding: var(--spacing-sm);
   border-radius: var(--border-radius);
-  transition: background-color var(--transition-fast);
-}
-
-.header-user:hover {
-  background-color: rgba(255, 255, 255, 0.1);
-}
-
-.user-avatar {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background-color: var(--color-primary);
-  color: white;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 600;
-  font-size: var(--font-size-sm);
+  transition: all var(--transition-fast);
 }
 
-.user-info {
-  display: flex;
-  flex-direction: column;
-}
-
-.user-name {
-  font-size: var(--font-size-sm);
-  font-weight: 500;
-  color: rgb(194, 194, 194) !important;
-}
-
-.user-role {
-  font-size: var(--font-size-xs);
-  color: rgba(255, 255, 255, 0.6);
+.header-logout-btn:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.9);
+  transform: scale(1.1);
 }
 
 /* Mobile */
@@ -171,7 +147,4 @@
     display: none;
   }
 
-  .user-info {
-    display: none;
-  }
 }
