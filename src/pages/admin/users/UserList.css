@@ -198,3 +198,8 @@
     justify-content: center;
   }
 }
+
+/* Default state: Hide mobile view on desktop */
+.show-mobile {
+  display: none;
+}
