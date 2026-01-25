@@ -97,10 +97,12 @@ body {
   color: var(--text-primary);
   background-color: var(--bg-primary);
   min-height: 100vh;
+  overflow-x: hidden;
 }
 
 #root {
   min-height: 100vh;
+  overflow-x: hidden;
 }
 
 /* Links */
@@ -714,3 +716,6 @@ a:hover {
     justify-content: flex-start;
   }
 }
+
+/* Mobile-first utilities */
+@import './mobile.css';

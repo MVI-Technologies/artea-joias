@@ -61,7 +61,7 @@ export default function ClientLayout() {
       <header className="client-header">
         <div className="header-container">
           <Link to="/app" className="brand-area" aria-label="Ir para Início">
-             <span className="brand-text">ARTEA JOIAS</span>
+             <span className="brand-text">GRUPO AA</span>
           </Link>
 
           {/* Desktop Nav */}

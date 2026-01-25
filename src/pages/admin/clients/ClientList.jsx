@@ -7,6 +7,7 @@ import {
   Users,
   ChevronDown,
   BarChart3,
+  Edit,
   Edit2,
   Calendar,
   DollarSign,
@@ -186,8 +187,8 @@ export default function ClientList() {
         </div>
       </div>
 
-      {/* Clients Table */}
-      <div className="card">
+      {/* Desktop: Clients Table */}
+      <div className="card hide-mobile">
         <div className="table-container">
           <table className="table">
             <thead>
@@ -283,7 +284,56 @@ export default function ClientList() {
         </div>
       </div>
 
-      {/* Edit Modal */}
+      {/* Mobile: Client Cards */}
+      <div className="show-mobile">
+        {filteredClients.map(client => (
+          <div key={client.id} className="mobile-card">
+            <div className="mobile-card-header">
+              <span className="mobile-card-title">{client.nome}</span>
+              {getStatusBadge(client)}
+            </div>
+            <div className="mobile-card-body">
+              <div className="mobile-card-row">
+                <span className="mobile-card-label">Contato:</span>
+                <span className="mobile-card-value">{client.telefone || 'N/A'}</span>
+              </div>
+              <div className="mobile-card-row">
+                <span className="mobile-card-label">Saldo Devedor:</span>
+                <span className="mobile-card-value" style={{color: client.saldo_devedor > 0 ? '#ef4444' : 'inherit'}}>
+                  R$ {client.saldo_devedor?.toFixed(2) || '0.00'}
+                </span>
+              </div>
+              <div className="mobile-card-row">
+                <span className="mobile-card-label">Crédito:</span>
+                <span className="mobile-card-value" style={{color: '#22c55e'}}>
+                  R$ {client.credito_disponivel?.toFixed(2) || '0.00'}
+                </span>
+              </div>
+              <div className="mobile-card-row">
+                <span className="mobile-card-label">Última Compra:</span>
+                <span className="mobile-card-value">
+                  {client.ultima_compra ? new Date(client.ultima_compra).toLocaleDateString() : 'Nunca'}
+                </span>
+              </div>
+            </div>
+            <div className="mobile-card-actions">
+              <Link to={`/admin/clientes/${client.id}`} className="btn btn-sm btn-primary">
+                <Edit size={14} /> {client.cadastro_status === 'incompleto' ? 'Completar' : 'Editar'}
+              </Link>
+              <button onClick={() => handleDelete(client)} className="btn btn-sm btn-danger">
+                <Trash2 size={14} /> Excluir
+              </button>
+            </div>
+          </div>
+        ))}
+        {filteredClients.length === 0 && (
+          <div className="mobile-empty-state">
+            <p>Nenhum cliente encontrado</p>
+          </div>
+        )}
+      </div>
+
+      {/* Modal de Edição Financeira */}
       {isModalOpen && (
           <div className="modal-overlay">
               <div className="modal-content">

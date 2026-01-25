@@ -466,10 +466,9 @@
     flex-wrap: wrap;
   }
 
-  .table-container {
-    overflow-x: auto;
-  }
-
+  /* Don't override table-container display - let hide-mobile handle it */
+  /* Removed conflicting overflow-x rules */
+  
   .grupos-table {
     min-width: 700px;
   }
@@ -896,5 +895,81 @@
     left: 16px;
     right: 16px;
     bottom: 16px;
+  }
+}
+
+/* Mobile Lots Cards */
+.mobile-lots-container {
+  /* Desktop: hidden by default */
+  display: none;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Desktop: Ensure table is visible */
+@media (min-width: 769px) {
+  .grupo-compras-page .table-container.hide-mobile {
+    display: block !important;
+  }
+  
+  .grupo-compras-page .mobile-lots-container.show-mobile {
+    display: none !important;
+  }
+}
+
+/* Mobile: Show cards, hide table */
+@media (max-width: 768px) {
+  .grupo-compras-page .table-container.hide-mobile {
+    display: none !important;
+  }
+  
+  .grupo-compras-page .mobile-lots-container.show-mobile {
+    display: flex !important;
+  }
+}
+
+.lot-card-highlight {
+  background: linear-gradient(135deg, #4a5e3a 0%, #5a7048 100%);
+  border: 1px solid #5a7048;
+}
+
+.lot-card-highlight .mobile-card-title {
+  color: #fff;
+  font-weight: 600;
+}
+
+.mobile-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.mobile-empty-state svg {
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+
+.mobile-empty-state p {
+  margin: 0;
+  font-size: 14px;
+}
+
+/* Override mobile.css mobile-card-actions for LotList */
+@media (max-width: 768px) {
+  .mobile-lots-container .mobile-card-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  
+  .mobile-lots-container .mobile-card-actions .btn {
+    width: 100%;
+    justify-content: center;
+    font-size: 12px;
+    padding: 8px 12px;
   }
 }

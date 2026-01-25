@@ -196,7 +196,7 @@ export default function LotForm() {
       }
     } catch (error) {
       console.error('Erro ao salvar:', error)
-      alert('Erro ao salvar grupo de compras')
+      alert(`Erro ao salvar grupo de compras: ${error.message || error}`)
       setSaving(false)
       setSendingNotification(false)
     }
