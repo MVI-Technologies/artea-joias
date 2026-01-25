@@ -24,6 +24,7 @@ export default function LotForm() {
     nome: '',
     descricao: '',
     status: 'aberto',
+    tipo_link: 'tradicional',
     // Taxas
     custo_separacao: 0,
     custo_operacional: 0,
@@ -69,13 +70,19 @@ export default function LotForm() {
         nome: data.nome || '',
         descricao: data.descricao || '',
         status: data.status || 'aberto',
+        tipo_link: data.tipo_link || 'tradicional',
         custo_separacao: data.custo_separacao || 0,
         custo_operacional: data.custo_operacional || 0,
         custo_motoboy: data.custo_motoboy || 0,
         custo_digitacao: data.custo_digitacao || 0,
         escritorio_pct: data.escritorio_pct || 0,
         percentual_entrada: data.percentual_entrada || 0,
-        taxa_separacao_dinamica: data.taxa_separacao_dinamica || ''
+        taxa_separacao_dinamica: data.taxa_separacao_dinamica || '',
+        exigir_dados_galvanica: data.exigir_dados_galvanica || false,
+        adicionar_marca_agua: data.adicionar_marca_agua || false,
+        dados_pagamento: data.dados_pagamento || '',
+        payment_option_id: data.payment_option_id || null,
+        permitir_modificacao_produtos: data.permitir_modificacao_produtos || 'permitir_reduzir_excluir'
       })
     } catch (error) {
       console.error('Erro ao carregar grupo:', error)
@@ -104,6 +111,7 @@ export default function LotForm() {
         nome: formData.nome,
         descricao: formData.descricao,
         status: formData.status,
+        tipo_link: formData.tipo_link,
         custo_separacao: formData.custo_separacao,
         custo_operacional: formData.custo_operacional,
         custo_motoboy: formData.custo_motoboy,
@@ -301,19 +309,43 @@ export default function LotForm() {
             />
           </div>
 
-            <div className="form-row">
+          <div className="form-row">
             <div className="form-group">
-              <label>Status</label>
+              <label>Tipo de Link</label>
+              <select
+                value={formData.tipo_link}
+                onChange={(e) => handleChange('tipo_link', e.target.value)}
+              >
+                <option value="tradicional">Tradicional. Compra Coletiva</option>
+                <option value="pronta_entrega">Pronta Entrega. Com controle de qtde máxima</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Status Atual</label>
               <select
                 value={formData.status}
                 onChange={(e) => handleChange('status', e.target.value)}
               >
                 <option value="aberto">Aberto</option>
+                <option value="em_preparacao">Em preparação</option>
+                <option value="pronto_e_aberto">Pronto e Aberto</option>
                 <option value="fechado">Fechado</option>
-                <option value="preparacao">Em preparação</option>
+                <option value="em_fabricacao">Em fabricação</option>
+                <option value="fornecedor_separando">Fornecedor separando o pedido</option>
+                <option value="verificando_estoque">Verificando Estoque</option>
+                <option value="organizando_valores">Organizando Valores</option>
+                <option value="aguardando_pagamentos">Aguardando Pagamentos</option>
+                <option value="em_transito">Em Trânsito</option>
+                <option value="em_transito_internacional">Em Trânsito Internacional</option>
+                <option value="em_separacao">Em Separação</option>
+                <option value="envio_liberado">Envio Liberado</option>
+                <option value="envio_parcial_liberado">Envio Parcial Liberado</option>
+                <option value="fechado_e_bloqueado">Fechado e Bloqueado</option>
                 <option value="pago">Pago</option>
                 <option value="enviado">Enviado</option>
                 <option value="concluido">Concluído</option>
+                <option value="finalizado">Finalizado</option>
+                <option value="cancelado">Cancelado</option>
               </select>
             </div>
           </div>
