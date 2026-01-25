@@ -233,6 +233,59 @@
   color: white !important;
 }
 
+.grupos-table .badge-yellow {
+  background: #eab308 !important;
+  color: white !important;
+}
+
+/* Status Badges para Mobile Cards */
+.mobile-card .status-badge {
+  display: inline-block !important;
+  padding: 4px 10px !important;
+  border-radius: 6px !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  text-transform: capitalize !important;
+  background-color: #9ca3af !important; /* Fallback color */
+  color: white !important;
+  white-space: nowrap !important;
+}
+
+.mobile-card .badge-green {
+  background: #22c55e !important;
+  color: white !important;
+}
+
+.mobile-card .badge-red {
+  background: #ef4444 !important;
+  color: white !important;
+}
+
+.mobile-card .badge-orange {
+  background: #f97316 !important;
+  color: white !important;
+}
+
+.mobile-card .badge-blue {
+  background: #3b82f6 !important;
+  color: white !important;
+}
+
+.mobile-card .badge-purple {
+  background: #8b5cf6 !important;
+  color: white !important;
+}
+
+.mobile-card .badge-gray {
+  background: #6b7280 !important;
+  color: white !important;
+}
+
+.mobile-card .badge-yellow {
+  background: #eab308 !important;
+  color: white !important;
+}
+
 /* Action Buttons in Table */
 .acoes-buttons {
   display: flex;
