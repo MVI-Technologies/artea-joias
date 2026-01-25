@@ -31,6 +31,20 @@ export default function Catalog() {
   const clickTracked = useRef(new Map()) // Map<lotId, boolean> para rastrear por catálogo
 
   const { client } = useAuth()
+
+  // Função para calcular quantidade faltando
+  const getMissingQuantity = (product) => {
+    const estoque = product.estoque || 0
+    const quantidadeMinima = product.quantidade_minima || 0
+    
+    // Se não tem quantidade mínima definida ou estoque suficiente, não mostra
+    if (quantidadeMinima === 0 || estoque >= quantidadeMinima) {
+      return 0
+    }
+    
+    const faltando = quantidadeMinima - estoque
+    return faltando > 0 ? faltando : 0
+  }
   
   window.console.log('🔍 Estado atual:', { id, loading, lot: lot?.id, client: client?.id })
 
@@ -339,6 +353,8 @@ export default function Catalog() {
         const mapped = (prodData || []).map(lp => ({
             ...lp.product,
             lp_id: lp.id,
+            quantidade_pedidos: lp.quantidade_pedidos || 0,
+            quantidade_clientes: lp.quantidade_clientes || 0,
         }))
         setProducts(mapped)
         console.log('Produtos carregados:', mapped.length)
@@ -390,7 +406,7 @@ export default function Catalog() {
         }
         
         localStorage.setItem(cartKey, JSON.stringify(newCart))
-        
+
         // Resetar quantidade para 1 após adicionar
         setQuantities(prev => ({ ...prev, [product.id]: 1 }))
         
@@ -462,9 +478,9 @@ export default function Catalog() {
         {products.map(product => (
             <div 
               key={product.id} 
-              className={`product-card ${addingToCart === product.id ? 'adding' : ''}`}
+              className={`product-card ${addingToCart === product.id ? 'adding' : ''} ${(product.estoque || 0) === 0 ? 'out-of-stock' : ''}`}
             >
-                <div className="product-image-area">
+                <div className={`product-image-area ${(product.estoque || 0) === 0 ? 'out-of-stock-image' : ''}`}>
                     {product.imagem1 ? (
                         <img src={product.imagem1} alt={product.nome} className="product-img" />
                     ) : (
@@ -472,6 +488,35 @@ export default function Catalog() {
                             Sem foto
                         </div>
                     )}
+                    
+                    {/* Overlay ESGOTADO quando estoque = 0 */}
+                    {(product.estoque || 0) === 0 && (
+                        <div className="out-of-stock-overlay">
+                            <div className="out-of-stock-text">ESGOTADO</div>
+                        </div>
+                    )}
+                    
+                    {/* Indicadores de Quantidade */}
+                    <div className="product-quantity-indicators">
+                        {/* Quantidade disponível no estoque (superior esquerdo) */}
+                        <div className="quantity-badge quantity-stock">
+                            {product.estoque || 0}
+                        </div>
+                        
+                        {/* Quantidade faltando (superior direito - vermelho) */}
+                        {getMissingQuantity(product) > 0 && (
+                            <div className="quantity-badge quantity-missing">
+                                Faltam {getMissingQuantity(product)}
+                            </div>
+                        )}
+                        
+                        {/* Quantidade vendida (inferior esquerdo - verde) */}
+                        {(product.quantidade_pedidos || 0) > 0 && (
+                            <div className="quantity-badge quantity-sold">
+                                {product.quantidade_pedidos || 0}
+                            </div>
+                        )}
+                    </div>
                 </div>
                 
                 <div className="product-info">
@@ -502,7 +547,7 @@ export default function Catalog() {
                         
                         <button 
                             onClick={() => addToCart(product)}
-                            disabled={addingToCart === product.id}
+                            disabled={addingToCart === product.id || (product.estoque || 0) === 0}
                             className={`btn-add-cart ${addingToCart === product.id ? 'added' : ''}`}
                         >
                             <ShoppingCart size={18} />

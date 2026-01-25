@@ -137,12 +137,138 @@
   aspect-ratio: 1/1;
   background-color: #f8fafc;
   position: relative;
+  overflow: hidden;
+}
+
+.product-image-area.out-of-stock-image {
+  filter: blur(3px);
+  opacity: 0.6;
 }
 
 .product-img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+/* Overlay ESGOTADO */
+.out-of-stock-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 15;
+  pointer-events: none;
+}
+
+.out-of-stock-text {
+  background-color: rgba(239, 68, 68, 0.95);
+  color: white;
+  font-size: 24px;
+  font-weight: 700;
+  padding: 12px 24px;
+  border-radius: 8px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  transform: rotate(-5deg);
+}
+
+.product-card.out-of-stock {
+  opacity: 0.8;
+  cursor: not-allowed;
+}
+
+.product-card.out-of-stock .product-info {
+  opacity: 0.7;
+}
+
+/* Indicadores de Quantidade sobre a imagem */
+.product-quantity-indicators {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.quantity-badge {
+  position: absolute;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: white;
+  white-space: nowrap;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  z-index: 11;
+}
+
+/* Quantidade disponível no estoque (canto superior esquerdo) */
+.quantity-stock {
+  top: 8px;
+  left: 8px;
+  background-color: rgba(0, 0, 0, 0.75);
+  color: white;
+  font-size: 12px;
+  padding: 5px 10px;
+  min-width: 24px;
+  text-align: center;
+}
+
+/* Quantidade faltando (canto superior direito) */
+.quantity-missing {
+  top: 8px;
+  right: 8px;
+  background-color: #ef4444;
+  color: white;
+  font-size: 11px;
+  padding: 5px 10px;
+  text-align: center;
+}
+
+/* Quantidade vendida (canto inferior esquerdo) */
+.quantity-sold {
+  bottom: 8px;
+  left: 8px;
+  background-color: #22c55e;
+  color: white;
+  font-size: 12px;
+  padding: 5px 10px;
+  min-width: 24px;
+  text-align: center;
+}
+
+/* Responsive - Ajustar tamanhos em mobile */
+@media (max-width: 480px) {
+  .quantity-badge {
+    font-size: 10px;
+    padding: 4px 8px;
+  }
+  
+  .quantity-stock,
+  .quantity-sold {
+    font-size: 11px;
+    padding: 4px 8px;
+    min-width: 20px;
+  }
+  
+  .quantity-missing {
+    font-size: 10px;
+    padding: 4px 8px;
+  }
+  
+  .out-of-stock-text {
+    font-size: 18px;
+    padding: 10px 20px;
+    letter-spacing: 1px;
+  }
 }
 
 .product-info {
