@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, ShoppingCart, Plus, Minus } from 'lucide-react'
+import { ArrowLeft, ShoppingCart, Plus, Minus, X } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../components/common/Toast'
@@ -27,6 +27,9 @@ export default function Catalog() {
   const [loading, setLoading] = useState(true)
   const [addingToCart, setAddingToCart] = useState(null)
   const [quantities, setQuantities] = useState({})
+  const [selectedProduct, setSelectedProduct] = useState(null)
+  const [productPurchases, setProductPurchases] = useState([])
+  const [loadingPurchases, setLoadingPurchases] = useState(false)
   // Usar uma key baseada no ID para garantir que cada acesso ao catálogo seja único
   const clickTracked = useRef(new Map()) // Map<lotId, boolean> para rastrear por catálogo
 
@@ -385,6 +388,73 @@ export default function Catalog() {
     }))
   }
 
+  const handleProductClick = async (product) => {
+    setSelectedProduct(product)
+    setLoadingPurchases(true)
+    
+    try {
+      if (!lot?.id) {
+        setProductPurchases([])
+        setLoadingPurchases(false)
+        return
+      }
+
+      // Buscar romaneios do lote atual
+      const { data: romaneios, error: romError } = await supabase
+        .from('romaneios')
+        .select(`
+          id,
+          client_id,
+          created_at,
+          client:clients(nome)
+        `)
+        .eq('lot_id', lot.id)
+      
+      if (romError) {
+        console.error('Erro ao buscar romaneios:', romError)
+        setProductPurchases([])
+        setLoadingPurchases(false)
+        return
+      }
+
+      if (!romaneios || romaneios.length === 0) {
+        setProductPurchases([])
+        setLoadingPurchases(false)
+        return
+      }
+
+      const romaneioIds = romaneios.map(r => r.id)
+
+      // Buscar itens deste produto nos romaneios
+      const { data: purchases, error: itemsError } = await supabase
+        .from('romaneio_items')
+        .select('*')
+        .eq('product_id', product.id)
+        .in('romaneio_id', romaneioIds)
+        .order('created_at', { ascending: false })
+      
+      if (itemsError) {
+        console.error('Erro ao buscar itens:', itemsError)
+        setProductPurchases([])
+      } else {
+        // Combinar dados dos romaneios com os itens
+        const purchasesWithRomaneio = (purchases || []).map(item => {
+          const romaneio = romaneios.find(r => r.id === item.romaneio_id)
+          return {
+            ...item,
+            romaneio: romaneio || null
+          }
+        })
+        setProductPurchases(purchasesWithRomaneio)
+      }
+    } catch (error) {
+      console.error('Erro ao buscar compras:', error)
+      setProductPurchases([])
+    } finally {
+      setLoadingPurchases(false)
+    }
+  }
+
   const addToCart = async (product) => {
     const qty = getQuantity(product.id)
     setAddingToCart(product.id)
@@ -422,6 +492,30 @@ export default function Catalog() {
     } finally {
         setAddingToCart(null)
     }
+  }
+
+  const canAddToCart = (product) => {
+    if (!lot) return false
+    // Verificar se o link está fechado
+    if (lot.status === 'fechado' || lot.status === 'fechado_e_bloqueado') {
+      return false
+    }
+    // Verificar se o produto está esgotado
+    if ((product.estoque || 0) === 0) {
+      return false
+    }
+    return true
+  }
+
+  const getUnavailableMessage = (product) => {
+    if (!lot) return 'Catálogo não disponível'
+    if (lot.status === 'fechado' || lot.status === 'fechado_e_bloqueado') {
+      return 'Link fechado para compras!'
+    }
+    if ((product.estoque || 0) === 0) {
+      return 'Produto esgotado!'
+    }
+    return null
   }
 
   if (loading) {
@@ -479,6 +573,7 @@ export default function Catalog() {
             <div 
               key={product.id} 
               className={`product-card ${addingToCart === product.id ? 'adding' : ''} ${(product.estoque || 0) === 0 ? 'out-of-stock' : ''}`}
+              onClick={() => handleProductClick(product)}
             >
                 <div className={`product-image-area ${(product.estoque || 0) === 0 ? 'out-of-stock-image' : ''}`}>
                     {product.imagem1 ? (
@@ -546,8 +641,11 @@ export default function Catalog() {
                         </div>
                         
                         <button 
-                            onClick={() => addToCart(product)}
-                            disabled={addingToCart === product.id || (product.estoque || 0) === 0}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              addToCart(product)
+                            }}
+                            disabled={addingToCart === product.id || !canAddToCart(product)}
                             className={`btn-add-cart ${addingToCart === product.id ? 'added' : ''}`}
                         >
                             <ShoppingCart size={18} />
@@ -557,6 +655,128 @@ export default function Catalog() {
             </div>
         ))}
       </div>
+
+      {/* Modal de Detalhes do Produto */}
+      {selectedProduct && (
+        <div className="product-modal-overlay" onClick={() => setSelectedProduct(null)}>
+          <div className="product-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="product-modal-header">
+              <h2>{selectedProduct.nome}</h2>
+              <button 
+                className="btn-close-modal"
+                onClick={() => setSelectedProduct(null)}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="product-modal-body">
+              {/* Informações do Produto */}
+              <div className="product-details-section">
+                <div className="product-detail-item">
+                  <span className="detail-label">Qtd mínima por cliente:</span>
+                  <span className="detail-value">{selectedProduct.quantidade_minima || 1}</span>
+                </div>
+                <div className="product-detail-item">
+                  <span className="detail-label">Valor Unitário:</span>
+                  <span className="detail-value">R$ {parseFloat(selectedProduct.preco || 0).toFixed(2)}</span>
+                </div>
+                {selectedProduct.descricao && (
+                  <div className="product-detail-item">
+                    <span className="detail-label">Descrição:</span>
+                    <span className="detail-value">{selectedProduct.descricao}</span>
+                  </div>
+                )}
+                <div className="product-detail-item">
+                  <span className="detail-label">Qtd peças compradas:</span>
+                  <span className="detail-value">
+                    {selectedProduct.quantidade_pedidos || 0} ({selectedProduct.quantidade_clientes || 0} pessoas)
+                  </span>
+                </div>
+              </div>
+
+              {/* Lista de Compras */}
+              <div className="purchases-section">
+                <h3 className="purchases-title">Compras</h3>
+                {loadingPurchases ? (
+                  <div className="loading-purchases">Carregando...</div>
+                ) : productPurchases.length > 0 ? (
+                  <div className="purchases-list">
+                    {productPurchases.map((purchase, index) => {
+                      const romaneio = purchase.romaneio
+                      const client = romaneio?.client
+                      const purchaseDate = romaneio?.created_at 
+                        ? new Date(romaneio.created_at).toLocaleString('pt-BR', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })
+                        : 'Data não disponível'
+                      
+                      return (
+                        <div key={purchase.id || index} className="purchase-item">
+                          <div className="purchase-number">{index + 1}.</div>
+                          <div className="purchase-info">
+                            <div className="purchase-client">{client?.nome || 'Cliente não identificado'}</div>
+                            <div className="purchase-details">
+                              {purchaseDate} - {selectedProduct.nome} - {purchase.quantidade} 
+                              {purchase.quantidade === 1 ? ' un. comprada' : ' un. compradas'}
+                              {purchase.quantidade === 0 && ' (qtd confirmada: 0)'}
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <div className="no-purchases">Nenhuma compra registrada ainda.</div>
+                )}
+              </div>
+
+              {/* Botão de Adicionar ao Carrinho ou Mensagem */}
+              <div className="product-modal-actions">
+                {canAddToCart(selectedProduct) ? (
+                  <div className="add-to-cart-section">
+                    <div className="quantity-controls-modal">
+                      <button 
+                        onClick={() => decrementQuantity(selectedProduct.id)}
+                        className="qty-btn"
+                        disabled={getQuantity(selectedProduct.id) <= 1}
+                      >
+                        <Minus size={14} />
+                      </button>
+                      <span className="qty-value">{getQuantity(selectedProduct.id)}</span>
+                      <button 
+                        onClick={() => incrementQuantity(selectedProduct.id)}
+                        className="qty-btn"
+                      >
+                        <Plus size={14} />
+                      </button>
+                    </div>
+                    <button 
+                      onClick={() => {
+                        addToCart(selectedProduct)
+                        setSelectedProduct(null)
+                      }}
+                      disabled={addingToCart === selectedProduct.id}
+                      className="btn-add-cart-modal"
+                    >
+                      <ShoppingCart size={18} />
+                      Adicionar ao Carrinho
+                    </button>
+                  </div>
+                ) : (
+                  <div className="unavailable-message">
+                    {getUnavailableMessage(selectedProduct)}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
