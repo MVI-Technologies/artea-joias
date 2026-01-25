@@ -1,4 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import './mobile.css';
+@import './responsive.css';
 
 /* =====================================================
    Artea Joias - Design System
@@ -885,6 +887,4 @@ a:hover {
   }
 }
 
-/* Mobile-first utilities */
-@import './mobile.css';
-@import './responsive.css';
+/* Mobile-first utilities - Imports movidos para o topo do arquivo */

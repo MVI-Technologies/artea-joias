@@ -65,12 +65,13 @@
 
 .form-group label {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: 6px;
   font-size: 13px;
   font-weight: 500;
   color: var(--text-primary);
   margin-bottom: 6px;
+  flex-wrap: wrap;
 }
 
 .form-group input,
@@ -108,6 +109,10 @@
   font-size: 11px;
   font-weight: 400;
   color: var(--text-tertiary);
+  margin-left: 6px;
+  vertical-align: baseline;
+  display: inline;
+  white-space: nowrap;
 }
 
 .info-icon {
@@ -125,8 +130,8 @@
 
 .tab-btn {
   padding: 10px 32px;
-  background: #3b82f6;
-  color: white;
+  background: transparent;
+  color: #3b82f6;
   border: none;
   border-radius: 20px;
   font-size: 13px;
@@ -136,22 +141,16 @@
 }
 
 .tab-btn:hover {
+  background: rgba(59, 130, 246, 0.1);
+}
+
+.tab-btn.active {
+  background: #3b82f6;
+  color: white;
+}
+
+.tab-btn.active:hover {
   background: #2563eb;
-}
-
-.tab-btn-link {
-  padding: 10px 24px;
-  background: transparent;
-  color: #3b82f6;
-  border: none;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.tab-btn-link:hover {
-  text-decoration: underline;
 }
 
 /* Taxas Section */
@@ -343,6 +342,195 @@
   animation: spin 1s linear infinite;
 }
 
+/* Configurações Section */
+.configuracoes-section {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 20px;
+  margin-top: 16px;
+}
+
+.configuracoes-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+.config-col {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0; /* Previne overflow em mobile */
+}
+
+/* Payment Input Group */
+.payment-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.payment-input-group textarea {
+  width: 100%;
+  min-height: 100px;
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+.btn-procurar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  align-self: flex-start;
+  width: auto;
+}
+
+.btn-procurar:hover {
+  background: #2563eb;
+}
+
+/* Modal de Pagamento */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.modal-payment {
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  width: 100%;
+  max-width: 600px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+}
+
+.modal-payment-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.modal-payment-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.btn-close-modal {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.btn-close-modal:hover {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+.modal-payment-body {
+  padding: 20px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.loading-payment-options {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 40px;
+  color: var(--text-secondary);
+}
+
+.no-payment-options {
+  text-align: center;
+  padding: 40px;
+  color: var(--text-secondary);
+}
+
+.payment-options-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.payment-option-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.payment-option-item:hover {
+  border-color: #3b82f6;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1);
+}
+
+.payment-option-content {
+  flex: 1;
+}
+
+.payment-option-desc {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-primary);
+  line-height: 1.5;
+}
+
+.btn-escolher {
+  padding: 8px 20px;
+  background: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.btn-escolher:hover {
+  background: #2563eb;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .lot-form-page {
@@ -360,10 +548,109 @@
   .flex-2 {
     grid-column: span 1;
   }
+
+  .configuracoes-section {
+    padding: 16px;
+  }
+
+  .configuracoes-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .config-col {
+    gap: 16px;
+  }
+
+  .payment-input-group textarea {
+    min-height: 80px;
+  }
+
+  .btn-procurar {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .modal-payment {
+    max-width: 100%;
+    max-height: 90vh;
+    margin: 10px;
+  }
+
+  .modal-payment-header,
+  .modal-payment-body {
+    padding: 16px;
+  }
 }
 
 @media (max-width: 480px) {
+  .lot-form-page {
+    padding: 12px;
+  }
+
+  .lot-form {
+    padding: 12px;
+  }
+
+  .form-header h1 {
+    font-size: 18px;
+  }
+
   .taxas-grid {
     grid-template-columns: 1fr;
+  }
+
+  .configuracoes-section {
+    padding: 12px;
+  }
+
+  .config-col {
+    gap: 12px;
+  }
+
+  .form-group label {
+    font-size: 12px;
+  }
+
+  .form-group input,
+  .form-group textarea,
+  .form-group select {
+    padding: 8px 10px;
+    font-size: 13px;
+  }
+
+  .payment-input-group textarea {
+    min-height: 70px;
+    font-size: 13px;
+  }
+
+  .btn-procurar {
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+
+  .payment-option-item {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    padding: 12px;
+  }
+
+  .payment-option-desc {
+    font-size: 13px;
+  }
+
+  .btn-escolher {
+    width: 100%;
+    padding: 10px;
+  }
+
+  .tab-btn {
+    padding: 8px 20px;
+    font-size: 12px;
+  }
+
+  .modal-payment-header h3 {
+    font-size: 16px;
   }
 }

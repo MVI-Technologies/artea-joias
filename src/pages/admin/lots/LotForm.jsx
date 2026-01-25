@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Save, Info, Bell, Loader2, Lock } from 'lucide-react'
+import { ArrowLeft, Save, Info, Bell, Loader2, Lock, X, Search } from 'lucide-react'
 import { supabase } from '../../../lib/supabase'
 import { notifyNewCatalog, notifyCatalogClosed } from '../../../services/whatsapp'
 import './LotForm.css'
@@ -31,13 +31,24 @@ export default function LotForm() {
     custo_digitacao: 0,
     escritorio_pct: 0,
     percentual_entrada: 0,
-    taxa_separacao_dinamica: ''
+    taxa_separacao_dinamica: '',
+    // Configurações
+    exigir_dados_galvanica: false,
+    adicionar_marca_agua: false,
+    dados_pagamento: '',
+    payment_option_id: null,
+    permitir_modificacao_produtos: 'permitir_reduzir_excluir'
   })
+  
+  const [showPaymentModal, setShowPaymentModal] = useState(false)
+  const [paymentOptions, setPaymentOptions] = useState([])
+  const [loadingPaymentOptions, setLoadingPaymentOptions] = useState(false)
 
   useEffect(() => {
     if (isEditing) {
       fetchLot()
     }
+    loadPaymentOptions()
   }, [id])
 
   const fetchLot = async () => {
@@ -93,14 +104,19 @@ export default function LotForm() {
         nome: formData.nome,
         descricao: formData.descricao,
         status: formData.status,
-        // Os campos de taxas serão salvos após aplicar a migration
-        // custo_separacao: formData.custo_separacao,
-        // custo_operacional: formData.custo_operacional,
-        // custo_motoboy: formData.custo_motoboy,
-        // custo_digitacao: formData.custo_digitacao,
-        // escritorio_pct: formData.escritorio_pct,
-        // percentual_entrada: formData.percentual_entrada,
-        // taxa_separacao_dinamica: formData.taxa_separacao_dinamica
+        custo_separacao: formData.custo_separacao,
+        custo_operacional: formData.custo_operacional,
+        custo_motoboy: formData.custo_motoboy,
+        custo_digitacao: formData.custo_digitacao,
+        escritorio_pct: formData.escritorio_pct,
+        percentual_entrada: formData.percentual_entrada,
+        taxa_separacao_dinamica: formData.taxa_separacao_dinamica,
+        // Configurações
+        exigir_dados_galvanica: formData.exigir_dados_galvanica,
+        adicionar_marca_agua: formData.adicionar_marca_agua,
+        dados_pagamento: formData.dados_pagamento,
+        payment_option_id: formData.payment_option_id,
+        permitir_modificacao_produtos: formData.permitir_modificacao_produtos
       }
 
       let savedCatalog = null
@@ -212,6 +228,35 @@ export default function LotForm() {
     return code
   }
 
+  // Carregar opções de pagamento
+  const loadPaymentOptions = async () => {
+    setLoadingPaymentOptions(true)
+    try {
+      const { data, error } = await supabase
+        .from('payment_options')
+        .select('*')
+        .eq('ativo', true)
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+      setPaymentOptions(data || [])
+    } catch (error) {
+      console.error('Erro ao carregar opções de pagamento:', error)
+    } finally {
+      setLoadingPaymentOptions(false)
+    }
+  }
+
+  // Selecionar opção de pagamento
+  const handleSelectPaymentOption = (option) => {
+    setFormData(prev => ({
+      ...prev,
+      dados_pagamento: option.descricao,
+      payment_option_id: option.id
+    }))
+    setShowPaymentModal(false)
+  }
+
   if (loading) {
     return (
       <div className="page-container">
@@ -285,7 +330,7 @@ export default function LotForm() {
           </button>
           <button
             type="button"
-            className={`tab-btn-link ${activeTab === 'configuracoes' ? 'active' : ''}`}
+            className={`tab-btn ${activeTab === 'configuracoes' ? 'active' : ''}`}
             onClick={() => setActiveTab('configuracoes')}
           >
             Configurações
@@ -381,8 +426,124 @@ export default function LotForm() {
 
         {/* Tab Content: Configurações */}
         {activeTab === 'configuracoes' && (
-          <div className="form-section">
-            <p className="text-muted">Configurações adicionais em breve...</p>
+          <div className="form-section configuracoes-section">
+            <div className="configuracoes-grid">
+              {/* Coluna Esquerda */}
+              <div className="config-col">
+                {/* Dados da galvânica */}
+                <div className="form-group">
+                  <label>Dados da galvânica</label>
+                  <select
+                    value={formData.exigir_dados_galvanica ? 'exigir' : 'nao_exigir'}
+                    onChange={(e) => handleChange('exigir_dados_galvanica', e.target.value === 'exigir')}
+                  >
+                    <option value="exigir">Exigir preenchimento dos dados da galvânica</option>
+                    <option value="nao_exigir">Não exigir preenchimento dos dados da galvânica</option>
+                  </select>
+                </div>
+
+                {/* Adicionar Marca d'água */}
+                <div className="form-group">
+                  <label>
+                    Adicionar Marca d'água
+                    <span className="optional">Opcional</span>
+                  </label>
+                  <select
+                    value={formData.adicionar_marca_agua ? 'adicionar' : 'nao_adicionar'}
+                    onChange={(e) => handleChange('adicionar_marca_agua', e.target.value === 'adicionar')}
+                  >
+                    <option value="nao_adicionar">Não adicionar marca d'agua em todos os produtos</option>
+                    <option value="adicionar">Adicionar marca d'agua em todos os produtos</option>
+                  </select>
+                </div>
+
+                {/* Dados para o pagamento */}
+                <div className="form-group">
+                  <label>
+                    Dados para o pagamento
+                    <span className="optional">Opcional</span>
+                  </label>
+                  <div className="payment-input-group">
+                    <textarea
+                      value={formData.dados_pagamento}
+                      onChange={(e) => handleChange('dados_pagamento', e.target.value)}
+                      placeholder="Selecione uma opção de pagamento ou digite manualmente"
+                      rows={4}
+                    />
+                    <button
+                      type="button"
+                      className="btn-procurar"
+                      onClick={() => setShowPaymentModal(true)}
+                    >
+                      <Search size={16} />
+                      Procurar
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Coluna Direita */}
+              <div className="config-col">
+                {/* Reduzir e Remover Produtos */}
+                <div className="form-group">
+                  <label>
+                    Reduzir e Remover Produtos
+                    <span className="optional">Opcional</span>
+                  </label>
+                  <select
+                    value={formData.permitir_modificacao_produtos}
+                    onChange={(e) => handleChange('permitir_modificacao_produtos', e.target.value)}
+                  >
+                    <option value="permitir_reduzir_excluir">Permitir o cliente reduzir e excluir produtos antes do fechamento</option>
+                    <option value="nao_permitir">Não permitir o cliente reduzir e excluir produtos antes do fechamento</option>
+                    <option value="permitir_reduzir_nao_excluir">Permitir o cliente reduzir mas não excluir</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal de Seleção de Pagamento */}
+        {showPaymentModal && (
+          <div className="modal-overlay" onClick={() => setShowPaymentModal(false)}>
+            <div className="modal-payment" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-payment-header">
+                <h3>Dados de Pagamento</h3>
+                <button className="btn-close-modal" onClick={() => setShowPaymentModal(false)}>
+                  <X size={20} />
+                </button>
+              </div>
+              <div className="modal-payment-body">
+                {loadingPaymentOptions ? (
+                  <div className="loading-payment-options">
+                    <Loader2 size={20} className="spinning" />
+                    <span>Carregando opções...</span>
+                  </div>
+                ) : paymentOptions.length === 0 ? (
+                  <p className="no-payment-options">
+                    Nenhuma opção de pagamento cadastrada. Cadastre opções em Configurações.
+                  </p>
+                ) : (
+                  <div className="payment-options-list">
+                    {paymentOptions.map((option) => (
+                      <div key={option.id} className="payment-option-item">
+                        <div className="payment-option-content">
+                          <p className="payment-option-desc">{option.descricao}</p>
+                        </div>
+                        <button
+                          type="button"
+                          className="btn-escolher"
+                          onClick={() => handleSelectPaymentOption(option)}
+                        >
+                          Escolher
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         )}
 
