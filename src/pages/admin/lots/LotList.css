@@ -466,27 +466,9 @@
     flex-wrap: wrap;
   }
 
-  /* FORCE HIDE desktop table on mobile */
-  .table-container.hide-mobile {
-    display: none !important;
-  }
-
-  /* FORCE SHOW mobile cards */
-  .mobile-lots-container.show-mobile {
-    display: flex !important;
-    flex-direction: column;
-  }
-
-  /* Allow horizontal scroll for table on mobile (legacy support) */
-  .table-container {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    margin-left: -12px;
-    margin-right: -12px;
-    padding-left: 12px;
-    padding-right: 12px;
-  }
-
+  /* Don't override table-container display - let hide-mobile handle it */
+  /* Removed conflicting overflow-x rules */
+  
   .grupos-table {
     min-width: 700px;
   }
@@ -918,9 +900,32 @@
 
 /* Mobile Lots Cards */
 .mobile-lots-container {
-  display: flex;
+  /* Desktop: hidden by default */
+  display: none;
   flex-direction: column;
   gap: 12px;
+}
+
+/* Desktop: Ensure table is visible */
+@media (min-width: 769px) {
+  .grupo-compras-page .table-container.hide-mobile {
+    display: block !important;
+  }
+  
+  .grupo-compras-page .mobile-lots-container.show-mobile {
+    display: none !important;
+  }
+}
+
+/* Mobile: Show cards, hide table */
+@media (max-width: 768px) {
+  .grupo-compras-page .table-container.hide-mobile {
+    display: none !important;
+  }
+  
+  .grupo-compras-page .mobile-lots-container.show-mobile {
+    display: flex !important;
+  }
 }
 
 .lot-card-highlight {

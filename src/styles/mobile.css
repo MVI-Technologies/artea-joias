@@ -101,23 +101,33 @@
 ======================================== */
 
 /* Hide/Show at breakpoints */
-/* Default: Desktop view */
+/* Desktop-first approach: define desktop first, then mobile */
+
+/* Desktop defaults (default state, ≥769px) */
 .hide-mobile {
-  display: block !important; /* Visible on desktop */
+  display: block !important;
 }
 
 .show-mobile {
-  display: none !important; /* Hidden on desktop */
+  display: none !important;
 }
 
-/* Mobile: <= 768px */
+.hide-desktop {
+  display: none !important;
+}
+
+.show-desktop {
+  display: block !important;
+}
+
+/* Mobile overrides (≤768px) */
 @media (max-width: 768px) {
   .hide-mobile {
-    display: none !important; /* Hidden on mobile */
+    display: none !important;
   }
   
   .show-mobile {
-    display: block !important; /* Visible on mobile */
+    display: block !important;
   }
   
   .hide-desktop {
@@ -126,17 +136,6 @@
   
   .show-desktop {
     display: none !important;
-  }
-}
-
-/* Desktop: > 768px */
-@media (min-width: 769px) {
-  .hide-desktop {
-    display: none !important;
-  }
-  
-  .show-desktop {
-    display: block !important;
   }
 }
 
