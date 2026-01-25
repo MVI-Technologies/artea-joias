@@ -13,10 +13,9 @@ export default function UserList() {
   const [formData, setFormData] = useState({
     nome: '',
     email: '',
-    telefone: '',
-    role: 'admin', // admin ou cliente (mas aqui focamos em gestão)
-    role: 'admin',
-    cadastro_status: 'completo'
+      telefone: '',
+      role: 'admin', // admin ou cliente (mas aqui focamos em gestão)
+      cadastro_status: 'completo'
   })
   const [saving, setSaving] = useState(false)
 
