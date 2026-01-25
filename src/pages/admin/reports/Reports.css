@@ -4,12 +4,20 @@
   animation: fadeIn 0.3s ease;
 }
 
-/* Report Type Selector */
+/* Mobile-First: Report Type Selector */
 .report-types {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: var(--spacing-sm);
   margin-bottom: var(--spacing-lg);
+}
+
+/* Tablet and up: Horizontal layout */
+@media (min-width: 768px) {
+  .report-types {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
 }
 
 .report-type-btn {
@@ -37,11 +45,11 @@
   color: white;
 }
 
-/* Filters */
+/* Mobile-First: Filters */
 .report-filters {
   display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
+  flex-direction: column;
+  align-items: stretch;
   gap: var(--spacing-md);
   margin-bottom: var(--spacing-lg);
   padding: var(--spacing-md);
@@ -52,10 +60,28 @@
 
 .report-filters .form-group {
   margin-bottom: 0;
+  width: 100%;
 }
 
 .report-filters .form-input {
-  width: 160px;
+  width: 100%;
+}
+
+/* Tablet and up: Horizontal layout */
+@media (min-width: 768px) {
+  .report-filters {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: flex-end;
+  }
+  
+  .report-filters .form-group {
+    width: auto;
+  }
+  
+  .report-filters .form-input {
+    width: 160px;
+  }
 }
 
 /* Summary */
@@ -85,18 +111,5 @@
   border-bottom: 2px solid var(--color-primary);
 }
 
-/* Responsive */
-@media (max-width: 768px) {
-  .report-types {
-    flex-direction: column;
-  }
-  
-  .report-filters {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  
-  .report-filters .form-input {
-    width: 100%;
-  }
-}
+/* Mobile-First: Base styles already mobile-friendly */
+/* Additional mobile-specific styles if needed */

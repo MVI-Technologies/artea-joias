@@ -1,8 +1,16 @@
 /* Marketing Page Styles */
 
+/* Mobile-First: Base padding for mobile */
 .marketing-page {
-  padding: 16px 24px;
+  padding: 12px;
   background: var(--bg-primary);
+}
+
+/* Tablet and up */
+@media (min-width: 768px) {
+  .marketing-page {
+    padding: 16px 24px;
+  }
 }
 
 /* Search bar */
@@ -45,13 +53,23 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 16px;
+  padding: 8px 12px;
   border-radius: 4px;
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
   border: none;
   transition: all 0.2s;
+  white-space: nowrap;
+  flex-shrink: 0;
+  min-width: fit-content;
+}
+
+/* Tablet and up: More padding */
+@media (min-width: 768px) {
+  .tab-btn {
+    padding: 8px 16px;
+  }
 }
 
 .tab-primary {
@@ -309,19 +327,14 @@
   background: var(--bg-hover);
 }
 
-/* Responsive */
-@media (max-width: 768px) {
-  .marketing-page {
-    padding: 12px;
-  }
-
-  .marketing-tabs {
-    flex-wrap: wrap;
-  }
-
+/* Mobile-First: Base styles already mobile-friendly */
+/* Additional mobile-specific adjustments if needed */
+@media (max-width: 480px) {
   .tab-btn {
-    flex: 1;
-    min-width: 80px;
-    justify-content: center;
+    padding: 8px 10px;
+    font-size: 12px;
   }
 }
+
+/* Mobile-First: Base styles already mobile-friendly */
+/* Enhancements for larger screens are already in place */

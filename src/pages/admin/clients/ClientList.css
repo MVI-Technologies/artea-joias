@@ -72,65 +72,100 @@
   gap: var(--spacing-sm);
 }
 
-/* Mobile Responsiveness for ClientList */
-@media (max-width: 768px) {
+/* Mobile-First: Base styles for mobile */
+.client-list-page {
+  padding: 12px;
+}
+
+.client-list-page .toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.client-list-page .toolbar-left,
+.client-list-page .toolbar-right {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.client-list-page .search-bar {
+  width: 100%;
+}
+
+.client-list-page .btn {
+  width: 100%;
+  justify-content: center;
+}
+
+/* Mobile: Hide desktop table, show mobile cards */
+.client-list-page .card.hide-mobile {
+  display: none !important;
+}
+
+.client-list-page .show-mobile {
+  display: block !important;
+}
+
+.client-list-page .table-container {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.client-list-page .mobile-card {
+  margin-bottom: 12px;
+}
+
+.client-list-page .mobile-card-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.client-list-page .mobile-card-actions .btn {
+  font-size: 12px;
+  padding: 8px 12px;
+}
+
+/* Tablet and up (≥ 768px) */
+@media (min-width: 768px) {
   .client-list-page {
-    padding: 12px;
+    padding: var(--spacing-lg);
   }
   
   .client-list-page .toolbar {
-    flex-direction: column;
-    gap: 12px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
   }
   
-  .client-list-page .toolbar-left,
+  .client-list-page .toolbar-left {
+    flex-direction: row;
+    width: auto;
+  }
+  
   .client-list-page .toolbar-right {
-    width: 100%;
+    flex-direction: row;
+    width: auto;
+    margin-left: auto;
   }
   
   .client-list-page .search-bar {
-    width: 100%;
+    width: 300px;
   }
   
   .client-list-page .btn {
-    width: 100%;
-    justify-content: center;
+    width: auto;
   }
   
-  /* FORCE HIDE desktop table on mobile */
+  /* Desktop: Show table, hide mobile cards */
   .client-list-page .card.hide-mobile {
-    display: none !important;
-  }
-  
-  /* FORCE SHOW mobile cards */
-  .client-list-page .show-mobile {
     display: block !important;
   }
   
-  /* Hide table on mobile, show cards */
-  .client-list-page .table-container {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
+  .client-list-page .show-mobile {
+    display: none !important;
   }
-  
-  /* Style mobile cards specifically */
-  .client-list-page .mobile-card {
-    margin-bottom: 12px;
-  }
-  
-  .client-list-page .mobile-card-actions {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
-  }
-  
-  .client-list-page .mobile-card-actions .btn {
-    font-size: 12px;
-    padding: 8px 12px;
-  }
-}
-
-/* Default state: Hide mobile view on desktop */
-.show-mobile {
-  display: none;
 }

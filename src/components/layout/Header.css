@@ -1,18 +1,27 @@
 /* Header Styles */
 
+/* Mobile-first: Full width header */
 .header {
   height: var(--header-height);
   background-color: var(--header-bg);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 var(--spacing-lg);
+  padding: 0 var(--spacing-md);
   position: fixed;
   top: 0;
-  left: var(--sidebar-width);
+  left: 0;
   right: 0;
   z-index: 99;
   box-shadow: var(--shadow-sm);
+}
+
+/* Tablet and up: Add sidebar offset */
+@media (min-width: 768px) {
+  .header {
+    left: var(--sidebar-width);
+    padding: 0 var(--spacing-lg);
+  }
 }
 
 .header-left {
@@ -133,18 +142,38 @@
   transform: scale(1.1);
 }
 
-/* Mobile */
-@media (max-width: 768px) {
-  .header {
-    left: 0;
-  }
+/* Mobile-first: Menu button visible by default */
+.header-menu-btn {
+  display: flex;
+}
 
+.header-search {
+  display: none;
+}
+
+.header-right {
+  gap: var(--spacing-xs);
+}
+
+.header-logout-btn {
+  padding: var(--spacing-xs);
+}
+
+/* Tablet and up: Hide menu button, show search */
+@media (min-width: 768px) {
   .header-menu-btn {
-    display: flex;
-  }
-
-  .header-search {
     display: none;
   }
-
+  
+  .header-search {
+    display: flex;
+  }
+  
+  .header-right {
+    gap: var(--spacing-md);
+  }
+  
+  .header-logout-btn {
+    padding: var(--spacing-sm);
+  }
 }

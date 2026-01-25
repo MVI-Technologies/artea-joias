@@ -253,13 +253,31 @@
   padding: 4px;
   border-radius: 12px;
   margin-bottom: 24px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  width: 100%;
+  max-width: 100%;
+}
+
+.lot-tabs::-webkit-scrollbar {
+  height: 4px;
+}
+
+.lot-tabs::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.lot-tabs::-webkit-scrollbar-thumb {
+  background-color: var(--border-color);
+  border-radius: 2px;
 }
 
 .tab-btn {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 20px;
+  padding: 10px 16px;
   background: transparent;
   border: none;
   border-radius: 8px;
@@ -268,6 +286,9 @@
   color: var(--text-secondary);
   cursor: pointer;
   transition: all 0.2s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
+  min-width: fit-content;
 }
 
 .tab-btn:hover {
@@ -1109,22 +1130,105 @@
   font-weight: 600;
 }
 
-/* Responsive */
-@media (max-width: 768px) {
+/* Mobile-First Responsive */
+
+/* Mobile Base (Default) */
+.lot-detail {
+  padding: 12px;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--spacing-sm);
+}
+
+.header-left {
+  flex-wrap: wrap;
+}
+
+.col-img {
+  width: 50px;
+}
+
+.lot-tabs {
+  padding: 2px;
+  gap: 2px;
+  margin-bottom: var(--spacing-md);
+}
+
+.tab-btn {
+  padding: 8px 12px;
+  font-size: 12px;
+  gap: 4px;
+}
+
+.tab-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+.lot-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.lot-actions .btn {
+  width: 100%;
+  justify-content: center;
+}
+
+.product-grid {
+  grid-template-columns: 1fr !important;
+}
+
+/* Tablet (≥ 768px) */
+@media (min-width: 768px) {
   .lot-detail {
-    padding: 16px;
+    padding: 32px;
   }
   
   .stats-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--spacing-md);
   }
   
-  .header-left {
-    flex-wrap: wrap;
+  .lot-tabs {
+    padding: 4px;
+    gap: 4px;
+    margin-bottom: 24px;
   }
   
-  .col-img {
-    width: 50px;
+  .tab-btn {
+    padding: 10px 20px;
+    font-size: 14px;
+    gap: 8px;
+  }
+  
+  .tab-btn svg {
+    width: 16px;
+    height: 16px;
+  }
+  
+  .lot-actions {
+    flex-direction: row;
+    gap: 12px;
+  }
+  
+  .lot-actions .btn {
+    width: auto;
+  }
+  
+  .product-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+/* Desktop (≥ 1024px) */
+@media (min-width: 1024px) {
+  .product-grid {
+    grid-template-columns: repeat(3, 1fr) !important;
   }
 }
 
