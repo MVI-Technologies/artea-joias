@@ -113,7 +113,8 @@ export default function UserList() {
         <Search size={18} className="search-icon" />
       </div>
 
-      <div className="users-table-container">
+      {/* Desktop: Users Table */}
+      <div className="users-table-container hide-mobile">
         <table className="users-table">
           <thead>
             <tr>
@@ -152,21 +153,16 @@ export default function UserList() {
                   </span>
                 </td>
                 <td>
-                  <span className={`status-badge ${user.approved ? 'active' : 'pending'}`}>
-                    {user.approved ? 'Aprovado' : 'Pendente'}
-                  </span>
+                  {user.approved ? (
+                    <span className="status-active"><CheckCircle size={14} /> Ativo</span>
+                  ) : (
+                    <span className="status-pending"><XCircle size={14} /> Pendente</span>
+                  )}
                 </td>
                 <td>
-                  <div className="actions-cell">
-                    <button className="btn-icon" onClick={() => openEdit(user)} title="Editar">
-                      <Edit size={16} />
-                    </button>
-                    <button 
-                      className="btn-icon text-danger" 
-                      onClick={() => handleDelete(user)} 
-                      title="Excluir"
-                    >
-                      <Trash2 size={16} />
+                  <div className="table-actions">
+                    <button className="btn btn-sm btn-primary" onClick={() => openEdit(user)}>
+                      <Edit size={14} />
                     </button>
                   </div>
                 </td>
@@ -174,6 +170,55 @@ export default function UserList() {
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* Mobile: User Cards */}
+      <div className="show-mobile">
+        {loading ? (
+          <div className="mobile-empty-state">
+            <p>Carregando...</p>
+          </div>
+        ) : filteredUsers.map(user => (
+          <div key={user.id} className="mobile-card">
+            <div className="mobile-card-header">
+              <span className="mobile-card-title">{user.nome}</span>
+              <span className={`role-badge ${user.role}`}>
+                {user.role === 'admin' ? <Shield size={12} /> : <User size={12} />}
+                {user.role}
+              </span>
+            </div>
+            <div className="mobile-card-body">
+              <div className="mobile-card-row">
+                <span className="mobile-card-label">Email:</span>
+                <span className="mobile-card-value">{user.email}</span>
+              </div>
+              <div className="mobile-card-row">
+                <span className="mobile-card-label">Telefone:</span>
+                <span className="mobile-card-value">{user.telefone || 'N/A'}</span>
+              </div>
+              <div className="mobile-card-row">
+                <span className="mobile-card-label">Status:</span>
+                <span className="mobile-card-value">
+                  {user.approved ? (
+                    <span className="status-active"><CheckCircle size={14} /> Ativo</span>
+                  ) : (
+                    <span className="status-pending"><XCircle size={14} /> Pendente</span>
+                  )}
+                </span>
+              </div>
+            </div>
+            <div className="mobile-card-actions">
+              <button className="btn btn-sm btn-primary" onClick={() => openEdit(user)}>
+                <Edit size={14} /> Editar
+              </button>
+            </div>
+          </div>
+        ))}
+        {filteredUsers.length === 0 && !loading && (
+          <div className="mobile-empty-state">
+            <p>Nenhum usuário encontrado</p>
+          </div>
+        )}
       </div>
 
       {showModal && (

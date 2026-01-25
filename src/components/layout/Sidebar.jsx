@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { 
   LayoutDashboard, 
@@ -74,12 +74,37 @@ const menuItems = [
   }
 ]
 
-export default function Sidebar() {
+export default function Sidebar({ isOpen = false, onClose = () => {} }) {
   const location = useLocation()
   const navigate = useNavigate()
   const { user, signOut } = useAuth()
   const [openSubmenus, setOpenSubmenus] = useState({})
   const [isCollapsed, setIsCollapsed] = useState(false)
+
+  // Body scroll lock when sidebar is open on mobile
+  useEffect(() => {
+    if (isOpen && window.innerWidth <= 768) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [isOpen])
+
+  // Close sidebar on ESC key
+  useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === 'Escape' && isOpen) {
+        onClose()
+      }
+    }
+
+    document.addEventListener('keydown', handleEscape)
+    return () => document.removeEventListener('keydown', handleEscape)
+  }, [isOpen, onClose])
 
   const toggleSubmenu = (label) => {
     setOpenSubmenus(prev => ({
@@ -96,12 +121,19 @@ export default function Sidebar() {
     navigate('/login')
   }
 
+  // Close sidebar on mobile when clicking a link
+  const handleLinkClick = () => {
+    if (window.innerWidth <= 768) {
+      onClose()
+    }
+  }
+
   return (
-    <aside className={`sidebar ${isCollapsed ? 'collapsed' : ''}`}>
+    <aside className={`sidebar ${isCollapsed ? 'collapsed' : ''} ${isOpen ? 'open' : ''}`}>
       {/* Logo/Header */}
       <div className="sidebar-header">
         <div className="sidebar-logo">
-          <span className="logo-text">ARTEA JOIAS</span>
+          <span className="logo-text">GRUPO AA</span>
         </div>
         <div className="sidebar-user">
           <span className="user-greeting">Olá, {user?.nome || 'Administrador'}</span>
@@ -134,6 +166,7 @@ export default function Sidebar() {
                           <Link
                             to={subitem.path}
                             className={`sidebar-sublink ${isActive(subitem.path) ? 'active' : ''}`}
+                            onClick={handleLinkClick}
                           >
                             {subitem.label}
                           </Link>
@@ -146,6 +179,7 @@ export default function Sidebar() {
                 <Link
                   to={item.path}
                   className={`sidebar-link ${isActive(item.path) ? 'active' : ''}`}
+                  onClick={handleLinkClick}
                 >
                   <item.icon size={18} className="sidebar-icon" />
                   <span className="sidebar-label">{item.label}</span>

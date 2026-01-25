@@ -71,3 +71,61 @@
   flex-wrap: wrap;
   gap: var(--spacing-sm);
 }
+
+/* Mobile Responsiveness for ClientList */
+@media (max-width: 768px) {
+  .client-list-page {
+    padding: 12px;
+  }
+  
+  .client-list-page .toolbar {
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .client-list-page .toolbar-left,
+  .client-list-page .toolbar-right {
+    width: 100%;
+  }
+  
+  .client-list-page .search-bar {
+    width: 100%;
+  }
+  
+  .client-list-page .btn {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  /* FORCE HIDE desktop table on mobile */
+  .client-list-page .card.hide-mobile {
+    display: none !important;
+  }
+  
+  /* FORCE SHOW mobile cards */
+  .client-list-page .show-mobile {
+    display: block !important;
+  }
+  
+  /* Hide table on mobile, show cards */
+  .client-list-page .table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Style mobile cards specifically */
+  .client-list-page .mobile-card {
+    margin-bottom: 12px;
+  }
+  
+  .client-list-page .mobile-card-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  
+  .client-list-page .mobile-card-actions .btn {
+    font-size: 12px;
+    padding: 8px 12px;
+  }
+}

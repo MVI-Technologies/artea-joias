@@ -295,8 +295,8 @@ export default function LotList() {
 
       </div>
 
-      {/* Tabela de grupos */}
-      <div className="table-container">
+      {/* Desktop: Tabela de grupos */}
+      <div className="table-container hide-mobile">
         <table className="grupos-table">
           <thead>
             <tr>
@@ -402,6 +402,84 @@ export default function LotList() {
             )}
           </tbody>
         </table>
+      </div>
+
+      {/* Mobile: Cards */}
+      <div className="show-mobile mobile-lots-container">
+        {/* Pronta Entrega Card */}
+        {prontaEntrega && (
+          <div className="mobile-card lot-card-highlight">
+            <div className="mobile-card-header">
+              <span className="mobile-card-title">{prontaEntrega.nome}</span>
+              <span className="status-badge badge-green">Aberto</span>
+            </div>
+            <div className="mobile-card-actions">
+              <Link to={`/admin/lotes/${prontaEntrega.id}`} className="btn btn-sm btn-primary">
+                <Package size={14} /> Produtos
+              </Link>
+              <Link to={`/admin/romaneios?lot=${prontaEntrega.id}`} className="btn btn-sm btn-secondary">
+                <FileText size={14} /> Romaneios
+              </Link>
+              <Link to={`/admin/separacao?lot=${prontaEntrega.id}`} className="btn btn-sm btn-secondary">
+                <Scissors size={14} /> Separação
+              </Link>
+            </div>
+          </div>
+        )}
+
+        {/* Regular Lots Cards */}
+        {regularLots.map((lot) => {
+          const badgeInfo = getStatusBadge(lot.status)
+          return (
+            <div key={lot.id} className="mobile-card">
+              <div className="mobile-card-header">
+                <span className="mobile-card-title">{lot.nome}</span>
+                <span className={`status-badge ${badgeInfo.class}`}>
+                  {badgeInfo.label}
+                </span>
+              </div>
+              <div className="mobile-card-body">
+                <div className="mobile-card-row">
+                  <span className="mobile-card-label">Início:</span>
+                  <span className="mobile-card-value">{formatDate(lot.created_at)}</span>
+                </div>
+                <div className="mobile-card-row">
+                  <span className="mobile-card-label">Encerramento:</span>
+                  <span className="mobile-card-value">{formatDate(lot.data_fim)}</span>
+                </div>
+              </div>
+              <div className="mobile-card-actions">
+                <Link to={`/admin/lotes/${lot.id}`} className="btn btn-sm btn-primary">
+                  <Package size={14} /> Produtos
+                </Link>
+                <Link to={`/admin/romaneios?lot=${lot.id}`} className="btn btn-sm btn-secondary">
+                  <FileText size={14} /> Romaneios
+                </Link>
+                <Link to={`/admin/separacao?lot=${lot.id}`} className="btn btn-sm btn-secondary">
+                  <Scissors size={14} /> Separação
+                </Link>
+                <button
+                  className="btn btn-sm btn-success"
+                  onClick={(e) => {
+                    const rect = e.currentTarget.getBoundingClientRect()
+                    setDropdownPos({ top: rect.bottom + 4, left: rect.right - 180 })
+                    setOpenDropdown(lot.id)
+                  }}
+                >
+                  <MoreVertical size={14} /> Ações
+                </button>
+              </div>
+            </div>
+          )
+        })}
+
+        {/* Empty State */}
+        {filteredLots.length === 0 && (
+          <div className="mobile-empty-state">
+            <AlertTriangle size={32} />
+            <p>Nenhum grupo de compras encontrado</p>
+          </div>
+        )}
       </div>
 
       {/* Paginação */}
