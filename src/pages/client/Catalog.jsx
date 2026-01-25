@@ -595,7 +595,7 @@ export default function Catalog() {
                     <div className="product-quantity-indicators">
                         {/* Quantidade disponível no estoque (superior esquerdo) */}
                         <div className="quantity-badge quantity-stock">
-                            {product.estoque || 0}
+                            Faltam {product.estoque || 0}
                         </div>
                         
                         {/* Quantidade faltando (superior direito - vermelho) */}
