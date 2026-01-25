@@ -280,7 +280,7 @@ export default function LotForm() {
         <button className="btn-back" onClick={() => navigate('/admin/lotes')}>
           <ArrowLeft size={18} />
         </button>
-        <h1>{isEditing ? formData.nome || 'Editar Grupo' : 'Novo Grupo de Compras'}</h1>
+        <h1>{isEditing ? formData.nome || 'Editar Catálogo' : 'Novo Catálogo'}</h1>
       </div>
 
       <form onSubmit={handleSubmit} className="lot-form">
