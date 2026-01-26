@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { X } from 'lucide-react'
 import './PortalDropdown.css'
 
 /**
@@ -12,13 +13,15 @@ import './PortalDropdown.css'
  * @param {boolean} props.isOpen - Estado do dropdown
  * @param {Function} props.onClose - Callback ao fechar
  * @param {string} props.align - Alinhamento (left|right)
+ * @param {boolean} props.showCloseButton - Mostrar botão X para fechar
  */
-export default function PortalDropdown({ 
-  trigger, 
-  children, 
-  isOpen, 
+export default function PortalDropdown({
+  trigger,
+  children,
+  isOpen,
   onClose,
-  align = 'right'
+  align = 'right',
+  showCloseButton = false
 }) {
   const triggerRef = useRef(null)
   const dropdownRef = useRef(null)
@@ -32,14 +35,14 @@ export default function PortalDropdown({
     const calculatePosition = () => {
       const triggerRect = triggerRef.current.getBoundingClientRect()
       const dropdownRect = dropdownRef.current.getBoundingClientRect()
-      
+
       const viewportWidth = window.innerWidth
       const viewportHeight = window.innerHeight
       const padding = 8 // Margem das bordas
 
       let top = triggerRect.bottom + padding
       let left = triggerRect.left
-      
+
       // Alinhamento à direita
       if (align === 'right') {
         left = triggerRect.right - dropdownRect.width
@@ -48,7 +51,7 @@ export default function PortalDropdown({
       // Ajustar se não couber embaixo -> abrir para cima
       const spaceBelow = viewportHeight - triggerRect.bottom
       const spaceAbove = triggerRect.top
-      
+
       if (spaceBelow < dropdownRect.height + padding && spaceAbove > spaceBelow) {
         top = triggerRect.top - dropdownRect.height - padding
         setPlacement('top')
@@ -71,16 +74,12 @@ export default function PortalDropdown({
     }
 
     calculatePosition()
-
-    // Recalcular ao redimensionar ou rolar
-    window.addEventListener('resize', calculatePosition)
-    window.addEventListener('scroll', calculatePosition, true)
-
-    return () => {
-      window.removeEventListener('resize', calculatePosition)
-      window.removeEventListener('scroll', calculatePosition, true)
-    }
   }, [isOpen, align])
+
+  // Removido o fechamento ao rolar para permitir scroll interno e melhor UX em mobile
+  useEffect(() => {
+    // Não faz nada, o dropdown agora permanece aberto ao rolar a página
+  }, [isOpen])
 
   // Fechar ao clicar fora
   useEffect(() => {
@@ -88,7 +87,7 @@ export default function PortalDropdown({
 
     const handleClickOutside = (e) => {
       if (
-        dropdownRef.current && 
+        dropdownRef.current &&
         !dropdownRef.current.contains(e.target) &&
         triggerRef.current &&
         !triggerRef.current.contains(e.target)
@@ -137,6 +136,17 @@ export default function PortalDropdown({
             left: `${position.left}px`,
           }}
         >
+          {showCloseButton && (
+            <div className="dropdown-close-header">
+              <button
+                className="dropdown-close-btn"
+                onClick={onClose}
+                aria-label="Fechar menu"
+              >
+                <X size={18} />
+              </button>
+            </div>
+          )}
           {children}
         </div>,
         document.body

@@ -405,7 +405,8 @@
 /* PRODUCTS GRID - 4 columns on desktop by default */
 .admin-products-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr); /* Removed !important to allow overrides */
+  grid-template-columns: repeat(4, 1fr);
+  /* Removed !important to allow overrides */
   gap: 20px;
   max-width: 100%;
 }
@@ -425,7 +426,8 @@
 
 @media (max-width: 768px) {
   .admin-products-grid {
-    grid-template-columns: 1fr !important; /* Force single column */
+    grid-template-columns: 1fr !important;
+    /* Force single column */
     gap: 16px;
   }
 }
@@ -447,7 +449,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 80px 24px;
+  padding: 60px 24px;
   grid-column: 1 / -1;
   background: var(--bg-secondary);
   border-radius: 16px;
@@ -464,6 +466,25 @@
   margin-bottom: 20px;
   color: var(--text-secondary);
   font-size: 15px;
+}
+
+.empty-products .btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: auto;
+  min-width: auto;
+  padding: 0 20px;
+  gap: 8px;
+  margin: 0 auto;
+  height: 40px;
+  line-height: 1;
+}
+
+.empty-products .btn-primary svg {
+  display: block;
+  margin: 0;
+  flex-shrink: 0;
 }
 
 /* ========================================
@@ -649,6 +670,7 @@
   gap: 3px;
   flex: 1;
 }
+
 /* Product Info List */
 .info-list {
   list-style: none;
@@ -1215,7 +1237,7 @@
   color: var(--text-primary);
   transition: all 0.2s ease;
   font-family: inherit;
-  
+
   /* Clean dropdown appearance */
   appearance: none;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M10.293 3.293L6 7.586 1.707 3.293A1 1 0 00.293 4.707l5 5a1 1 0 001.414 0l5-5a1 1 0 10-1.414-1.414z'/%3E%3C/svg%3E");
@@ -1254,20 +1276,22 @@
 /* Mobile-optimized dropdown styling */
 @media (max-width: 768px) {
   .form-group select {
-    min-height: 48px; /* Touch-friendly height */
-    font-size: 16px; /* Prevents iOS zoom on focus */
+    min-height: 48px;
+    /* Touch-friendly height */
+    font-size: 16px;
+    /* Prevents iOS zoom on focus */
     padding: 12px 40px 12px 16px;
     background-size: 14px;
     background-position: right 14px center;
   }
-  
+
   .form-group select option {
     padding: 14px 16px;
     font-size: 16px;
     min-height: 48px;
     line-height: 1.4;
   }
-  
+
   /* Better visual feedback on mobile */
   .form-group select:active {
     transform: scale(0.99);
@@ -1313,8 +1337,13 @@
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 .modal-content {
@@ -1334,8 +1363,15 @@
 }
 
 @keyframes modalSlideUp {
-  from { opacity: 0; transform: translateY(40px) scale(0.95); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+  from {
+    opacity: 0;
+    transform: translateY(40px) scale(0.95);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .modal-header {
@@ -1525,38 +1561,38 @@
   .lot-detail {
     padding: 32px;
   }
-  
+
   .stats-grid {
     grid-template-columns: repeat(4, 1fr);
     gap: var(--spacing-md);
   }
-  
+
   .lot-tabs {
     padding: 4px;
     gap: 4px;
     margin-bottom: 24px;
   }
-  
+
   .tab-btn {
     padding: 10px 20px;
     font-size: 14px;
     gap: 8px;
   }
-  
+
   .tab-btn svg {
     width: 16px;
     height: 16px;
   }
-  
+
   .lot-actions {
     flex-direction: row;
     gap: 12px;
   }
-  
+
   .lot-actions .btn {
     width: auto;
   }
-  
+
   .product-grid {
     grid-template-columns: repeat(2, 1fr) !important;
   }
@@ -1583,10 +1619,11 @@
   border: 1px solid var(--border-color, #ddd);
   border-radius: 8px;
   padding: 8px 0;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   z-index: 100;
   min-width: 220px;
-  max-width: calc(100vw - 32px); /* Prevent overflow on mobile */
+  max-width: calc(100vw - 32px);
+  /* Prevent overflow on mobile */
 }
 
 /* Mobile-specific dropdown adjustments */
@@ -1598,7 +1635,7 @@
     min-width: 240px;
     max-width: calc(100vw - 16px);
   }
-  
+
   /* If header is too narrow, dropdown should extend left */
   @supports (inset: 0) {
     .dropdown-menu-right {
@@ -1724,7 +1761,7 @@
   transition: color 0.2s;
 }
 
-.separacao-item input:checked + .checkmark-box {
+.separacao-item input:checked+.checkmark-box {
   color: #22c55e;
 }
 
@@ -1769,6 +1806,7 @@
     transform: translateY(100%);
     opacity: 0;
   }
+
   to {
     transform: translateY(0);
     opacity: 1;
@@ -2038,7 +2076,8 @@
 /* TOP SECTION: Photo (Right) + Core Info (Left) */
 .product-modal-top {
   display: flex;
-  flex-direction: row-reverse; /* Foto à direita */
+  flex-direction: row-reverse;
+  /* Foto à direita */
   gap: 32px;
   align-items: flex-start;
 }
@@ -2091,7 +2130,7 @@
   border-radius: 4px;
   overflow: hidden;
   position: relative;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 .photo-preview-large img {
@@ -2107,7 +2146,7 @@
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  background: rgba(0,0,0,0.5);
+  background: rgba(0, 0, 0, 0.5);
   color: white;
   border: none;
   display: flex;
@@ -2167,7 +2206,8 @@
   display: flex;
   gap: 12px;
   align-items: flex-start;
-  flex-wrap: wrap; /* Permite quebra se necessário */
+  flex-wrap: wrap;
+  /* Permite quebra se necessário */
 }
 
 .sm-width {
@@ -2182,7 +2222,8 @@
 
 .flex-grow {
   flex: 1;
-  min-width: 200px; /* Garante tamanho mínimo para descrição */
+  min-width: 200px;
+  /* Garante tamanho mínimo para descrição */
 }
 
 .mt-3 {
@@ -2246,14 +2287,15 @@
 /* Responsive Adjustments */
 @media (max-width: 768px) {
   .product-modal-top {
-    flex-direction: column; /* Foto em cima no mobile */
+    flex-direction: column;
+    /* Foto em cima no mobile */
   }
-  
+
   .product-photo-section {
     width: 100%;
     margin-bottom: 20px;
   }
-  
+
   .photo-placeholder {
     max-width: 100%;
     margin: 0 auto;
@@ -2264,11 +2306,13 @@
     flex-direction: column;
     gap: 16px;
   }
-  
-  .sm-width, .md-width, .flex-grow {
+
+  .sm-width,
+  .md-width,
+  .flex-grow {
     width: 100%;
   }
-  
+
   .product-rules-grid {
     grid-template-columns: 1fr;
     gap: 16px;
@@ -2281,7 +2325,7 @@
   cursor: pointer;
   font-weight: 600;
   transition: all 0.2s ease;
-  
+
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -2292,7 +2336,7 @@
 .overlay-remove,
 .overlay-id-badge {
   position: absolute;
-  
+
   z-index: 10;
 }
 
@@ -2310,7 +2354,8 @@
 
 /* Botões dentro do container NÃO podem ser absolutos */
 .overlay-top-right-buttons .overlay-btn {
-  position: static; /* ou relative */
+  position: static;
+  /* ou relative */
   z-index: auto;
 }
 
@@ -2327,20 +2372,21 @@
   .mobile-only {
     display: flex !important;
   }
-  
+
   .desktop-only {
     display: none !important;
   }
-  
+
   /* Mobile Footer Layout */
   .card-footer-actions {
     display: grid;
-    grid-template-columns: 44px 1fr 44px; /* Delete | Pedidos | Edit */
+    grid-template-columns: 44px 1fr 44px;
+    /* Delete | Pedidos | Edit */
     gap: 8px;
     align-items: center;
     padding: 12px !important;
   }
-  
+
   /* Mobile Footer Buttons */
   .btn-mobile-delete {
     width: 44px;
@@ -2355,7 +2401,7 @@
     padding: 0;
     cursor: pointer;
   }
-  
+
   .btn-mobile-edit {
     width: 44px;
     height: 44px;
@@ -2369,7 +2415,7 @@
     padding: 0;
     cursor: pointer;
   }
-  
+
   /* Adjust Pedidos button to fit middle */
   .btn-pedidos {
     width: 100%;
@@ -2410,7 +2456,7 @@
   appearance: none !important;
   -webkit-appearance: none !important;
   -moz-appearance: none !important;
-  
+
   /* Dimensions - Fixed and Forced */
   width: 20px !important;
   height: 20px !important;
@@ -2418,21 +2464,23 @@
   min-height: 20px !important;
   max-width: 20px !important;
   max-height: 20px !important;
-  
+
   /* Box Styling */
   border: 2px solid var(--border-color) !important;
   border-radius: 4px !important;
   background-color: white !important;
   cursor: pointer;
-  
+
   /* Positioning */
-  margin: 2px 0 0 0 !important; /* Reset margins */
-  padding: 0 !important; /* Reset padding */
+  margin: 2px 0 0 0 !important;
+  /* Reset margins */
+  padding: 0 !important;
+  /* Reset padding */
   flex-shrink: 0 !important;
-  
+
   /* Transition */
   transition: all 0.2s ease;
-  
+
   /* Center checkmark */
   display: grid !important;
   place-content: center !important;
@@ -2454,7 +2502,8 @@
   box-shadow: inset 1em 1em white;
   transform-origin: center;
   clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
-  background-color: white; /* Ensure checkmark is white */
+  background-color: white;
+  /* Ensure checkmark is white */
 }
 
 .checkbox-wrapper input[type="checkbox"]:checked::before {

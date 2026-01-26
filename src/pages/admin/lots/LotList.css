@@ -23,7 +23,7 @@
   max-width: 300px;
 }
 
-.search-box input {
+.grupo-compras-page .search-box input {
   width: 100%;
   padding: 8px 12px 8px 36px;
   border: 1px solid var(--border-color);
@@ -31,6 +31,13 @@
   font-size: 13px;
   background: var(--bg-secondary);
   color: var(--text-primary);
+}
+
+/* Mobile: Aumentar padding esquerdo para evitar sobreposição com ícone */
+@media (max-width: 768px) {
+  .grupo-compras-page .toolbar .search-box input {
+    padding-left: 44px !important;
+  }
 }
 
 .search-box input::placeholder {
@@ -194,13 +201,17 @@
   font-size: 11px !important;
   font-weight: 500 !important;
   text-transform: capitalize !important;
-  background-color: #9ca3af !important; /* Fallback color */
-  color: white !important; /* Ensure text is visible */
-  position: static !important; /* Override any absolute positioning */
+  background-color: #9ca3af !important;
+  /* Fallback color */
+  color: white !important;
+  /* Ensure text is visible */
+  position: static !important;
+  /* Override any absolute positioning */
 }
 
 .grupos-table .status-badge::before {
-  content: none !important; /* Remove any pseudo-elements */
+  content: none !important;
+  /* Remove any pseudo-elements */
 }
 
 .grupos-table .badge-green {
@@ -246,7 +257,8 @@
   font-size: 11px !important;
   font-weight: 500 !important;
   text-transform: capitalize !important;
-  background-color: #9ca3af !important; /* Fallback color */
+  background-color: #9ca3af !important;
+  /* Fallback color */
   color: white !important;
   white-space: nowrap !important;
 }
@@ -311,6 +323,9 @@
 .btn-produtos {
   background: #3b82f6;
   color: white;
+  min-width: 90px !important;
+  /* Garantir tamanho mínimo igual */
+  max-width: 90px !important;
 }
 
 .btn-produtos:hover {
@@ -320,6 +335,9 @@
 .btn-romaneios {
   background: #6b7280;
   color: white;
+  min-width: 90px !important;
+  /* Garantir tamanho mínimo igual */
+  max-width: 90px !important;
 }
 
 .btn-romaneios:hover {
@@ -329,6 +347,9 @@
 .btn-separacao {
   background: #6b7280;
   color: white;
+  min-width: 90px !important;
+  /* Garantir tamanho mínimo igual */
+  max-width: 90px !important;
 }
 
 .btn-separacao:hover {
@@ -373,6 +394,7 @@
     opacity: 0;
     transform: translateY(-8px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -416,12 +438,82 @@
   border-radius: 8px;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
   z-index: 99999;
-  min-width: 180px;
-  padding: 6px 0;
+  min-width: 220px;
+  padding: 0;
   animation: dropdownFade 0.15s ease-out;
+  max-height: 80vh;
+  /* Altura máxima de 80% da tela */
+  display: flex;
+  flex-direction: column;
 }
 
-.dropdown-menu-fixed button {
+.dropdown-content-scrollable {
+  overflow-y: auto;
+  flex: 1;
+  padding: 8px 0;
+}
+
+.dropdown-section {
+  padding: 8px 0;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.dropdown-section:last-child {
+  border-bottom: none;
+}
+
+.dropdown-header {
+  display: block;
+  padding: 4px 16px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #9ca3af;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+/* Botão X vermelho no canto superior direito do dropdown */
+.dropdown-menu-fixed .dropdown-close-btn-top-right {
+  position: absolute !important;
+  top: 4px !important;
+  right: 4px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 16px !important;
+  height: 16px !important;
+  min-width: 16px !important;
+  min-height: 16px !important;
+  max-width: 16px !important;
+  max-height: 16px !important;
+  padding: 0 !important;
+  background: #ef4444 !important;
+  border: none !important;
+  border-radius: 3px !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+  color: white !important;
+  z-index: 100000 !important;
+  box-shadow: 0 1px 3px rgba(239, 68, 68, 0.3) !important;
+  pointer-events: auto !important;
+}
+
+.dropdown-menu-fixed .dropdown-close-btn-top-right:hover {
+  background: #dc2626 !important;
+  box-shadow: 0 2px 4px rgba(239, 68, 68, 0.4) !important;
+}
+
+.dropdown-menu-fixed .dropdown-close-btn-top-right:active {
+  transform: scale(0.95) !important;
+}
+
+.dropdown-menu-fixed .dropdown-close-btn-top-right svg {
+  flex-shrink: 0 !important;
+  width: 10px !important;
+  height: 10px !important;
+}
+
+.dropdown-menu-fixed button:not(.dropdown-close-btn-top-right) {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -437,11 +529,11 @@
   white-space: nowrap;
 }
 
-.dropdown-menu-fixed button:hover {
+.dropdown-menu-fixed button:not(.dropdown-close-btn-top-right):hover {
   background-color: #e5e7eb;
 }
 
-.dropdown-menu-fixed button svg {
+.dropdown-menu-fixed button:not(.dropdown-close-btn-top-right) svg {
   color: #6b7280;
   flex-shrink: 0;
 }
@@ -474,7 +566,9 @@
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Responsive */
@@ -521,7 +615,7 @@
 
   /* Don't override table-container display - let hide-mobile handle it */
   /* Removed conflicting overflow-x rules */
-  
+
   .grupos-table {
     min-width: 700px;
   }
@@ -543,8 +637,13 @@
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 /* ===== MODAL DE CONFIRMAÇÃO ===== */
@@ -558,11 +657,12 @@
 }
 
 @keyframes slideUp {
-  from { 
+  from {
     opacity: 0;
     transform: translateY(20px);
   }
-  to { 
+
+  to {
     opacity: 1;
     transform: translateY(0);
   }
@@ -914,6 +1014,7 @@
     opacity: 0;
     transform: translateX(100px);
   }
+
   to {
     opacity: 1;
     transform: translateX(0);
@@ -943,7 +1044,7 @@
   .modal-config-body .form-row {
     grid-template-columns: 1fr;
   }
-  
+
   .toast-notification {
     left: 16px;
     right: 16px;
@@ -964,7 +1065,7 @@
   .grupo-compras-page .table-container.hide-mobile {
     display: block !important;
   }
-  
+
   .grupo-compras-page .mobile-lots-container.show-mobile {
     display: none !important;
   }
@@ -975,7 +1076,7 @@
   .grupo-compras-page .table-container.hide-mobile {
     display: none !important;
   }
-  
+
   .grupo-compras-page .mobile-lots-container.show-mobile {
     display: flex !important;
   }
@@ -1014,15 +1115,59 @@
 /* Override mobile.css mobile-card-actions for LotList */
 @media (max-width: 768px) {
   .mobile-lots-container .mobile-card-actions {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    /* 2 colunas de tamanho EXATAMENTE igual */
+    gap: 8px !important;
   }
-  
+
   .mobile-lots-container .mobile-card-actions .btn {
-    width: 100%;
+    width: 100% !important;
     justify-content: center;
-    font-size: 12px;
-    padding: 8px 12px;
+    font-size: 12px !important;
+    padding: 8px 12px !important;
+    min-height: 36px !important;
+    /* Altura mínima consistente */
+    box-sizing: border-box !important;
+    min-width: auto !important;
+    max-width: none !important;
+    flex: 1 1 0 !important;
+    /* Força todos a terem a mesma largura no flex/grid */
+  }
+
+  /* Garantir que btn-sm também tenha o mesmo tamanho */
+  .mobile-lots-container .mobile-card-actions .btn-sm {
+    min-height: 36px !important;
+    padding: 8px 12px !important;
+    width: 100% !important;
+    min-width: auto !important;
+    max-width: none !important;
+    flex: 1 1 0 !important;
+  }
+
+  /* Forçar btn-primary e btn-secondary a terem o mesmo tamanho */
+  .mobile-lots-container .mobile-card-actions .btn-primary,
+  .mobile-lots-container .mobile-card-actions .btn-secondary,
+  .mobile-lots-container .mobile-card-actions .btn-success {
+    width: 100% !important;
+    min-width: auto !important;
+    max-width: none !important;
+    padding: 8px 12px !important;
+    font-size: 12px !important;
+    flex: 1 1 0 !important;
+    /* Força todos a ocuparem o mesmo espaço */
+  }
+
+  /* Regra ultra-específica para btn-primary */
+  .mobile-lots-container .mobile-card-actions a.btn.btn-sm.btn-primary,
+  .mobile-lots-container .mobile-card-actions a.btn.btn-sm.btn-secondary,
+  .mobile-lots-container .mobile-card-actions button.btn.btn-sm.btn-success {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    padding: 8px 12px !important;
+    font-size: 12px !important;
+    flex: 1 1 0% !important;
+    box-sizing: border-box !important;
   }
 }

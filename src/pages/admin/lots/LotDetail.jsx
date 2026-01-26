@@ -1,19 +1,19 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom'
-import { 
-  ArrowLeft, 
-  RefreshCw, 
-  Plus, 
-  Search, 
-  Copy, 
-  ChevronDown, 
-  X, 
-  Edit, 
-  MessageCircle, 
-  Image, 
-  Link as LinkIcon, 
-  Trash2, 
-  Users, 
+import {
+  ArrowLeft,
+  RefreshCw,
+  Plus,
+  Search,
+  Copy,
+  ChevronDown,
+  X,
+  Edit,
+  MessageCircle,
+  Image,
+  Link as LinkIcon,
+  Trash2,
+  Users,
   Package,
   DollarSign,
   Clock,
@@ -59,14 +59,14 @@ export default function LotDetail({ defaultTab }) {
   const [closing, setClosing] = useState(false)
   const [showActionsMenu, setShowActionsMenu] = useState(false)
   const [separacaoItems, setSeparacaoItems] = useState({}) // { order_id: boolean }
-  
+
   // States para confirmação e notificação
   const [showConfirmModal, setShowConfirmModal] = useState(false)
   const [confirmAction, setConfirmAction] = useState(null)
   const [notifyOnClose, setNotifyOnClose] = useState(true)
   const [sendingNotification, setSendingNotification] = useState(false)
   const [notification, setNotification] = useState(null)
-  
+
   // States para status de produtos fracionados
   const [productCompletionStatus, setProductCompletionStatus] = useState({
     total: 0,
@@ -74,7 +74,7 @@ export default function LotDetail({ defaultTab }) {
     incomplete: 0,
     fractionalProducts: []
   })
-  
+
   // States para gerenciamento de produtos
   const [showProductModal, setShowProductModal] = useState(false)
   const [editingProduct, setEditingProduct] = useState(null)
@@ -169,7 +169,7 @@ export default function LotDetail({ defaultTab }) {
         .order('nome')
 
       setCategories(cats || [])
-      
+
       // Calcular status de produtos fracionados
       calculateProductCompletionStatus(lotProducts || [])
     } catch (error) {
@@ -178,13 +178,13 @@ export default function LotDetail({ defaultTab }) {
       setLoading(false)
     }
   }
-  
+
   // Calcular status de completude dos produtos fracionados
   const calculateProductCompletionStatus = (lotProducts) => {
-    const fractionalProducts = lotProducts.filter(lp => 
+    const fractionalProducts = lotProducts.filter(lp =>
       lp.product?.tipo_venda === 'pacote'
     )
-    
+
     if (fractionalProducts.length === 0) {
       setProductCompletionStatus({
         total: 0,
@@ -194,12 +194,12 @@ export default function LotDetail({ defaultTab }) {
       })
       return
     }
-    
+
     const statusData = fractionalProducts.map(lp => {
       const minimo = lp.product?.quantidade_pacote || 12
       const atual = lp.quantidade_pedidos || 0
       const complete = atual >= minimo
-      
+
       return {
         id: lp.product.id,
         nome: lp.product.nome,
@@ -210,7 +210,7 @@ export default function LotDetail({ defaultTab }) {
         complete
       }
     })
-    
+
     setProductCompletionStatus({
       total: fractionalProducts.length,
       complete: statusData.filter(p => p.complete).length,
@@ -337,7 +337,7 @@ export default function LotDetail({ defaultTab }) {
   const closeLot = async () => {
     setShowConfirmModal(false)
     setClosing(true)
-    
+
     try {
       // Primeiro tenta atualizar com select
       let updatedLot = null
@@ -351,21 +351,21 @@ export default function LotDetail({ defaultTab }) {
       if (error) {
         // Se der erro no trigger de romaneios, tenta sem select
         console.warn('Erro no update com select, tentando sem:', error.message)
-        
+
         const { error: error2 } = await supabase
           .from('lots')
           .update({ status: 'fechado' })
           .eq('id', id)
-        
+
         if (error2) throw error2
-        
+
         // Busca os dados atualizados
         const { data: lotData } = await supabase
           .from('lots')
           .select('*')
           .eq('id', id)
           .single()
-        
+
         updatedLot = lotData
       } else {
         updatedLot = data
@@ -374,17 +374,17 @@ export default function LotDetail({ defaultTab }) {
       // Enviar notificação se marcado
       if (notifyOnClose) {
         setSendingNotification(true)
-        
+
         try {
           const { data: clients, error: clientsError } = await supabase
             .from('clients')
             .select('id, nome, telefone')
             .eq('role', 'cliente')
             .not('telefone', 'is', null)
-          
+
           if (!clientsError && clients && clients.length > 0) {
             const result = await notifyCatalogClosed(updatedLot, clients)
-            
+
             if (result.success) {
               showNotification('success', `Link fechado! ${result.data?.success || clients.length} cliente(s) notificado(s).`)
             } else {
@@ -470,7 +470,7 @@ export default function LotDetail({ defaultTab }) {
   // Duplicar lote
   const duplicateLot = async () => {
     setShowActionsMenu(false)
-    
+
     try {
       const newLot = {
         nome: `${lot.nome} (cópia)`,
@@ -478,15 +478,15 @@ export default function LotDetail({ defaultTab }) {
         status: 'aberto',
         link_compra: `grupo-${Date.now()}`
       }
-      
+
       const { data, error } = await supabase
         .from('lots')
         .insert(newLot)
         .select()
         .single()
-      
+
       if (error) throw error
-      
+
       // Copiar produtos do lote original
       if (products && products.length > 0) {
         const newLotProducts = products.map(lp => ({
@@ -495,10 +495,10 @@ export default function LotDetail({ defaultTab }) {
           quantidade_pedidos: 0,
           quantidade_clientes: 0
         }))
-        
+
         await supabase.from('lot_products').insert(newLotProducts)
       }
-      
+
       showNotification('success', 'Catálogo duplicado com sucesso!')
       navigate(`/admin/lotes/${data.id}`)
     } catch (error) {
@@ -604,7 +604,7 @@ export default function LotDetail({ defaultTab }) {
       // Auto-generate name from first 3 words of description
       const words = productForm.descricao.trim().split(/\s+/)
       const autoGeneratedName = words.slice(0, 3).join(' ')
-      
+
       const productData = {
         nome: autoGeneratedName, // Auto-generated
         descricao: productForm.descricao.trim(),
@@ -640,7 +640,7 @@ export default function LotDetail({ defaultTab }) {
           .eq('id', editingProduct.id)
 
         if (error) throw error
-        
+
         closeProductModal() // Always close on edit
       } else {
         // Criar novo produto
@@ -733,13 +733,13 @@ export default function LotDetail({ defaultTab }) {
             <h1>{lot.nome}</h1>
             <div className="lot-status-bar">
               <span className={`status-badge status-${lot.status}`}>
-                {lot.status === 'aberto' ? 'ABERTO' : 
-                 lot.status === 'fechado' ? 'FECHADO' : 
-                 (lot.status === 'preparacao' || lot.status === 'em_preparacao') ? 'EM PREPARAÇÃO' : 
-                 lot.status === 'pago' ? 'PAGO' :
-                 lot.status === 'enviado' ? 'ENVIADO' :
-                 lot.status === 'concluido' ? 'CONCLUÍDO' :
-                 lot.status?.toUpperCase().replace('_', ' ')}
+                {lot.status === 'aberto' ? 'ABERTO' :
+                  lot.status === 'fechado' ? 'FECHADO' :
+                    (lot.status === 'preparacao' || lot.status === 'em_preparacao') ? 'EM PREPARAÇÃO' :
+                      lot.status === 'pago' ? 'PAGO' :
+                        lot.status === 'enviado' ? 'ENVIADO' :
+                          lot.status === 'concluido' ? 'CONCLUÍDO' :
+                            lot.status?.toUpperCase().replace('_', ' ')}
               </span>
               {lot.data_fim && (
                 <span className="lot-deadline">
@@ -750,75 +750,76 @@ export default function LotDetail({ defaultTab }) {
             </div>
           </div>
         </div>
-          <div className="header-actions-group">
-            <button className="btn btn-outline" onClick={fetchData}>
-              <RefreshCw size={16} />
-            </button>
-            <PortalDropdown
-              trigger={
-                <button 
-                  className="btn btn-outline"
-                  onClick={() => setShowActionsMenu(!showActionsMenu)}
-                >
-                  <MoreVertical size={16} /> Ações
-                </button>
-              }
-              isOpen={showActionsMenu}
-              onClose={() => setShowActionsMenu(false)}
-            >
-              <div className="dropdown-section">
-                <span className="dropdown-header">Gestão</span>
-                <button onClick={() => { setShowSettingsModal(true); setShowActionsMenu(false); }}>
-                  <Settings size={14} /> Editar Link / Configurações
-                </button>
-                <button onClick={() => { setActiveTab('produtos'); setShowActionsMenu(false); }}>
-                  <Package size={14} /> Editar Produtos
-                </button>
-                <button onClick={duplicateLot}>
-                  <Copy size={14} /> Duplicar Grupo
-                </button>
-              </div>
-              
-              <div className="dropdown-divider" />
-              
-              <div className="dropdown-section">
-                <span className="dropdown-header">Operação</span>
-                <button onClick={() => { setActiveTab('reservas'); setShowActionsMenu(false); }}>
-                  <ClipboardList size={14} /> Listar Pedidos
-                </button>
-                <button onClick={() => { setActiveTab('separacao'); setShowActionsMenu(false); }}>
-                  <CheckSquare size={14} /> Separar Produtos
-                </button>
-                <button onClick={() => { setActiveTab('romaneios'); setShowActionsMenu(false); }}>
-                  <FileText size={14} /> Romaneios
-                </button>
-              </div>
+        <div className="header-actions-group">
+          <button className="btn btn-outline" onClick={fetchData}>
+            <RefreshCw size={16} />
+          </button>
+          <PortalDropdown
+            trigger={
+              <button
+                className="btn btn-outline"
+                onClick={() => setShowActionsMenu(!showActionsMenu)}
+              >
+                <MoreVertical size={16} /> Ações
+              </button>
+            }
+            isOpen={showActionsMenu}
+            onClose={() => setShowActionsMenu(false)}
+            showCloseButton={true}
+          >
+            <div className="dropdown-section">
+              <span className="dropdown-header">Gestão</span>
+              <button onClick={() => { setShowSettingsModal(true); setShowActionsMenu(false); }}>
+                <Settings size={14} /> Editar Link / Configurações
+              </button>
+              <button onClick={() => { setActiveTab('produtos'); setShowActionsMenu(false); }}>
+                <Package size={14} /> Editar Produtos
+              </button>
+              <button onClick={duplicateLot}>
+                <Copy size={14} /> Duplicar Grupo
+              </button>
+            </div>
 
-              <div className="dropdown-divider" />
+            <div className="dropdown-divider" />
 
-              <div className="dropdown-section">
-                <span className="dropdown-header">Relatórios</span>
-                <button onClick={() => navigate(`/admin/relatorios?lotId=${id}&type=financeiro`)}>
-                  <DollarSign size={14} /> Relatório Financeiro
-                </button>
-                <button onClick={() => navigate(`/admin/relatorios?lotId=${id}&type=vendas`)}>
-                  <TrendingUp size={14} /> Relatório Vendas
-                </button>
-                <button onClick={() => navigate(`/admin/relatorios?lotId=${id}&type=produtos`)}>
-                  <Package size={14} /> Ranking Produtos
-                </button>
-              </div>
+            <div className="dropdown-section">
+              <span className="dropdown-header">Operação</span>
+              <button onClick={() => { setActiveTab('reservas'); setShowActionsMenu(false); }}>
+                <ClipboardList size={14} /> Listar Pedidos
+              </button>
+              <button onClick={() => { setActiveTab('separacao'); setShowActionsMenu(false); }}>
+                <CheckSquare size={14} /> Separar Produtos
+              </button>
+              <button onClick={() => { setActiveTab('romaneios'); setShowActionsMenu(false); }}>
+                <FileText size={14} /> Romaneios
+              </button>
+            </div>
 
-              {isOpen && (
-                <>
-                  <div className="dropdown-divider" />
-                  <button className="text-danger" onClick={() => { openCloseConfirmation(); setShowActionsMenu(false); }}>
-                    <Lock size={14} /> Fechar Grupo
-                  </button>
-                </>
-              )}
-            </PortalDropdown>
-          </div>
+            <div className="dropdown-divider" />
+
+            <div className="dropdown-section">
+              <span className="dropdown-header">Relatórios</span>
+              <button onClick={() => navigate(`/admin/relatorios?lotId=${id}&type=financeiro`)}>
+                <DollarSign size={14} /> Relatório Financeiro
+              </button>
+              <button onClick={() => navigate(`/admin/relatorios?lotId=${id}&type=vendas`)}>
+                <TrendingUp size={14} /> Relatório Vendas
+              </button>
+              <button onClick={() => navigate(`/admin/relatorios?lotId=${id}&type=produtos`)}>
+                <Package size={14} /> Ranking Produtos
+              </button>
+            </div>
+
+            {isOpen && (
+              <>
+                <div className="dropdown-divider" />
+                <button className="text-danger" onClick={() => { openCloseConfirmation(); setShowActionsMenu(false); }}>
+                  <Lock size={14} /> Fechar Grupo
+                </button>
+              </>
+            )}
+          </PortalDropdown>
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -874,8 +875,8 @@ export default function LotDetail({ defaultTab }) {
             <Copy size={16} /> Copiar Link
           </button>
           {isOpen && (
-            <button 
-              className="btn btn-danger" 
+            <button
+              className="btn btn-danger"
               onClick={openCloseConfirmation}
               disabled={closing || sendingNotification}
             >
@@ -897,25 +898,25 @@ export default function LotDetail({ defaultTab }) {
 
       {/* Tabs */}
       <div className="lot-tabs">
-        <button 
+        <button
           className={`tab-btn ${activeTab === 'produtos' ? 'active' : ''}`}
           onClick={() => setActiveTab('produtos')}
         >
           <Package size={16} /> Produtos ({products.length})
         </button>
-        <button 
+        <button
           className={`tab-btn ${activeTab === 'reservas' ? 'active' : ''}`}
           onClick={() => setActiveTab('reservas')}
         >
           <Users size={16} /> Reservas ({reservas.length} clientes)
         </button>
-        <button 
+        <button
           className={`tab-btn ${activeTab === 'romaneios' ? 'active' : ''}`}
           onClick={() => setActiveTab('romaneios')}
         >
           <FileText size={16} /> Romaneios
         </button>
-        <button 
+        <button
           className={`tab-btn ${activeTab === 'separacao' ? 'active' : ''}`}
           onClick={() => setActiveTab('separacao')}
         >
@@ -929,13 +930,13 @@ export default function LotDetail({ defaultTab }) {
           {/* Action buttons */}
           <div className="lot-actions">
             <>
-              <button 
+              <button
                 className="btn btn-primary"
                 onClick={openCreateProductModal}
               >
                 <Plus size={16} /> Criar Produto
               </button>
-              <button 
+              <button
                 className="btn btn-secondary"
                 onClick={() => {
                   fetchAvailableProducts()
@@ -950,15 +951,15 @@ export default function LotDetail({ defaultTab }) {
           {/* Filters */}
           <div className="lot-filters">
             <div className="search-box">
-              <input 
-                type="text" 
-                placeholder="Buscar por descrição" 
+              <input
+                type="text"
+                placeholder="Buscar por descrição"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
               <Search size={18} className="search-icon" />
             </div>
-            <select 
+            <select
               className="category-filter"
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
@@ -976,7 +977,7 @@ export default function LotDetail({ defaultTab }) {
               <div className="empty-products">
                 <Package size={48} />
                 <p>Nenhum produto no link</p>
-                <button 
+                <button
                   className="btn btn-primary"
                   onClick={() => {
                     fetchAvailableProducts()
@@ -990,23 +991,23 @@ export default function LotDetail({ defaultTab }) {
               filteredProducts.map((lp, index) => {
                 const product = lp.product
                 if (!product) return null
-                
+
                 // Verificar se é pacote e calcular progresso
                 const isPacote = product.tipo_venda === 'pacote'
                 const qtdPacote = product.quantidade_pacote || 12
                 const qtdReservada = lp.quantidade_pedidos || 0
                 const progressoPacote = isPacote ? (qtdReservada % qtdPacote) : 0
                 const pacotesCompletos = isPacote ? Math.floor(qtdReservada / qtdPacote) : 0
-                
+
                 return (
-                  <div 
-                    key={lp.id} 
+                  <div
+                    key={lp.id}
                     className="product-card-new"
                   >
                     {/* Image Container with Overlays */}
                     <div className="card-image-container">
                       {/* Main Image - clickable for preview */}
-                      <div 
+                      <div
                         className="card-image-wrapper"
                         onClick={(e) => {
                           e.stopPropagation()
@@ -1026,8 +1027,8 @@ export default function LotDetail({ defaultTab }) {
 
                       {/* Overlays */}
                       {/* Top Left: Delete Button (X) */}
-                      <button 
-                        className="overlay-btn overlay-delete desktop-only" 
+                      <button
+                        className="overlay-btn overlay-delete desktop-only"
                         onClick={(e) => {
                           e.stopPropagation()
                           openDeleteProductConfirm(product.id)
@@ -1039,7 +1040,7 @@ export default function LotDetail({ defaultTab }) {
                       </button>
 
                       {/* Top Right: Edit Button */}
-                      <button 
+                      <button
                         className="overlay-btn overlay-edit desktop-only"
                         onClick={(e) => {
                           e.stopPropagation()
@@ -1076,7 +1077,7 @@ export default function LotDetail({ defaultTab }) {
                     {/* Footer: 4 action buttons - Pedidos + WhatsApp + Gallery + Edit */}
                     <div className="card-footer-actions">
                       {/* Mobile LEFT: Delete */}
-                      <button 
+                      <button
                         className="btn-mobile-delete mobile-only"
                         onClick={(e) => {
                           e.stopPropagation()
@@ -1086,7 +1087,7 @@ export default function LotDetail({ defaultTab }) {
                         <Trash2 size={20} />
                       </button>
 
-                      <button 
+                      <button
                         className="btn-pedidos justify-content-center justify-center"
                         onClick={(e) => {
                           e.stopPropagation()
@@ -1097,7 +1098,7 @@ export default function LotDetail({ defaultTab }) {
                       </button>
 
                       {/* Mobile RIGHT: Edit */}
-                      <button 
+                      <button
                         className="btn-mobile-edit mobile-only"
                         onClick={(e) => {
                           e.stopPropagation()
@@ -1113,8 +1114,8 @@ export default function LotDetail({ defaultTab }) {
                     {isPacote && lot.requer_pacote_fechado && (
                       <div className="pacote-progress">
                         <div className="progress-bar">
-                          <div 
-                            className="progress-fill" 
+                          <div
+                            className="progress-fill"
                             style={{ width: `${(progressoPacote / qtdPacote) * 100}%` }}
                           />
                         </div>
@@ -1201,7 +1202,7 @@ export default function LotDetail({ defaultTab }) {
             </div>
           ) : (
             <div className="romaneios-actions">
-              <button 
+              <button
                 className="btn btn-primary btn-lg"
                 onClick={() => navigate('/admin/romaneios')}
               >
@@ -1216,44 +1217,44 @@ export default function LotDetail({ defaultTab }) {
       {activeTab === 'separacao' && (
         <div className="tab-content">
           <div className="separacao-container">
-             <div className="separacao-header">
-               <h3>Checklist de Separação</h3>
-               <p>Utilize esta lista para conferir os produtos de cada cliente.</p>
-             </div>
-             
-             {reservas.length === 0 ? (
-               <div className="empty-state">
-                 <ClipboardList size={48} />
-                 <h3>Nada para separar</h3>
-               </div>
-             ) : (
-               <div className="separacao-list">
-                 {reservas.map(reservaGroup => (
-                   <div key={reservaGroup.client?.id} className="separacao-card">
-                     <div className="separacao-client-header">
-                       <h4>{reservaGroup.client?.nome}</h4>
-                       <span className="badge-count">{reservaGroup.quantidade} itens</span>
-                     </div>
-                     <div className="separacao-items">
-                       {reservaGroup.items.map(item => (
-                         <label key={item.id} className="separacao-item">
-                           <input 
-                              type="checkbox" 
-                              checked={!!separacaoItems[item.id]}
-                              onChange={(e) => setSeparacaoItems({...separacaoItems, [item.id]: e.target.checked})}
-                           />
-                           <span className="checkmark-box"><CheckSquare size={18} /></span>
-                           <div className="sep-item-info">
-                              <span className="sep-prod-name">{item.product?.nome}</span>
-                              <span className="sep-prod-qty">x{item.quantidade}</span>
-                           </div>
-                         </label>
-                       ))}
-                     </div>
-                   </div>
-                 ))}
-               </div>
-             )}
+            <div className="separacao-header">
+              <h3>Checklist de Separação</h3>
+              <p>Utilize esta lista para conferir os produtos de cada cliente.</p>
+            </div>
+
+            {reservas.length === 0 ? (
+              <div className="empty-state">
+                <ClipboardList size={48} />
+                <h3>Nada para separar</h3>
+              </div>
+            ) : (
+              <div className="separacao-list">
+                {reservas.map(reservaGroup => (
+                  <div key={reservaGroup.client?.id} className="separacao-card">
+                    <div className="separacao-client-header">
+                      <h4>{reservaGroup.client?.nome}</h4>
+                      <span className="badge-count">{reservaGroup.quantidade} itens</span>
+                    </div>
+                    <div className="separacao-items">
+                      {reservaGroup.items.map(item => (
+                        <label key={item.id} className="separacao-item">
+                          <input
+                            type="checkbox"
+                            checked={!!separacaoItems[item.id]}
+                            onChange={(e) => setSeparacaoItems({ ...separacaoItems, [item.id]: e.target.checked })}
+                          />
+                          <span className="checkmark-box"><CheckSquare size={18} /></span>
+                          <div className="sep-item-info">
+                            <span className="sep-prod-name">{item.product?.nome}</span>
+                            <span className="sep-prod-qty">x{item.quantidade}</span>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -1268,10 +1269,10 @@ export default function LotDetail({ defaultTab }) {
                 <X size={20} />
               </button>
             </div>
-            
+
             <div className="modal-body">
               <p className="modal-hint">Selecione os produtos para adicionar:</p>
-              
+
               <div className="products-select-grid">
                 {availableProducts.length === 0 ? (
                   <p>Todos os produtos já estão neste link</p>
@@ -1310,8 +1311,8 @@ export default function LotDetail({ defaultTab }) {
               <button className="btn btn-outline" onClick={() => setShowAddProductModal(false)}>
                 Cancelar
               </button>
-              <button 
-                className="btn btn-primary" 
+              <button
+                className="btn btn-primary"
                 onClick={addProductsToLot}
                 disabled={selectedProducts.length === 0}
               >
@@ -1332,7 +1333,7 @@ export default function LotDetail({ defaultTab }) {
                 <X size={20} />
               </button>
             </div>
-            
+
             <div className="modal-body settings-body">
               {/* Seção: Informações Básicas */}
               {/* Seção: Informações Básicas */}
@@ -1340,7 +1341,7 @@ export default function LotDetail({ defaultTab }) {
                 <h3 className="settings-section-title">
                   <FileText size={16} /> Informações Básicas
                 </h3>
-                
+
                 {/* Capa do Link */}
                 <div className="form-group">
                   <label>Capa do Catálogo (Destaque)</label>
@@ -1360,7 +1361,7 @@ export default function LotDetail({ defaultTab }) {
                     </small>
                   </div>
                 </div>
-                
+
                 <div className="form-group">
                   <label>Nome do Link</label>
                   <input
@@ -1387,7 +1388,7 @@ export default function LotDetail({ defaultTab }) {
                 <h3 className="settings-section-title">
                   <Clock size={16} /> Regras e Prazos
                 </h3>
-                
+
                 <div className="form-row">
                   <div className="form-group">
                     <label>Data/Hora de Encerramento</label>
@@ -1408,31 +1409,31 @@ export default function LotDetail({ defaultTab }) {
                   </div>
                 </div>
 
-                  <div className="checkbox-group">
-                    <label className="checkbox-wrapper">
-                      <input
-                        type="checkbox"
-                        checked={lotSettings.requer_pacote_fechado || false}
-                        onChange={(e) => setLotSettings({ ...lotSettings, requer_pacote_fechado: e.target.checked })}
-                      />
-                      <div className="checkbox-content">
-                        <span className="checkbox-text">Requer pacote fechado</span>
-                        <p className="checkbox-hint">Só permite fechar quando todos os pacotes estiverem completos</p>
-                      </div>
-                    </label>
+                <div className="checkbox-group">
+                  <label className="checkbox-wrapper">
+                    <input
+                      type="checkbox"
+                      checked={lotSettings.requer_pacote_fechado || false}
+                      onChange={(e) => setLotSettings({ ...lotSettings, requer_pacote_fechado: e.target.checked })}
+                    />
+                    <div className="checkbox-content">
+                      <span className="checkbox-text">Requer pacote fechado</span>
+                      <p className="checkbox-hint">Só permite fechar quando todos os pacotes estiverem completos</p>
+                    </div>
+                  </label>
 
-                    <label className="checkbox-wrapper">
-                      <input
-                        type="checkbox"
-                        checked={lotSettings.show_buyers_list || false}
-                        onChange={(e) => setLotSettings({ ...lotSettings, show_buyers_list: e.target.checked })}
-                      />
-                      <div className="checkbox-content">
-                        <span className="checkbox-text">Exibir quem já comprou</span>
-                        <p className="checkbox-hint">Mostra lista de compradores na página do produto (Prova Social)</p>
-                      </div>
-                    </label>
-                  </div>
+                  <label className="checkbox-wrapper">
+                    <input
+                      type="checkbox"
+                      checked={lotSettings.show_buyers_list || false}
+                      onChange={(e) => setLotSettings({ ...lotSettings, show_buyers_list: e.target.checked })}
+                    />
+                    <div className="checkbox-content">
+                      <span className="checkbox-text">Exibir quem já comprou</span>
+                      <p className="checkbox-hint">Mostra lista de compradores na página do produto (Prova Social)</p>
+                    </div>
+                  </label>
+                </div>
               </div>
 
               {/* Seção: Dados de Pagamento */}
@@ -1498,7 +1499,7 @@ export default function LotDetail({ defaultTab }) {
 
       {/* Modal: Preview de Imagem (Lightbox) */}
       {previewImage && (
-        <div 
+        <div
           style={{
             position: 'fixed',
             top: 0,
@@ -1517,7 +1518,7 @@ export default function LotDetail({ defaultTab }) {
             setPreviewImage(null)
           }}
         >
-          <div 
+          <div
             style={{
               position: 'relative',
               backgroundColor: 'white',
@@ -1536,7 +1537,7 @@ export default function LotDetail({ defaultTab }) {
             }}
           >
             {/* Close button */}
-            <button 
+            <button
               style={{
                 position: 'absolute',
                 top: '12px',
@@ -1570,9 +1571,9 @@ export default function LotDetail({ defaultTab }) {
               alignItems: 'center',
               justifyContent: 'center'
             }}>
-              <img 
-                src={previewImage} 
-                alt="Preview" 
+              <img
+                src={previewImage}
+                alt="Preview"
                 style={{
                   width: '100%',
                   height: 'auto',
@@ -1592,15 +1593,15 @@ export default function LotDetail({ defaultTab }) {
           <div className="modal-content modal-confirm" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h2>
-                {confirmAction === 'close' ? '🔒 Fechar Link' : 
-                 confirmAction?.type === 'removeProduct' ? '📦 Remover Produto' :
-                 confirmAction?.type === 'deleteProduct' ? '🗑️ Excluir Produto' : 'Confirmar'}
+                {confirmAction === 'close' ? '🔒 Fechar Link' :
+                  confirmAction?.type === 'removeProduct' ? '📦 Remover Produto' :
+                    confirmAction?.type === 'deleteProduct' ? '🗑️ Excluir Produto' : 'Confirmar'}
               </h2>
               <button className="modal-close" onClick={() => setShowConfirmModal(false)}>
                 <X size={20} />
               </button>
             </div>
-            
+
             <div className="modal-body">
               {confirmAction === 'close' && (
                 <>
@@ -1610,7 +1611,7 @@ export default function LotDetail({ defaultTab }) {
                   <p className="confirm-hint">
                     Após fechado, os clientes não poderão mais fazer reservas.
                   </p>
-                  
+
                   <div className="confirm-option">
                     <label className="checkbox-container">
                       <input
@@ -1626,7 +1627,7 @@ export default function LotDetail({ defaultTab }) {
                   </div>
                 </>
               )}
-              
+
               {confirmAction?.type === 'removeProduct' && (
                 <p className="confirm-message">
                   Deseja <strong>remover</strong> este produto do link?
@@ -1634,7 +1635,7 @@ export default function LotDetail({ defaultTab }) {
                   <small>O produto continuará existindo no sistema.</small>
                 </p>
               )}
-              
+
               {confirmAction?.type === 'deleteProduct' && (
                 <>
                   <p className="confirm-message confirm-danger">
@@ -1651,13 +1652,13 @@ export default function LotDetail({ defaultTab }) {
               <button className="btn btn-outline" onClick={() => setShowConfirmModal(false)}>
                 Cancelar
               </button>
-              <button 
+              <button
                 className={`btn ${confirmAction?.type === 'deleteProduct' ? 'btn-danger' : 'btn-primary'}`}
                 onClick={handleConfirm}
               >
-                {confirmAction === 'close' ? 'Fechar Link' : 
-                 confirmAction?.type === 'removeProduct' ? 'Remover' :
-                 confirmAction?.type === 'deleteProduct' ? 'Excluir' : 'Confirmar'}
+                {confirmAction === 'close' ? 'Fechar Link' :
+                  confirmAction?.type === 'removeProduct' ? 'Remover' :
+                    confirmAction?.type === 'deleteProduct' ? 'Excluir' : 'Confirmar'}
               </button>
             </div>
           </div>
@@ -1689,14 +1690,14 @@ export default function LotDetail({ defaultTab }) {
             <div className="modal-body product-modal-body">
               {/* LAYOUT SUPERIOR: Foto à Direita, Infos à Esquerda */}
               <div className="product-modal-top">
-                
+
                 {/* 1. SEÇÃO DE FOTO (Direita na desktop, topo no mobile) */}
                 <div className="product-photo-section">
-                   <label className="photo-upload-label">Foto</label>
-                   <ImageUpload
-                     value={productForm.imagem1}
-                     onChange={(url) => setProductForm(prev => ({ ...prev, imagem1: url }))}
-                   />
+                  <label className="photo-upload-label">Foto</label>
+                  <ImageUpload
+                    value={productForm.imagem1}
+                    onChange={(url) => setProductForm(prev => ({ ...prev, imagem1: url }))}
+                  />
                 </div>
 
                 {/* 2. CORE INFO (Esquerda) - Borda Tracejada */}
@@ -1752,17 +1753,17 @@ export default function LotDetail({ defaultTab }) {
               </div>
 
               {/* SEÇÃO TIPO DE VENDA (Fora do tracejado) */}
-               <div className="form-group" style={{ maxWidth: '200px' }}>
-                  <label>Tipo de Venda</label>
-                  <select
-                    className="input-bordered"
-                    value={productForm.tipo_venda}
-                    onChange={(e) => setProductForm({ ...productForm, tipo_venda: e.target.value })}
-                  >
-                    <option value="individual">Individual</option>
-                    <option value="pacote">Pacote</option>
-                  </select>
-                </div>
+              <div className="form-group" style={{ maxWidth: '200px' }}>
+                <label>Tipo de Venda</label>
+                <select
+                  className="input-bordered"
+                  value={productForm.tipo_venda}
+                  onChange={(e) => setProductForm({ ...productForm, tipo_venda: e.target.value })}
+                >
+                  <option value="individual">Individual</option>
+                  <option value="pacote">Pacote</option>
+                </select>
+              </div>
 
               {/* SEÇÃO INTERMEDIÁRIA: Regras de Quantidade */}
               <div className="product-rules-grid">
@@ -1802,7 +1803,7 @@ export default function LotDetail({ defaultTab }) {
                     onChange={(e) => setProductForm({ ...productForm, multiplo_pacote: e.target.value })}
                   />
                   {productForm.tipo_venda === 'pacote' && (
-                     <small className="field-hint">Qtde atual: {productForm.quantidade_pacote || 12}</small>
+                    <small className="field-hint">Qtde atual: {productForm.quantidade_pacote || 12}</small>
                   )}
                 </div>
               </div>
@@ -1810,14 +1811,14 @@ export default function LotDetail({ defaultTab }) {
               {/* SEÇÃO INFERIOR: Detalhes e Checkboxes */}
               <div className="product-bottom-section">
                 <div className="form-group">
-                   <label>Posição no catálogo <Info size={12} /></label>
-                   <input
-                     type="number"
-                     className="input-bordered"
-                     style={{ width: '100px' }}
-                     value={productForm.posicao_catalogo}
-                     onChange={(e) => setProductForm({ ...productForm, posicao_catalogo: e.target.value })}
-                   />
+                  <label>Posição no catálogo <Info size={12} /></label>
+                  <input
+                    type="number"
+                    className="input-bordered"
+                    style={{ width: '100px' }}
+                    value={productForm.posicao_catalogo}
+                    onChange={(e) => setProductForm({ ...productForm, posicao_catalogo: e.target.value })}
+                  />
                 </div>
 
                 <div className="form-group">
@@ -1873,10 +1874,10 @@ export default function LotDetail({ defaultTab }) {
               <button className="btn btn-outline" onClick={closeProductModal}>
                 Cancelar
               </button>
-              
+
               {!editingProduct && (
-                <button 
-                  className="btn btn-secondary" 
+                <button
+                  className="btn btn-secondary"
                   onClick={() => saveProduct(true)}
                   disabled={savingProduct}
                   style={{ backgroundColor: '#475569', color: 'white', border: 'none' }}
@@ -1885,8 +1886,8 @@ export default function LotDetail({ defaultTab }) {
                 </button>
               )}
 
-              <button 
-                className="btn btn-primary" 
+              <button
+                className="btn btn-primary"
                 onClick={() => saveProduct(false)}
                 disabled={savingProduct}
                 style={{ backgroundColor: '#1e293b', borderColor: '#1e293b' }} // Dark premium color

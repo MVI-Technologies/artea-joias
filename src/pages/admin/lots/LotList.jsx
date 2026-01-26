@@ -14,14 +14,14 @@ export default function LotList() {
   const [openDropdown, setOpenDropdown] = useState(null)
   const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0 })
   const dropdownBtnRef = useRef(null)
-  
+
   // Modal states
   const [showConfirmModal, setShowConfirmModal] = useState(null) // { type: 'fechar' | 'duplicar', lot: object }
   const [showConfigModal, setShowConfigModal] = useState(null) // lot object
   const [configData, setConfigData] = useState({})
   const [notifyOnClose, setNotifyOnClose] = useState(true)
   const [processing, setProcessing] = useState(false)
-  
+
   // Toast state
   const [toast, setToast] = useState(null)
 
@@ -37,23 +37,40 @@ export default function LotList() {
   // Fechar dropdown ao clicar fora
   useEffect(() => {
     if (!openDropdown) return
-    
+
     const handleClickOutside = (event) => {
       const container = event.target.closest('.dropdown-container')
-      if (!container) {
+      const dropdown = event.target.closest('.dropdown-menu-fixed')
+      if (!container && !dropdown) {
         setOpenDropdown(null)
       }
     }
-    
+
     const timer = setTimeout(() => {
       document.addEventListener('mousedown', handleClickOutside)
     }, 10)
-    
+
     return () => {
       clearTimeout(timer)
       document.removeEventListener('mousedown', handleClickOutside)
     }
   }, [openDropdown])
+
+  /* Comentado para permitir scroll dentro do dropdown e não fechar ao rolar a página principal
+  useEffect(() => {
+    if (!openDropdown) return
+
+    const handleScroll = () => {
+      setOpenDropdown(null)
+    }
+
+    window.addEventListener('scroll', handleScroll, true)
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll, true)
+    }
+  }, [openDropdown])
+  */
 
   const fetchLots = async () => {
     try {
@@ -80,7 +97,7 @@ export default function LotList() {
     const raw = String(status || '')
     // Remover tudo que não é letra/número para chave (ex: ' fechado ' -> 'fechado')
     const key = raw.toLowerCase().replace(/[^a-z0-9]/g, '')
-    
+
     const statusMap = {
       'aberto': { label: 'Aberto', class: 'badge-green' },
       'open': { label: 'Aberto', class: 'badge-green' },
@@ -106,15 +123,15 @@ export default function LotList() {
       'finalizado': { label: 'Finalizado', class: 'badge-green' },
       'cancelado': { label: 'Cancelado', class: 'badge-red' },
     }
-    
+
     // Se a chave processada bater com o mapa, retorna
     if (statusMap[key]) return statusMap[key]
-    
+
     // Fallback Inteligente
     if (!key || key === 'null' || key === 'undefined') return { label: 'Aberto', class: 'badge-green' }
-    
+
     // Se tem valor mas não mapeou, mostra cinza
-    return { label: raw, class: 'badge-gray' } 
+    return { label: raw, class: 'badge-gray' }
   }
 
   const formatDate = (date) => {
@@ -125,7 +142,7 @@ export default function LotList() {
 
   const handleAction = (action, lot) => {
     setOpenDropdown(null)
-    
+
     switch (action) {
       case 'editar':
         navigate(`/admin/lotes/${lot.id}/editar`)
@@ -190,7 +207,7 @@ export default function LotList() {
   const closeLot = async () => {
     setShowConfirmModal(null)
     setProcessing(true)
-    
+
     try {
       const { error } = await supabase
         .from('lots')
@@ -206,7 +223,7 @@ export default function LotList() {
           .select('id, nome, telefone')
           .eq('role', 'cliente')
           .not('telefone', 'is', null)
-        
+
         if (clients && clients.length > 0) {
           await notifyCatalogClosed(showConfirmModal.lot, clients)
         }
@@ -225,7 +242,7 @@ export default function LotList() {
   const duplicateLot = async () => {
     setShowConfirmModal(null)
     setProcessing(true)
-    
+
     try {
       const newLot = {
         nome: `${showConfirmModal.lot.nome} (cópia)`,
@@ -233,13 +250,13 @@ export default function LotList() {
         status: 'aberto',
         link_compra: `grupo-${Date.now()}`
       }
-      
+
       const { data, error } = await supabase
         .from('lots')
         .insert(newLot)
         .select()
         .single()
-      
+
       if (error) throw error
 
       fetchLots()
@@ -274,18 +291,18 @@ export default function LotList() {
       <div className="toolbar">
         <div className="toolbar-left">
           <div className="search-box">
-             {/* ... search input ... */}
-             <input 
-               type="text" 
-               placeholder="Buscar nome" 
-               value={search}
-               onChange={(e) => setSearch(e.target.value)}
-             />
-             <Search size={16} className="search-icon" />
+            {/* ... search input ... */}
+            <input
+              type="text"
+              placeholder="Buscar nome"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            <Search size={16} className="search-icon" />
           </div>
         </div>
         <div className="toolbar-right">
-          <select 
+          <select
             className="status-filter"
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
@@ -302,10 +319,27 @@ export default function LotList() {
 
       {/* Botões de ação */}
       <div className="action-buttons">
-         {/* ... buttons ... */}
-         <button className="btn btn-primary" onClick={() => navigate('/admin/lotes/novo')}>
-           <Plus size={16} /> Catálogo
-         </button>
+        <button className="btn btn-primary" onClick={() => navigate('/admin/lotes/novo')}>
+          <Plus size={16} /> Catálogo
+        </button>
+
+        <div className="dropdown-container">
+          <button
+            type="button"
+            className="btn btn-dark"
+            onClick={(e) => {
+              if (openDropdown === 'toolbar') {
+                setOpenDropdown(null)
+              } else {
+                const rect = e.currentTarget.getBoundingClientRect()
+                setDropdownPos({ top: rect.bottom + 4, left: rect.right - 180 })
+                setOpenDropdown('toolbar')
+              }
+            }}
+          >
+            <Settings size={16} /> Ações Gerais <ChevronDown size={14} />
+          </button>
+        </div>
 
       </div>
 
@@ -329,7 +363,7 @@ export default function LotList() {
                   <span className="nome-text">{prontaEntrega.nome}</span>
                 </td>
                 <td className="col-status">
-                   <span className="status-badge badge-green">Aberto</span>
+                  <span className="status-badge badge-green">Aberto</span>
                 </td>
                 <td className="col-data"></td>
                 <td className="col-data"></td>
@@ -341,7 +375,7 @@ export default function LotList() {
                     <Link to={`/admin/romaneios?lot=${prontaEntrega.id}`} className="btn-action btn-romaneios">Romaneios</Link>
                     <Link to={`/admin/separacao?lot=${prontaEntrega.id}`} className="btn-action btn-separacao">Separação</Link>
                     <div className="dropdown-container">
-                      <button 
+                      <button
                         type="button"
                         className="btn-action btn-acoes"
                         onClick={(e) => {
@@ -385,17 +419,17 @@ export default function LotList() {
                       <Link to={`/admin/romaneios?lot=${lot.id}`} className="btn-action btn-romaneios">Romaneios</Link>
                       <Link to={`/admin/separacao?lot=${lot.id}`} className="btn-action btn-separacao">Separação</Link>
                       <div className="dropdown-container">
-                        <button 
+                        <button
                           type="button"
                           className="btn-action btn-acoes"
                           onClick={(e) => {
-                             if (openDropdown === lot.id) {
-                               setOpenDropdown(null)
-                             } else {
-                               const rect = e.currentTarget.getBoundingClientRect()
-                               setDropdownPos({ top: rect.bottom + 4, left: rect.right - 180 })
-                               setOpenDropdown(lot.id)
-                             }
+                            if (openDropdown === lot.id) {
+                              setOpenDropdown(null)
+                            } else {
+                              const rect = e.currentTarget.getBoundingClientRect()
+                              setDropdownPos({ top: rect.bottom + 4, left: rect.right - 180 })
+                              setOpenDropdown(lot.id)
+                            }
                           }}
                         >
                           Ações <ChevronDown size={12} />
@@ -515,13 +549,13 @@ export default function LotList() {
                 {showConfirmModal.type === 'fechar' ? 'Fechar Grupo' : 'Duplicar Grupo'}
               </h3>
             </div>
-            
+
             <div className="modal-confirm-body">
               {showConfirmModal.type === 'fechar' ? (
                 <>
                   <p>Tem certeza que deseja fechar o grupo <strong>"{showConfirmModal.lot?.nome}"</strong>?</p>
                   <p className="text-muted">Isso impedirá novas reservas neste grupo.</p>
-                  
+
                   <label className="checkbox-notify">
                     <input
                       type="checkbox"
@@ -539,16 +573,16 @@ export default function LotList() {
                 </>
               )}
             </div>
-            
+
             <div className="modal-confirm-footer">
-              <button 
-                className="btn btn-secondary" 
+              <button
+                className="btn btn-secondary"
                 onClick={() => setShowConfirmModal(null)}
                 disabled={processing}
               >
                 Cancelar
               </button>
-              <button 
+              <button
                 className={`btn ${showConfirmModal.type === 'fechar' ? 'btn-danger' : 'btn-primary'}`}
                 onClick={() => showConfirmModal.type === 'fechar' ? closeLot() : duplicateLot()}
                 disabled={processing}
@@ -570,14 +604,14 @@ export default function LotList() {
                 <X size={20} />
               </button>
             </div>
-            
+
             <div className="modal-config-body-light">
               {/* Seção: Informações Básicas */}
               <div className="config-section">
                 <h4 className="section-title">
                   <FileText size={16} /> INFORMAÇÕES BÁSICAS
                 </h4>
-                
+
                 <div className="form-group-light">
                   <label>Nome do Link</label>
                   <input
@@ -587,7 +621,7 @@ export default function LotList() {
                     placeholder="Ex: LINK 502 - Novidades"
                   />
                 </div>
-                
+
                 <div className="form-group-light">
                   <label>Descrição</label>
                   <textarea
@@ -604,7 +638,7 @@ export default function LotList() {
                 <h4 className="section-title">
                   <Clock size={16} /> REGRAS E PRAZOS
                 </h4>
-                
+
                 <div className="form-row-light">
                   <div className="form-group-light">
                     <label>Data/Hora de Encerramento</label>
@@ -643,7 +677,7 @@ export default function LotList() {
                 <h4 className="section-title">
                   <FileText size={16} /> DADOS DE PAGAMENTO
                 </h4>
-                
+
                 <div className="form-row-light">
                   <div className="form-group-light">
                     <label>Chave PIX</label>
@@ -666,16 +700,16 @@ export default function LotList() {
                 </div>
               </div>
             </div>
-            
+
             <div className="modal-config-footer-light">
-              <button 
-                className="btn-cancel-light" 
+              <button
+                className="btn-cancel-light"
                 onClick={() => setShowConfigModal(null)}
                 disabled={processing}
               >
                 Cancelar
               </button>
-              <button 
+              <button
                 className="btn-save-light"
                 onClick={saveConfig}
                 disabled={processing}
@@ -689,28 +723,73 @@ export default function LotList() {
 
       {/* Dropdown Menu Fixo */}
       {openDropdown && (
-        <div 
+        <div
           className="dropdown-menu-fixed"
           style={{ top: dropdownPos.top, left: dropdownPos.left }}
         >
-          <button type="button" onMouseDown={(e) => { e.preventDefault(); handleAction('editar', lots.find(l => l.id === openDropdown)); }}>
-            <Edit size={14} /> Editar
+          <button
+            className="dropdown-close-btn-top-right"
+            onClick={() => setOpenDropdown(null)}
+            aria-label="Fechar menu"
+          >
+            <X size={10} />
           </button>
-          <button type="button" onMouseDown={(e) => { e.preventDefault(); handleAction('privacidade', lots.find(l => l.id === openDropdown)); }}>
-            <Settings size={14} /> Privacidade
-          </button>
-          <button type="button" onMouseDown={(e) => { e.preventDefault(); handleAction('duplicar', lots.find(l => l.id === openDropdown)); }}>
-            <Copy size={14} /> Duplicar
-          </button>
-          <button type="button" onMouseDown={(e) => { e.preventDefault(); handleAction('relatorio', lots.find(l => l.id === openDropdown)); }}>
-            <FileText size={14} /> Relatório Produtos
-          </button>
-          <button type="button" onMouseDown={(e) => { e.preventDefault(); handleAction('romaneios', lots.find(l => l.id === openDropdown)); }}>
-            <Package size={14} /> Romaneios
-          </button>
-          <button type="button" onMouseDown={(e) => { e.preventDefault(); handleAction('separacao', lots.find(l => l.id === openDropdown)); }}>
-            <Scissors size={14} /> Separação
-          </button>
+          {openDropdown === 'toolbar' ? (
+            // Ações gerais (sem catálogo específico)
+            <div className="dropdown-content-scrollable">
+              <div className="dropdown-section">
+                <span className="dropdown-header">GESTÃO</span>
+                <button type="button" onMouseDown={(e) => { e.preventDefault(); navigate('/admin/lotes/novo'); }}>
+                  <Plus size={14} /> Novo Catálogo
+                </button>
+                <button type="button" onMouseDown={(e) => { e.preventDefault(); navigate('/admin/categorias'); }}>
+                  <Settings size={14} /> Configurações Gerais
+                </button>
+              </div>
+
+              <div className="dropdown-section">
+                <span className="dropdown-header">OPERAÇÃO</span>
+                <button type="button" onMouseDown={(e) => { e.preventDefault(); navigate('/admin/romaneios'); }}>
+                  <Package size={14} /> Romaneios
+                </button>
+                <button type="button" onMouseDown={(e) => { e.preventDefault(); navigate('/admin/separacao'); }}>
+                  <Scissors size={14} /> Separação
+                </button>
+              </div>
+
+              <div className="dropdown-section">
+                <span className="dropdown-header">RELATÓRIOS</span>
+                <button type="button" onMouseDown={(e) => { e.preventDefault(); navigate('/admin/relatorios?type=produtos'); }}>
+                  <FileText size={14} /> Relatório Produtos
+                </button>
+                <button type="button" onMouseDown={(e) => { e.preventDefault(); navigate('/admin/relatorios?type=financeiro'); }}>
+                  <Clock size={14} /> Relatório Financeiro
+                </button>
+              </div>
+            </div>
+          ) : (
+            // Ações específicas de um catálogo
+            <div className="dropdown-content-scrollable">
+              <button type="button" onMouseDown={(e) => { e.preventDefault(); handleAction('editar', lots.find(l => l.id === openDropdown)); }}>
+                <Edit size={14} /> Editar
+              </button>
+              <button type="button" onMouseDown={(e) => { e.preventDefault(); handleAction('privacidade', lots.find(l => l.id === openDropdown)); }}>
+                <Settings size={14} /> Privacidade
+              </button>
+              <button type="button" onMouseDown={(e) => { e.preventDefault(); handleAction('duplicar', lots.find(l => l.id === openDropdown)); }}>
+                <Copy size={14} /> Duplicar
+              </button>
+              <button type="button" onMouseDown={(e) => { e.preventDefault(); handleAction('relatorio', lots.find(l => l.id === openDropdown)); }}>
+                <FileText size={14} /> Relatório Produtos
+              </button>
+              <button type="button" onMouseDown={(e) => { e.preventDefault(); handleAction('romaneios', lots.find(l => l.id === openDropdown)); }}>
+                <Package size={14} /> Romaneios
+              </button>
+              <button type="button" onMouseDown={(e) => { e.preventDefault(); handleAction('separacao', lots.find(l => l.id === openDropdown)); }}>
+                <Scissors size={14} /> Separação
+              </button>
+            </div>
+          )}
         </div>
       )}
 
