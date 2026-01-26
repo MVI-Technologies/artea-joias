@@ -615,8 +615,31 @@
   .form-group input,
   .form-group textarea,
   .form-group select {
-    padding: 8px 10px;
-    font-size: 13px;
+    min-height: 48px; /* Touch-friendly */
+    padding: 14px 12px;
+    font-size: 16px; /* Prevents iOS zoom */
+  }
+  
+  /* Better dropdown styling on mobile */
+  .form-group select {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 14 14'%3E%3Cpath fill='%23666' d='M11.293 4.293L7 8.586 2.707 4.293A1 1 0 001.293 5.707l5.5 5.5a1 1 0 001.414 0l5.5-5.5a1 1 0 10-1.414-1.414z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 40px;
+  }
+  
+  .form-group select option {
+    padding: 14px 16px;
+    font-size: 16px;
+    min-height: 48px;
+    background: white;
+    color: #111;
+  }
+  
+  /* Visual feedback */
+  .form-group select:active {
+    transform: scale(0.99);
   }
 
   .payment-input-group textarea {

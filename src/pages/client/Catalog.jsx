@@ -358,6 +358,7 @@ export default function Catalog() {
             lp_id: lp.id,
             quantidade_pedidos: lp.quantidade_pedidos || 0,
             quantidade_clientes: lp.quantidade_clientes || 0,
+            quantidade_minima_lote: lp.product.qtd_minima_fornecedor || 0, // Mínimo do fornecedor = mínimo para compra coletiva
         }))
         setProducts(mapped)
         console.log('Produtos carregados:', mapped.length)
@@ -591,26 +592,29 @@ export default function Catalog() {
                         </div>
                     )}
                     
-                    {/* Indicadores de Quantidade */}
+                    {/* Indicadores de Progresso de Compra Coletiva */}
                     <div className="product-quantity-indicators">
-                        {/* Quantidade disponível no estoque (superior esquerdo) */}
-                        <div className="quantity-badge quantity-stock">
-                            Faltam {product.estoque || 0}
+                        {/* BADGE VERMELHA: Faltam X peças para atingir o mínimo */}
+                        {(() => {
+                          const minimoLote = product.quantidade_minima_lote || 0
+                          const totalComprado = product.quantidade_pedidos || 0
+                          const faltam = Math.max(minimoLote - totalComprado, 0)
+                          
+                          // Só exibe se há mínimo definido E ainda faltam peças
+                          if (minimoLote > 0 && faltam > 0) {
+                            return (
+                              <div className="quantity-badge quantity-missing">
+                                Faltam {faltam}
+                              </div>
+                            )
+                          }
+                          return null
+                        })()}
+                        
+                        {/* BADGE VERDE: Compradas (sempre visível) */}
+                        <div className="quantity-badge quantity-purchased">
+                            Compradas: {product.quantidade_pedidos || 0}
                         </div>
-                        
-                        {/* Quantidade faltando (superior direito - vermelho) */}
-                        {getMissingQuantity(product) > 0 && (
-                            <div className="quantity-badge quantity-missing">
-                                Faltam {getMissingQuantity(product)}
-                            </div>
-                        )}
-                        
-                        {/* Quantidade vendida (inferior esquerdo - verde) */}
-                        {(product.quantidade_pedidos || 0) > 0 && (
-                            <div className="quantity-badge quantity-sold">
-                                {product.quantidade_pedidos || 0}
-                            </div>
-                        )}
                     </div>
                 </div>
                 
@@ -693,45 +697,105 @@ export default function Catalog() {
                     {selectedProduct.quantidade_pedidos || 0} ({selectedProduct.quantidade_clientes || 0} pessoas)
                   </span>
                 </div>
+                
+                {/* RED ALERT: Faltam X peças para atingir o mínimo */}
+                {(() => {
+                  const minimoLote = selectedProduct.quantidade_minima_lote || 0
+                  const totalComprado = selectedProduct.quantidade_pedidos || 0
+                  const faltam = Math.max(minimoLote - totalComprado, 0)
+                  
+                  // Só exibe se:
+                  // 1. Tem mínimo definido (> 0)
+                  // 2. Ainda faltam peças (faltam > 0)
+                  if (minimoLote > 0 && faltam > 0) {
+                    return (
+                      <div className="missing-pieces-alert">
+                        Faltam {faltam} {faltam === 1 ? 'peça' : 'peças'} para atingir o mínimo!
+                      </div>
+                    )
+                  }
+                  
+                  // Opcional: Mostrar sucesso quando atingiu o mínimo
+                  if (minimoLote > 0 && faltam === 0) {
+                    return (
+                      <div className="minimum-reached-alert">
+                        ✓ Mínimo atingido!
+                      </div>
+                    )
+                  }
+                  
+                  return null
+                })()}
               </div>
 
-              {/* Lista de Compras */}
+              {/* Lista de Compras - Condicional com Controle de Privacidade */}
               <div className="purchases-section">
                 <h3 className="purchases-title">Compras</h3>
                 {loadingPurchases ? (
                   <div className="loading-purchases">Carregando...</div>
-                ) : productPurchases.length > 0 ? (
-                  <div className="purchases-list">
-                    {productPurchases.map((purchase, index) => {
-                      const romaneio = purchase.romaneio
-                      const client = romaneio?.client
-                      const purchaseDate = romaneio?.created_at 
-                        ? new Date(romaneio.created_at).toLocaleString('pt-BR', {
-                            day: '2-digit',
-                            month: '2-digit',
-                            year: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })
-                        : 'Data não disponível'
-                      
-                      return (
-                        <div key={purchase.id || index} className="purchase-item">
-                          <div className="purchase-number">{index + 1}.</div>
-                          <div className="purchase-info">
-                            <div className="purchase-client">{client?.nome || 'Cliente não identificado'}</div>
-                            <div className="purchase-details">
-                              {purchaseDate} - {selectedProduct.nome} - {purchase.quantidade} 
-                              {purchase.quantidade === 1 ? ' un. comprada' : ' un. compradas'}
-                              {purchase.quantidade === 0 && ' (qtd confirmada: 0)'}
-                            </div>
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
                 ) : (
-                  <div className="no-purchases">Nenhuma compra registrada ainda.</div>
+                  <>
+                    {/* Sempre mostrar resumo estatístico */}
+                    {productPurchases.length > 0 && (
+                      <div className="purchases-summary">
+                        <span className="summary-text">
+                          {selectedProduct.quantidade_pedidos || 0} {selectedProduct.quantidade_pedidos === 1 ? 'peça comprada' : 'peças compradas'} 
+                          {' '}por {selectedProduct.quantidade_clientes || 0} {selectedProduct.quantidade_clientes === 1 ? 'pessoa' : 'pessoas'}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Condicional: Lista completa OU mensagem de privacidade */}
+                    {lot?.show_buyers_list ? (
+                      // Lista ATIVADA - Mostrar nomes
+                      productPurchases.length > 0 ? (
+                        <div className="purchases-list">
+                          {productPurchases.slice(0, 5).map((purchase, index) => {
+                            const romaneio = purchase.romaneio
+                            const client = romaneio?.client
+                            
+                            return (
+                              <div key={purchase.id || index} className="purchase-item">
+                                <div className="purchase-number">{index + 1}.</div>
+                                <div className="purchase-info">
+                                  <div className="purchase-client">{client?.nome || 'Cliente não identificado'}</div>
+                                  <div className="purchase-details">
+                                    {purchase.quantidade} {purchase.quantidade === 1 ? 'un. comprada' : 'un. compradas'}
+                                  </div>
+                                </div>
+                              </div>
+                            )
+                          })}
+                          
+                          {/* Botão "Ver mais" se tiver mais de 5 */}
+                          {productPurchases.length > 5 && (
+                            <button 
+                              className="btn-ver-mais"
+                              onClick={() => {
+                                // Expandir modal ou mostrar todos (implementação simples: alert)
+                                const remaining = productPurchases.slice(5)
+                                const names = remaining.map((p, i) => `${i + 6}. ${p.romaneio?.client?.nome || 'Cliente'} - ${p.quantidade} un.`).join('\n')
+                                alert(`Mais ${remaining.length} compra(s):\n\n${names}`)
+                              }}
+                            >
+                              Ver mais {productPurchases.length - 5} compra(s)
+                            </button>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="no-purchases">Nenhuma compra registrada ainda.</div>
+                      )
+                    ) : (
+                      // Lista DESATIVADA - Apenas mensagem neutra
+                      productPurchases.length > 0 ? (
+                        <div className="privacy-message">
+                          Lista de compradores não disponível.
+                        </div>
+                      ) : (
+                        <div className="no-purchases">Nenhuma compra registrada ainda.</div>
+                      )
+                    )}
+                  </>
                 )}
               </div>
 

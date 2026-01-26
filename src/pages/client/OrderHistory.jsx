@@ -20,19 +20,39 @@ export default function OrderHistory() {
 
   const fetchData = async () => {
     try {
-      // 1. Buscar Pedidos
+      // 1. Buscar Romaneio Items (orders table doesn't exist anymore)
       const { data: orderData, error: orderError } = await supabase
-        .from('orders')
+        .from('romaneio_items')
         .select(`
             *,
             product:products (nome, imagem1),
-            lot:lots (nome, status)
+            romaneio:romaneios (
+              id,
+              lot_id,
+              status_pagamento,
+              created_at,
+              lot:lots (nome, status)
+            )
         `)
-        .eq('client_id', client.id)
+        .eq('romaneio.client_id', client.id)
         .order('created_at', { ascending: false })
 
       if (orderError) throw orderError
-      setOrders(orderData || [])
+      
+      // Transform to match old structure
+      const transformedOrders = (orderData || []).map(item => ({
+        id: item.id,
+        product: item.product,
+        lot: item.romaneio?.lot,
+        lot_id: item.romaneio?.lot_id,
+        quantidade: item.quantidade,
+        valor_total: item.valor_total,
+        status: item.romaneio?.status_pagamento || 'pendente',
+        created_at: item.romaneio?.created_at || item.created_at,
+        romaneio_id: item.romaneio?.id
+      }))
+      
+      setOrders(transformedOrders)
 
       // 2. Buscar Romaneios Disponíveis
       const { data: romData, error: romError } = await supabase

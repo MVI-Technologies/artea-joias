@@ -38,7 +38,8 @@ export default function LotForm() {
     adicionar_marca_agua: false,
     dados_pagamento: '',
     payment_option_id: null,
-    permitir_modificacao_produtos: 'permitir_reduzir_excluir'
+    permitir_modificacao_produtos: 'permitir_reduzir_excluir',
+    show_buyers_list: false
   })
   
   const [showPaymentModal, setShowPaymentModal] = useState(false)
@@ -82,7 +83,8 @@ export default function LotForm() {
         adicionar_marca_agua: data.adicionar_marca_agua || false,
         dados_pagamento: data.dados_pagamento || '',
         payment_option_id: data.payment_option_id || null,
-        permitir_modificacao_produtos: data.permitir_modificacao_produtos || 'permitir_reduzir_excluir'
+        permitir_modificacao_produtos: data.permitir_modificacao_produtos || 'permitir_reduzir_excluir',
+        show_buyers_list: data.show_buyers_list || false
       })
     } catch (error) {
       console.error('Erro ao carregar grupo:', error)
@@ -124,7 +126,8 @@ export default function LotForm() {
         adicionar_marca_agua: formData.adicionar_marca_agua,
         dados_pagamento: formData.dados_pagamento,
         payment_option_id: formData.payment_option_id,
-        permitir_modificacao_produtos: formData.permitir_modificacao_produtos
+        permitir_modificacao_produtos: formData.permitir_modificacao_produtos,
+        show_buyers_list: formData.show_buyers_list
       }
 
       let savedCatalog = null
@@ -530,6 +533,21 @@ export default function LotForm() {
                     <option value="nao_permitir">Não permitir o cliente reduzir e excluir produtos antes do fechamento</option>
                     <option value="permitir_reduzir_nao_excluir">Permitir o cliente reduzir mas não excluir</option>
                   </select>
+                </div>
+
+                {/* Prova Social - Exibir lista de compradores */}
+                <div className="form-group">
+                  <label className="checkbox-label">
+                    <input
+                      type="checkbox"
+                      checked={formData.show_buyers_list || false}
+                      onChange={(e) => handleChange('show_buyers_list', e.target.checked)}
+                    />
+                    <span>Exibir quem já comprou este produto</span>
+                  </label>
+                  <p className="help-text">
+                    Ativar esta opção pode estimular compras por efeito social.
+                  </p>
                 </div>
               </div>
             </div>

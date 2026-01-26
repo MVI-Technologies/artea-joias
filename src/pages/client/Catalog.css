@@ -262,6 +262,20 @@
   text-align: center;
 }
 
+/* NEW: Badge verde com total de compras - ao lado da badge vermelha */
+.quantity-purchased {
+  bottom: 8px;
+  left: 8px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  font-size: 10px;
+  font-weight: 500;
+  padding: 4px 8px;
+  white-space: nowrap;
+  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
 /* Responsive - Ajustar tamanhos em mobile */
 @media (max-width: 480px) {
   .quantity-badge {
@@ -278,6 +292,11 @@
     font-size: 11px;
     padding: 4px 8px;
     min-width: 20px;
+  }
+  
+  .quantity-purchased {
+    font-size: 9px;
+    padding: 3px 6px;
   }
   
   .quantity-missing {
@@ -537,6 +556,83 @@
   padding: 20px;
   color: #64748b;
   font-size: 14px;
+}
+
+/* Purchases Summary - Always visible social proof */
+.purchases-summary {
+  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+  border: 1px solid #86efac;
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+.summary-text {
+  font-size: 14px;
+  font-weight: 600;
+  color: #16a34a;
+}
+
+/* Privacy Message - When list is disabled */
+.privacy-message {
+  text-align: center;
+  padding: 16px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  color: #64748b;
+  font-size: 13px;
+  font-style: italic;
+}
+
+/* Ver Mais Button */
+.btn-ver-mais {
+  width: 100%;
+  margin-top: 12px;
+  padding: 10px;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-ver-mais:hover {
+  background: #e2e8f0;
+  border-color: #94a3b8;
+  color: #1e293b;
+}
+
+/* Missing Pieces Alert - Red warning */
+.missing-pieces-alert {
+  width: 100%;
+  margin: 16px 0;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+  border: 2px solid #ef4444;
+  border-radius: 8px;
+  color: #b91c1c;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+}
+
+/* Minimum Reached Alert - Green success */
+.minimum-reached-alert {
+  width: 100%;
+  margin: 16px 0;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+  border: 2px solid #22c55e;
+  border-radius: 8px;
+  color: #15803d;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
 }
 
 .purchases-list {
