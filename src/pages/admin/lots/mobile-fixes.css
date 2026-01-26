@@ -1,0 +1,34 @@
+/* Mobile-specific header fixes - Add this to LotDetail.css */
+
+/* Add after line 1250 or in the @media (max-width: 767px) section */
+
+@media (max-width: 767px) {
+  /* Header mobile improvements */
+  .lot-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  
+  .header-left {
+    width: 100%;
+  }
+  
+  .header-actions-group {
+    width: 100%;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+  }
+  
+  /* Prevent dropdown overflow */
+  .dropdown-container {
+    position: relative;
+  }
+  
+  .dropdown-menu-right {
+    right: 0;
+    left: auto;
+    max-width: calc(100vw - 24px);
+  }
+}

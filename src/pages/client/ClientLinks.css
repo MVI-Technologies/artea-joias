@@ -1,7 +1,185 @@
-/* ClientLinks.css - List Layout (No Image Required) */
+/* ClientLinks.css - Vertical Card Layout */
+
+.client-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 16px;
+}
 
 .client-page-header {
-  margin-bottom: 32px;
+  margin-bottom: 24px;
+}
+
+.client-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 8px;
+}
+
+.header-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.client-subtitle {
+  color: #64748b;
+  font-size: 16px;
+  margin: 0;
+}
+
+.btn-toggle-links {
+  align-self: flex-start;
+  padding: 8px 16px;
+  border: 1px solid #cbd5e1;
+  background: white;
+  border-radius: 8px;
+  color: #64748b;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-toggle-links.active {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+  color: #0f172a;
+}
+
+.links-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* Card Style */
+.link-card {
+  background: white;
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+  overflow: hidden;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  display: flex;
+  flex-direction: column;
+}
+
+/* Cover Image */
+.link-card-cover {
+  width: 100%;
+  aspect-ratio: 16/9; /* Proporção de capa de vídeo/destaque */
+  background-size: cover;
+  background-position: center;
+  position: relative;
+  background-color: #f1f5f9;
+}
+
+.cover-placeholder-gradient {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #94a3b8 0%, #64748b 100%);
+}
+
+/* Card Body */
+.link-card-body {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.link-card-info {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.link-card-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.link-card-date {
+  font-size: 14px;
+  color: #334155;
+  margin: 0;
+}
+
+/* Status Badge */
+.status-badge-card {
+  align-self: flex-start;
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: white;
+  text-transform: capitalize;
+}
+
+.status-aberto { background-color: #22c55e; } /* Verde */
+.status-pronto_e_aberto { background-color: #8b5cf6; } /* Roxo (conforme print) */
+.status-fechado { background-color: #ef4444; } /* Vermelho */
+.status-em_preparacao { background-color: #f59e0b; } /* Laranja */
+.status-concluido { background-color: #64748b; } /* Cinza */
+
+/* Button */
+.btn-access-products {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%; /* Largura total mobile */
+  padding: 12px;
+  background-color: #15803d; /* Verde escuro forte */
+  color: white;
+  font-weight: 600;
+  font-size: 16px;
+  border-radius: 8px;
+  text-decoration: none;
+  transition: background 0.2s;
+  text-align: center;
+  margin-top: 4px;
+}
+
+.btn-access-products:hover {
+  background-color: #166534;
+}
+
+/* Empty State */
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  background: white;
+  border-radius: 16px;
+  border: 1px dashed #cbd5e1;
+  color: #64748b;
+}
+
+/* Responsive - Desktop adjustments */
+@media (min-width: 768px) {
+  .header-actions {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .links-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  }
+  
+  .btn-access-products {
+    width: auto; /* Botão não precisa ser full width no desktop */
+    align-self: flex-start;
+    padding: 10px 24px;
+  }
 }
 
 .client-title {
@@ -231,5 +409,53 @@
   
   .list-item-title {
     font-size: 16px;
+  }
+}
+
+/* --- COVER IMAGE CARD STYLES --- */
+.list-item.has-cover {
+  position: relative;
+  border: 1px solid #e2e8f0;
+  overflow: hidden;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.list-item-cover {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-size: cover;
+  background-position: center;
+  z-index: 0;
+}
+
+.cover-placeholder {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+}
+
+.cover-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(to right, rgba(255,255,255,0.95) 30%, rgba(255,255,255,0.85) 60%, rgba(255,255,255,0.4) 100%);
+  z-index: 1;
+}
+
+.list-item-main.with-cover {
+  position: relative;
+  z-index: 2; /* Content above background */
+  background: transparent; /* Transparent to show overlay/image */
+}
+
+/* Mobile Adjustment for Cover Image */
+@media (max-width: 768px) {
+  .cover-overlay {
+    background: rgba(255, 255, 255, 0.92); /* More opaque on mobile for readability */
   }
 }

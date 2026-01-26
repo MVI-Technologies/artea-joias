@@ -2,10 +2,12 @@ import { useState, useRef } from 'react'
 import { Upload, X, Loader2 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 
-export default function ImageUpload({ value, onChange, onUploadStart, onUploadEnd, className = '' }) {
+export default function ImageUpload({ value, onChange, onUploadStart, onUploadEnd, className = '', bucketName = 'products', label, height, width, rounded }) {
   const [uploading, setUploading] = useState(false)
   const [dragActive, setDragActive] = useState(false)
   const inputRef = useRef(null)
+
+  // ... (drag handlers unchanged)
 
   const handleDrag = (e) => {
     e.preventDefault()
@@ -60,14 +62,14 @@ export default function ImageUpload({ value, onChange, onUploadStart, onUploadEn
       const fileName = `${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`
       const filePath = `${fileName}`
 
-      const { error: uploadError } = await supabase.storage
-        .from('products')
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from(bucketName)
         .upload(filePath, file)
 
       if (uploadError) throw uploadError
 
       const { data } = supabase.storage
-        .from('products')
+        .from(bucketName)
         .getPublicUrl(filePath)
 
       if (onChange) onChange(data.publicUrl)

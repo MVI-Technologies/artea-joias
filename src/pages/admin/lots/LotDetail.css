@@ -1314,7 +1314,27 @@
   padding: 8px 0;
   box-shadow: 0 4px 12px rgba(0,0,0,0.15);
   z-index: 100;
-  min-width: 180px;
+  min-width: 220px;
+  max-width: calc(100vw - 32px); /* Prevent overflow on mobile */
+}
+
+/* Mobile-specific dropdown adjustments */
+@media (max-width: 768px) {
+  .dropdown-menu-right {
+    /* On mobile, ensure dropdown doesn't overflow */
+    right: 0;
+    left: auto;
+    min-width: 240px;
+    max-width: calc(100vw - 16px);
+  }
+  
+  /* If header is too narrow, dropdown should extend left */
+  @supports (inset: 0) {
+    .dropdown-menu-right {
+      left: auto;
+      right: 0;
+    }
+  }
 }
 
 .dropdown-menu-right button {

@@ -24,7 +24,7 @@ export default function LotTermsBlock({ lot }) {
 
   return (
     <div className="lot-terms-block">
-      {lot.descricao && <p className="lot-terms-desc">{lot.descricao}</p>}
+      {/* Descrição agora é renderizada separadamente no Catalog.jsx para controle de posição */}
       
       {lot.data_fechamento && (
         <p><strong>Fechamento do Link:</strong> {formatDate(lot.data_fechamento)}</p>

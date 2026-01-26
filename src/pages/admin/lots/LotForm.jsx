@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Save, Info, Bell, Loader2, Lock, X, Search } from 'lucide-react'
 import { supabase } from '../../../lib/supabase'
 import { notifyNewCatalog, notifyCatalogClosed } from '../../../services/whatsapp'
+import ImageUpload from '../../../components/common/ImageUpload'
 import './LotForm.css'
 
 export default function LotForm() {
@@ -23,6 +24,7 @@ export default function LotForm() {
   const [formData, setFormData] = useState({
     nome: '',
     descricao: '',
+    cover_image_url: null,
     status: 'aberto',
     tipo_link: 'tradicional',
     // Taxas
@@ -70,6 +72,7 @@ export default function LotForm() {
       setFormData({
         nome: data.nome || '',
         descricao: data.descricao || '',
+        cover_image_url: data.cover_image_url || null,
         status: data.status || 'aberto',
         tipo_link: data.tipo_link || 'tradicional',
         custo_separacao: data.custo_separacao || 0,
@@ -112,6 +115,7 @@ export default function LotForm() {
       const dataToSave = {
         nome: formData.nome,
         descricao: formData.descricao,
+        cover_image_url: formData.cover_image_url,
         status: formData.status,
         tipo_link: formData.tipo_link,
         custo_separacao: formData.custo_separacao,

@@ -1,0 +1,172 @@
+/* PortalDropdown - Mobile-First Styles */
+
+.portal-dropdown {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 
+    0 10px 25px rgba(0, 0, 0, 0.1),
+    0 4px 12px rgba(0, 0, 0, 0.08);
+  z-index: 9999; /* Alto para ficar acima de tudo */
+  min-width: 220px;
+  max-width: calc(100vw - 16px); /* Nunca ultrapassar viewport */
+  max-height: 60vh; /* Scroll interno quando muito alto */
+  overflow-y: auto;
+  overflow-x: hidden;
+  
+  /* Smooth animations */
+  animation: dropdownFadeIn 0.15s ease-out;
+  transform-origin: top;
+}
+
+@keyframes dropdownFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Quando abre para cima */
+.portal-dropdown--top {
+  transform-origin: bottom;
+  animation: dropdownFadeInTop 0.15s ease-out;
+}
+
+@keyframes dropdownFadeInTop {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Scroll customizado */
+.portal-dropdown::-webkit-scrollbar {
+  width: 6px;
+}
+
+.portal-dropdown::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.portal-dropdown::-webkit-scrollbar-thumb {
+  background: #cbd5e0;
+  border-radius: 3px;
+}
+
+.portal-dropdown::-webkit-scrollbar-thumb:hover {
+  background: #a0aec0;
+}
+
+/* Seções do dropdown */
+.portal-dropdown .dropdown-section {
+  padding: 8px 0;
+}
+
+.portal-dropdown .dropdown-section:not(:last-child) {
+  border-bottom: 1px solid #f1f5f9;
+}
+
+/* Header das seções */
+.portal-dropdown .dropdown-header {
+  display: block;
+  padding: 6px 16px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #64748b;
+}
+
+/* Botões */
+.portal-dropdown button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 16px; /* Mobile-friendly - 44px touch target */
+  min-height: 44px;
+  text-align: left;
+  background: transparent;
+  border: none;
+  color: #334155;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  -webkit-tap-highlight-color: transparent; /* Remove destaque azul no mobile */
+}
+
+.portal-dropdown button:hover,
+.portal-dropdown button:focus {
+  background: #f8fafc;
+  color: #0f172a;
+}
+
+.portal-dropdown button:active {
+  background: #f1f5f9;
+  transform: scale(0.98);
+}
+
+/* Ícones */
+.portal-dropdown button svg {
+  flex-shrink: 0;
+  color: #64748b;
+}
+
+.portal-dropdown button:hover svg {
+  color: #475569;
+}
+
+/* Botão danger */
+.portal-dropdown button.text-danger {
+  color: #dc2626 !important;
+}
+
+.portal-dropdown button.text-danger:hover {
+  background: #fef2f2;
+}
+
+.portal-dropdown button.text-danger svg {
+  color: #dc2626;
+}
+
+/* Divider */
+.portal-dropdown .dropdown-divider {
+  height: 1px;
+  background: #f1f5f9;
+  margin: 4px 0;
+}
+
+/* Mobile optimizations */
+@media (max-width: 640px) {
+  .portal-dropdown {
+    min-width: 240px;
+    max-width: calc(100vw - 16px);
+    font-size: 16px; /* Previne zoom no iOS */
+  }
+
+  .portal-dropdown button {
+    padding: 14px 16px;
+    min-height: 48px; /* Touch-friendly */
+    font-size: 15px;
+  }
+
+  .portal-dropdown .dropdown-header {
+    padding: 8px 16px;
+    font-size: 12px;
+  }
+}
+
+/* Muito small screens */
+@media (max-width: 380px) {
+  .portal-dropdown {
+    max-width: calc(100vw - 12px);
+  }
+}

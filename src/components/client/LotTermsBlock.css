@@ -24,13 +24,7 @@
   font-weight: 600;
 }
 
-.lot-terms-desc {
-  font-size: 15px;
-  color: #1f2937;
-  margin-bottom: 16px !important;
-  padding-bottom: 16px;
-  border-bottom: 1px solid #e5e7eb;
-}
+/* CSS Cleaned up - Description styles removed */
 
 @media (max-width: 768px) {
   .lot-terms-block {

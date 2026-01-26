@@ -570,34 +570,57 @@ export default function Catalog() {
         </div>
       </header>
 
-      {/* Grid de Produtos */}
-      <div className="products-grid">
-        {products.map(product => (
-            <div 
-              key={product.id} 
-              className={`product-card ${addingToCart === product.id ? 'adding' : ''} ${(product.estoque || 0) === 0 ? 'out-of-stock' : ''}`}
-              onClick={() => handleProductClick(product)}
-            >
-                <div className={`product-image-area ${(product.estoque || 0) === 0 ? 'out-of-stock-image' : ''}`}>
-                    {product.imagem1 ? (
-                        <img src={product.imagem1} alt={product.nome} className="product-img" />
-                    ) : (
-                        <div className="w-full h-full flex items-center justify-center text-slate-300">
-                            Sem foto
-                        </div>
-                    )}
-                    
-                    {/* Overlay ESGOTADO quando estoque = 0 */}
-                    {(product.estoque || 0) === 0 && (
-                        <div className="out-of-stock-overlay">
-                            <div className="out-of-stock-text">ESGOTADO</div>
-                        </div>
-                    )}
-                    
-                    {/* Indicadores de Progresso de Compra Coletiva */}
-                    <div className="product-quantity-indicators">
-                        {/* BADGE VERMELHA: Faltam X peças para atingir o mínimo */}
-                        {(() => {
+      {/* Conteúdo Principal */}
+      <div className="catalog-content-wrapper" style={{ padding: '0 16px', maxWidth: '1200px', margin: '0 auto' }}>
+        
+        {/* 1. Bloco de Descrição (REGRAS) */}
+        {lot.descricao && (
+          <div className="catalog-description-section">
+            <h3 className="section-title">REGRAS</h3>
+            <div className="description-text">
+              {lot.descricao}
+            </div>
+          </div>
+        )}
+
+        {/* 2. Metadados (Resumo Estruturado) */}
+        <LotTermsBlock lot={lot} />
+
+        {/* 3. Filtros */}
+        <div className="catalog-filters-bar">
+          <button className="btn-toggle-filters">
+             Exibir/Ocultar Filtros
+          </button>
+        </div>
+
+        {/* 4. Grid de Produtos */}
+        <div className="products-grid">
+          {products.map(product => (
+              <div 
+                key={product.id} 
+                className={`product-card ${addingToCart === product.id ? 'adding' : ''} ${(product.estoque || 0) === 0 ? 'out-of-stock' : ''}`}
+                onClick={() => handleProductClick(product)}
+              >
+                  <div className={`product-image-area ${(product.estoque || 0) === 0 ? 'out-of-stock-image' : ''}`}>
+                      {product.imagem1 ? (
+                          <img src={product.imagem1} alt={product.nome} className="product-img" />
+                      ) : (
+                          <div className="w-full h-full flex items-center justify-center text-slate-300">
+                              Sem foto
+                          </div>
+                      )}
+                      
+                      {/* Overlay ESGOTADO quando estoque = 0 */}
+                      {(product.estoque || 0) === 0 && (
+                          <div className="out-of-stock-overlay">
+                              <div className="out-of-stock-text">ESGOTADO</div>
+                          </div>
+                      )}
+                      
+                      {/* Indicadores de Progresso de Compra Coletiva */}
+                      <div className="product-quantity-indicators">
+                          {/* BADGE VERMELHA: Faltam X peças para atingir o mínimo */}
+                          {(() => {
                           const minimoLote = product.quantidade_minima_lote || 0
                           const totalComprado = product.quantidade_pedidos || 0
                           const faltam = Math.max(minimoLote - totalComprado, 0)
@@ -661,6 +684,7 @@ export default function Catalog() {
             </div>
         ))}
       </div>
+      </div> {/* Close catalog-content-wrapper */}
 
       {/* Modal de Detalhes do Produto */}
       {selectedProduct && (

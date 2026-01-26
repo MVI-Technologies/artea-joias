@@ -34,6 +34,7 @@ import {
 import ImageUpload from '../../../components/common/ImageUpload'
 import { supabase } from '../../../lib/supabase'
 import { notifyCatalogClosed } from '../../../services/whatsapp'
+import PortalDropdown from '../../../components/ui/PortalDropdown'
 import './LotDetail.css'
 
 export default function LotDetail({ defaultTab }) {
@@ -272,6 +273,7 @@ export default function LotDetail({ defaultTab }) {
         .update({
           nome: lotSettings.nome,
           descricao: lotSettings.descricao,
+          cover_image_url: lotSettings.cover_image_url,
           data_fim: lotSettings.data_fim,
           taxa_separacao: lotSettings.taxa_separacao,
           requer_pacote_fechado: lotSettings.requer_pacote_fechado,
@@ -733,69 +735,70 @@ export default function LotDetail({ defaultTab }) {
             <button className="btn btn-outline" onClick={fetchData}>
               <RefreshCw size={16} />
             </button>
-            <div className="dropdown-container">
-              <button 
-                className="btn btn-outline"
-                onClick={() => setShowActionsMenu(!showActionsMenu)}
-              >
-                <MoreVertical size={16} /> Ações
-              </button>
-              {showActionsMenu && (
-                <div className="dropdown-menu-right">
-                  <div className="dropdown-section">
-                    <span className="dropdown-header">Gestão</span>
-                    <button onClick={() => { setShowSettingsModal(true); setShowActionsMenu(false); }}>
-                      <Settings size={14} /> Editar Link / Configurações
-                    </button>
-                    <button onClick={() => { setActiveTab('produtos'); setShowActionsMenu(false); }}>
-                      <Package size={14} /> Editar Produtos
-                    </button>
-                    <button onClick={duplicateLot}>
-                      <Copy size={14} /> Duplicar Grupo
-                    </button>
-                  </div>
-                  
+            <PortalDropdown
+              trigger={
+                <button 
+                  className="btn btn-outline"
+                  onClick={() => setShowActionsMenu(!showActionsMenu)}
+                >
+                  <MoreVertical size={16} /> Ações
+                </button>
+              }
+              isOpen={showActionsMenu}
+              onClose={() => setShowActionsMenu(false)}
+            >
+              <div className="dropdown-section">
+                <span className="dropdown-header">Gestão</span>
+                <button onClick={() => { setShowSettingsModal(true); setShowActionsMenu(false); }}>
+                  <Settings size={14} /> Editar Link / Configurações
+                </button>
+                <button onClick={() => { setActiveTab('produtos'); setShowActionsMenu(false); }}>
+                  <Package size={14} /> Editar Produtos
+                </button>
+                <button onClick={duplicateLot}>
+                  <Copy size={14} /> Duplicar Grupo
+                </button>
+              </div>
+              
+              <div className="dropdown-divider" />
+              
+              <div className="dropdown-section">
+                <span className="dropdown-header">Operação</span>
+                <button onClick={() => { setActiveTab('reservas'); setShowActionsMenu(false); }}>
+                  <ClipboardList size={14} /> Listar Pedidos
+                </button>
+                <button onClick={() => { setActiveTab('separacao'); setShowActionsMenu(false); }}>
+                  <CheckSquare size={14} /> Separar Produtos
+                </button>
+                <button onClick={() => { setActiveTab('romaneios'); setShowActionsMenu(false); }}>
+                  <FileText size={14} /> Romaneios
+                </button>
+              </div>
+
+              <div className="dropdown-divider" />
+
+              <div className="dropdown-section">
+                <span className="dropdown-header">Relatórios</span>
+                <button onClick={() => navigate(`/admin/relatorios?lotId=${id}&type=financeiro`)}>
+                  <DollarSign size={14} /> Relatório Financeiro
+                </button>
+                <button onClick={() => navigate(`/admin/relatorios?lotId=${id}&type=vendas`)}>
+                  <TrendingUp size={14} /> Relatório Vendas
+                </button>
+                <button onClick={() => navigate(`/admin/relatorios?lotId=${id}&type=produtos`)}>
+                  <Package size={14} /> Ranking Produtos
+                </button>
+              </div>
+
+              {isOpen && (
+                <>
                   <div className="dropdown-divider" />
-                  
-                  <div className="dropdown-section">
-                    <span className="dropdown-header">Operação</span>
-                    <button onClick={() => { setActiveTab('reservas'); setShowActionsMenu(false); }}>
-                      <ClipboardList size={14} /> Listar Pedidos
-                    </button>
-                    <button onClick={() => { setActiveTab('separacao'); setShowActionsMenu(false); }}>
-                      <CheckSquare size={14} /> Separar Produtos
-                    </button>
-                    <button onClick={() => { setActiveTab('romaneios'); setShowActionsMenu(false); }}>
-                      <FileText size={14} /> Romaneios
-                    </button>
-                  </div>
-
-                  <div className="dropdown-divider" />
-
-                  <div className="dropdown-section">
-                    <span className="dropdown-header">Relatórios</span>
-                    <button onClick={() => navigate(`/admin/relatorios?lotId=${id}&type=financeiro`)}>
-                      <DollarSign size={14} /> Relatório Financeiro
-                    </button>
-                    <button onClick={() => navigate(`/admin/relatorios?lotId=${id}&type=vendas`)}>
-                      <TrendingUp size={14} /> Relatório Vendas
-                    </button>
-                    <button onClick={() => navigate(`/admin/relatorios?lotId=${id}&type=produtos`)}>
-                      <Package size={14} /> Ranking Produtos
-                    </button>
-                  </div>
-
-                  {isOpen && (
-                    <>
-                      <div className="dropdown-divider" />
-                      <button className="text-danger" onClick={() => { openCloseConfirmation(); setShowActionsMenu(false); }}>
-                        <Lock size={14} /> Fechar Grupo
-                      </button>
-                    </>
-                  )}
-                </div>
+                  <button className="text-danger" onClick={() => { openCloseConfirmation(); setShowActionsMenu(false); }}>
+                    <Lock size={14} /> Fechar Grupo
+                  </button>
+                </>
               )}
-            </div>
+            </PortalDropdown>
           </div>
       </div>
 
@@ -906,25 +909,23 @@ export default function LotDetail({ defaultTab }) {
         <div className="tab-content">
           {/* Action buttons */}
           <div className="lot-actions">
-            {isOpen && (
-              <>
-                <button 
-                  className="btn btn-primary"
-                  onClick={openCreateProductModal}
-                >
-                  <Plus size={16} /> Criar Produto
-                </button>
-                <button 
-                  className="btn btn-secondary"
-                  onClick={() => {
-                    fetchAvailableProducts()
-                    setShowAddProductModal(true)
-                  }}
-                >
-                  <Package size={16} /> Adicionar Existente
-                </button>
-              </>
-            )}
+            <>
+              <button 
+                className="btn btn-primary"
+                onClick={openCreateProductModal}
+              >
+                <Plus size={16} /> Criar Produto
+              </button>
+              <button 
+                className="btn btn-secondary"
+                onClick={() => {
+                  fetchAvailableProducts()
+                  setShowAddProductModal(true)
+                }}
+              >
+                <Package size={16} /> Adicionar Existente
+              </button>
+            </>
           </div>
 
           {/* Filters */}
@@ -956,17 +957,15 @@ export default function LotDetail({ defaultTab }) {
               <div className="empty-products">
                 <Package size={48} />
                 <p>Nenhum produto no link</p>
-                {isOpen && (
-                  <button 
-                    className="btn btn-primary"
-                    onClick={() => {
-                      fetchAvailableProducts()
-                      setShowAddProductModal(true)
-                    }}
-                  >
-                    <Plus size={16} /> Adicionar Produto
-                  </button>
-                )}
+                <button 
+                  className="btn btn-primary"
+                  onClick={() => {
+                    fetchAvailableProducts()
+                    setShowAddProductModal(true)
+                  }}
+                >
+                  <Plus size={16} /> Adicionar Produto
+                </button>
               </div>
             ) : (
               filteredProducts.map((lp, index) => {
@@ -1255,10 +1254,31 @@ export default function LotDetail({ defaultTab }) {
             
             <div className="modal-body settings-body">
               {/* Seção: Informações Básicas */}
+              {/* Seção: Informações Básicas */}
               <div className="settings-section">
                 <h3 className="settings-section-title">
                   <FileText size={16} /> Informações Básicas
                 </h3>
+                
+                {/* Capa do Link */}
+                <div className="form-group">
+                  <label>Capa do Catálogo (Destaque)</label>
+                  <div className="cover-image-upload-wrapper">
+                    <ImageUpload
+                      value={lotSettings.cover_image_url}
+                      onChange={(url) => setLotSettings(prev => ({ ...prev, cover_image_url: url }))}
+                      bucketName="catalog-covers"
+                      label="Adicionar Capa"
+                      height="200px" // Altura fixa para o preview
+                      width="100%"
+                      rounded={true}
+                    />
+                    <small className="field-hint">
+                      Esta imagem será exibida como destaque na listagem e no topo do catálogo.
+                      Recomendado: 1200x600px (Paisagem).
+                    </small>
+                  </div>
+                </div>
                 
                 <div className="form-group">
                   <label>Nome do Link</label>
