@@ -4,6 +4,8 @@ import { ArrowLeft, ShoppingCart, Plus, Minus, X } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../components/common/Toast'
+import LotTermsBlock from '../../components/client/LotTermsBlock'
+import { calcPrecoNoLote, formatPrice } from '../../utils/pricing'
 import './Catalog.css'
 
 // LOG IMEDIATO AO CARREGAR O ARQUIVO
@@ -624,7 +626,7 @@ export default function Catalog() {
                     
                     <div className="product-footer">
                         <div className="product-price">
-                            R$ {parseFloat(product.preco).toFixed(2)}
+                            {formatPrice(calcPrecoNoLote(product.preco, lot?.escritorio_pct || 0))}
                         </div>
                         
                         <div className="quantity-controls">

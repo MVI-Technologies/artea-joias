@@ -1,0 +1,44 @@
+/* Lot Terms Block - Client visible terms/fees */
+.lot-terms-block {
+  background: var(--surface, #ffffff);
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.lot-terms-block p {
+  margin: 0 0 10px 0;
+  font-size: 14px;
+  color: #374151;
+  line-height: 1.6;
+}
+
+.lot-terms-block p:last-child {
+  margin-bottom: 0;
+}
+
+.lot-terms-block strong {
+  color: #111827;
+  font-weight: 600;
+}
+
+.lot-terms-desc {
+  font-size: 15px;
+  color: #1f2937;
+  margin-bottom: 16px !important;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+@media (max-width: 768px) {
+  .lot-terms-block {
+    padding: 16px;
+    font-size: 13px;
+  }
+  
+  .lot-terms-block p {
+    font-size: 13px;
+  }
+}
