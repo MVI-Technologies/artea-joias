@@ -7,6 +7,7 @@ import { createClient } from 'jsr:@supabase/supabase-js@2';
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
 Deno.serve(async (req) => {
@@ -16,7 +17,17 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { code, telefone, newPassword } = await req.json();
+    let body;
+    try {
+      body = await req.json();
+    } catch (jsonError) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Corpo da requisição inválido ou vazio' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const { code, telefone, newPassword } = body;
 
     if (!code || !telefone || !newPassword) {
       return new Response(
@@ -57,10 +68,14 @@ Deno.serve(async (req) => {
     }
 
     // Buscar email do cliente no Supabase Auth
+    // O telefone pode vir com ou sem o código do país (55)
+    const phoneWithoutCountryCode = telefoneLimpo.startsWith('55') ? telefoneLimpo.slice(2) : telefoneLimpo;
+    const phoneWithCountryCode = telefoneLimpo.startsWith('55') ? telefoneLimpo : `55${telefoneLimpo}`;
+
     const emailVariations = [
-      `${telefoneLimpo}@artea.local`,
-      `+55${telefoneLimpo}@artea.local`,
-      `55${telefoneLimpo}@artea.local`,
+      `${phoneWithoutCountryCode}@artea.local`,  // 44999829082@artea.local
+      `${phoneWithCountryCode}@artea.local`,     // 5544999829082@artea.local
+      `+${phoneWithCountryCode}@artea.local`,    // +5544999829082@artea.local
     ];
 
     let authUser = null;
@@ -69,6 +84,7 @@ Deno.serve(async (req) => {
         const { data: authData, error: authError } = await supabaseAdmin.auth.admin.getUserByEmail(email);
         if (!authError && authData?.user) {
           authUser = authData.user;
+          console.log(`✅ Usuário encontrado com email: ${email}`);
           break;
         }
       } catch (err) {
