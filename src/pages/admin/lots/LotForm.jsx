@@ -541,7 +541,7 @@ export default function LotForm() {
 
                 {/* Prova Social - Exibir lista de compradores */}
                 <div className="form-group">
-                  <label className="checkbox-label">
+                  <label className="checkbox-label-list">
                     <input
                       type="checkbox"
                       checked={formData.show_buyers_list || false}
