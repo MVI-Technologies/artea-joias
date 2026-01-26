@@ -638,49 +638,12 @@ export default function Catalog() {
                         
                         {/* BADGE VERDE: Compradas (sempre visível) */}
                         <div className="quantity-badge quantity-purchased">
-                            Compradas: {product.quantidade_pedidos || 0}
+                            {product.quantidade_pedidos || 0}
                         </div>
                     </div>
                 </div>
                 
-                <div className="product-info">
-                    <h3 className="product-name">{product.nome}</h3>
-                    <p className="product-sku">{product.codigo_sku || 'SKU N/A'}</p>
-                    
-                    <div className="product-footer">
-                        <div className="product-price">
-                            {formatPrice(calcPrecoNoLote(product.preco, lot?.escritorio_pct || 0))}
-                        </div>
-                        
-                        <div className="quantity-controls">
-                            <button 
-                                onClick={() => decrementQuantity(product.id)}
-                                className="qty-btn"
-                                disabled={getQuantity(product.id) <= 1}
-                            >
-                                <Minus size={14} />
-                            </button>
-                            <span className="qty-value">{getQuantity(product.id)}</span>
-                            <button 
-                                onClick={() => incrementQuantity(product.id)}
-                                className="qty-btn"
-                            >
-                                <Plus size={14} />
-                            </button>
-                        </div>
-                        
-                        <button 
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              addToCart(product)
-                            }}
-                            disabled={addingToCart === product.id || !canAddToCart(product)}
-                            className={`btn-add-cart ${addingToCart === product.id ? 'added' : ''}`}
-                        >
-                            <ShoppingCart size={18} />
-                        </button>
-                    </div>
-                </div>
+                {/* Product Info removed as requested - showing only image and badges */}
             </div>
         ))}
       </div>
@@ -690,8 +653,9 @@ export default function Catalog() {
       {selectedProduct && (
         <div className="product-modal-overlay" onClick={() => setSelectedProduct(null)}>
           <div className="product-modal" onClick={(e) => e.stopPropagation()}>
+            {/* Header: Título Esquerda, X Direita */}
             <div className="product-modal-header">
-              <h2>{selectedProduct.nome}</h2>
+              <h2>Detalhes do Produto</h2>
               <button 
                 className="btn-close-modal"
                 onClick={() => setSelectedProduct(null)}
@@ -701,167 +665,139 @@ export default function Catalog() {
             </div>
 
             <div className="product-modal-body">
-              {/* Informações do Produto */}
-              <div className="product-details-section">
-                <div className="product-detail-item">
-                  <span className="detail-label">Qtd mínima por cliente:</span>
-                  <span className="detail-value">{selectedProduct.quantidade_minima || 1}</span>
-                </div>
-                <div className="product-detail-item">
-                  <span className="detail-label">Valor Unitário:</span>
-                  <span className="detail-value">R$ {parseFloat(selectedProduct.preco || 0).toFixed(2)}</span>
-                </div>
-                {selectedProduct.descricao && (
-                  <div className="product-detail-item">
-                    <span className="detail-label">Descrição:</span>
-                    <span className="detail-value">{selectedProduct.descricao}</span>
-                  </div>
-                )}
-                <div className="product-detail-item">
-                  <span className="detail-label">Qtd peças compradas:</span>
-                  <span className="detail-value">
-                    {selectedProduct.quantidade_pedidos || 0} ({selectedProduct.quantidade_clientes || 0} pessoas)
-                  </span>
-                </div>
+              <div className="modal-grid">
                 
-                {/* RED ALERT: Faltam X peças para atingir o mínimo */}
-                {(() => {
-                  const minimoLote = selectedProduct.quantidade_minima_lote || 0
-                  const totalComprado = selectedProduct.quantidade_pedidos || 0
-                  const faltam = Math.max(minimoLote - totalComprado, 0)
-                  
-                  // Só exibe se:
-                  // 1. Tem mínimo definido (> 0)
-                  // 2. Ainda faltam peças (faltam > 0)
-                  if (minimoLote > 0 && faltam > 0) {
-                    return (
-                      <div className="missing-pieces-alert">
-                        Faltam {faltam} {faltam === 1 ? 'peça' : 'peças'} para atingir o mínimo!
-                      </div>
-                    )
-                  }
-                  
-                  // Opcional: Mostrar sucesso quando atingiu o mínimo
-                  if (minimoLote > 0 && faltam === 0) {
-                    return (
-                      <div className="minimum-reached-alert">
-                        ✓ Mínimo atingido!
-                      </div>
-                    )
-                  }
-                  
-                  return null
-                })()}
-              </div>
-
-              {/* Lista de Compras - Condicional com Controle de Privacidade */}
-              <div className="purchases-section">
-                <h3 className="purchases-title">Compras</h3>
-                {loadingPurchases ? (
-                  <div className="loading-purchases">Carregando...</div>
-                ) : (
-                  <>
-                    {/* Sempre mostrar resumo estatístico */}
-                    {productPurchases.length > 0 && (
-                      <div className="purchases-summary">
-                        <span className="summary-text">
-                          {selectedProduct.quantidade_pedidos || 0} {selectedProduct.quantidade_pedidos === 1 ? 'peça comprada' : 'peças compradas'} 
-                          {' '}por {selectedProduct.quantidade_clientes || 0} {selectedProduct.quantidade_clientes === 1 ? 'pessoa' : 'pessoas'}
-                        </span>
-                      </div>
-                    )}
-
-                    {/* Condicional: Lista completa OU mensagem de privacidade */}
-                    {lot?.show_buyers_list ? (
-                      // Lista ATIVADA - Mostrar nomes
-                      productPurchases.length > 0 ? (
-                        <div className="purchases-list">
-                          {productPurchases.slice(0, 5).map((purchase, index) => {
-                            const romaneio = purchase.romaneio
-                            const client = romaneio?.client
-                            
-                            return (
-                              <div key={purchase.id || index} className="purchase-item">
-                                <div className="purchase-number">{index + 1}.</div>
-                                <div className="purchase-info">
-                                  <div className="purchase-client">{client?.nome || 'Cliente não identificado'}</div>
-                                  <div className="purchase-details">
-                                    {purchase.quantidade} {purchase.quantidade === 1 ? 'un. comprada' : 'un. compradas'}
-                                  </div>
-                                </div>
-                              </div>
-                            )
-                          })}
-                          
-                          {/* Botão "Ver mais" se tiver mais de 5 */}
-                          {productPurchases.length > 5 && (
-                            <button 
-                              className="btn-ver-mais"
-                              onClick={() => {
-                                // Expandir modal ou mostrar todos (implementação simples: alert)
-                                const remaining = productPurchases.slice(5)
-                                const names = remaining.map((p, i) => `${i + 6}. ${p.romaneio?.client?.nome || 'Cliente'} - ${p.quantidade} un.`).join('\n')
-                                alert(`Mais ${remaining.length} compra(s):\n\n${names}`)
-                              }}
-                            >
-                              Ver mais {productPurchases.length - 5} compra(s)
-                            </button>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="no-purchases">Nenhuma compra registrada ainda.</div>
-                      )
-                    ) : (
-                      // Lista DESATIVADA - Apenas mensagem neutra
-                      productPurchases.length > 0 ? (
-                        <div className="privacy-message">
-                          Lista de compradores não disponível.
-                        </div>
-                      ) : (
-                        <div className="no-purchases">Nenhuma compra registrada ainda.</div>
-                      )
-                    )}
-                  </>
-                )}
-              </div>
-
-              {/* Botão de Adicionar ao Carrinho ou Mensagem */}
-              <div className="product-modal-actions">
-                {canAddToCart(selectedProduct) ? (
-                  <div className="add-to-cart-section">
-                    <div className="quantity-controls-modal">
-                      <button 
-                        onClick={() => decrementQuantity(selectedProduct.id)}
-                        className="qty-btn"
-                        disabled={getQuantity(selectedProduct.id) <= 1}
-                      >
-                        <Minus size={14} />
-                      </button>
-                      <span className="qty-value">{getQuantity(selectedProduct.id)}</span>
-                      <button 
-                        onClick={() => incrementQuantity(selectedProduct.id)}
-                        className="qty-btn"
-                      >
-                        <Plus size={14} />
-                      </button>
+                {/* COLUNA 1: IMAGEM */}
+                <div className="modal-col-image">
+                  {selectedProduct.imagem1 ? (
+                    <img src={selectedProduct.imagem1} alt={selectedProduct.nome} className="modal-product-img" />
+                  ) : (
+                    <div className="modal-no-image">
+                      <span>Sem foto</span>
                     </div>
-                    <button 
-                      onClick={() => {
-                        addToCart(selectedProduct)
-                        setSelectedProduct(null)
-                      }}
-                      disabled={addingToCart === selectedProduct.id}
-                      className="btn-add-cart-modal"
-                    >
-                      <ShoppingCart size={18} />
-                      Adicionar ao Carrinho
-                    </button>
+                  )}
+                </div>
+
+                {/* COLUNA 2: CARD DE INFO */}
+                <div className="modal-col-info">
+                  <div className="info-card">
+                    {/* Topo pequeno */}
+                    <div className="info-card-top">
+                      <div className="info-line-small">
+                        <span className="label">Qtd mínima por cliente:</span> {selectedProduct.quantidade_minima || 1}
+                      </div>
+                      {selectedProduct.observacoes && (
+                         <div className="info-line-small">
+                           <span className="label">Observações:</span> {selectedProduct.observacoes}
+                         </div>
+                      )}
+                    </div>
+
+                    {/* Título Grande */}
+                    <h1 className="info-product-title">{selectedProduct.nome}</h1>
+
+                    {/* Bloco de Detalhes */}
+                    <div className="info-details-block">
+                      <div className="info-row">
+                        <span className="label">Valor Unitário:</span> R$ {parseFloat(selectedProduct.preco || 0).toFixed(2).replace('.', ',')}
+                      </div>
+                      {selectedProduct.descricao && (
+                        <div className="info-row">
+                          <span className="label">Descrição:</span> {selectedProduct.descricao}
+                        </div>
+                      )}
+                      <div className="info-row">
+                        <span className="label">Qtd peças compradas:</span> {selectedProduct.quantidade_pedidos || 0} ({selectedProduct.quantidade_clientes || 0} pessoas)
+                      </div>
+                      <div className="info-row">
+                        <span className="label">Estoque:</span> {selectedProduct.estoque || 0}
+                      </div>
+                    </div>
+
+                    {/* AVISO DE LINK FECHADO ou ÁREA DE COMPRA */}
+                    <div className="info-action-area">
+                      {canAddToCart(selectedProduct) ? (
+                        <div className="add-to-cart-section">
+                          <div className="quantity-controls-modal">
+                            <button 
+                              onClick={() => decrementQuantity(selectedProduct.id)}
+                              className="qty-btn"
+                              disabled={getQuantity(selectedProduct.id) <= 1}
+                            >
+                              <Minus size={14} />
+                            </button>
+                            <span className="qty-value">{getQuantity(selectedProduct.id)}</span>
+                            <button 
+                              onClick={() => incrementQuantity(selectedProduct.id)}
+                              className="qty-btn"
+                            >
+                              <Plus size={14} />
+                            </button>
+                          </div>
+                          <button 
+                            onClick={() => {
+                              addToCart(selectedProduct)
+                              setSelectedProduct(null)
+                            }}
+                            disabled={addingToCart === selectedProduct.id}
+                            className="btn-add-cart-modal"
+                          >
+                            <ShoppingCart size={18} />
+                            Adicionar ao Carrinho
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="closed-link-alert">
+                          {getUnavailableMessage(selectedProduct)}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                ) : (
-                  <div className="unavailable-message">
-                    {getUnavailableMessage(selectedProduct)}
-                  </div>
-                )}
+                </div>
+
+                {/* COLUNA 3: COMPRAS */}
+                <div className="modal-col-purchases">
+                  <h3 className="purchases-title">Compras</h3>
+                  
+                  {loadingPurchases ? (
+                    <div className="loading-purchases">Carregando...</div>
+                  ) : (
+                    <div className="purchases-list-container">
+                      {(lot?.show_buyers_list && productPurchases.length > 0) ? (
+                        <ol className="purchases-list">
+                          {productPurchases.map((purchase, index) => (
+                             <li key={purchase.id || index} className="purchase-item-row">
+                                <div className="purchase-header">
+                                  <span className="purchase-name">{purchase.romaneio?.client?.nome || 'Cliente'}</span>
+                                  <span className="purchase-date">
+                                    {new Date(purchase.created_at).toLocaleDateString('pt-BR')} {new Date(purchase.created_at).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}
+                                  </span>
+                                </div>
+                                <div className="purchase-sub">
+                                  {purchase.product_name || selectedProduct.nome} - {purchase.quantidade} (qtd confirmada: {purchase.quantidade}) un. compradas
+                                </div>
+                             </li>
+                          ))}
+                        </ol>
+                      ) : (
+                        <div className="no-purchases">
+                           {productPurchases.length > 0 ? 'Lista de compradores oculta.' : 'Nenhuma compra registrada.'}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <button 
+                    className="btn-scroll-top"
+                    onClick={() => {
+                      const list = document.querySelector('.purchases-list-container');
+                      if (list) list.scrollTop = 0;
+                    }}
+                  >
+                    Ir para o topo
+                  </button>
+                </div>
+
               </div>
             </div>
           </div>

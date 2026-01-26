@@ -17,6 +17,7 @@ import {
   Package,
   DollarSign,
   Clock,
+  Download,
   AlertTriangle,
   Info,
   CheckCircle,
@@ -54,6 +55,7 @@ export default function LotDetail({ defaultTab }) {
   const [selectedProducts, setSelectedProducts] = useState([])
   const [showSettingsModal, setShowSettingsModal] = useState(false)
   const [lotSettings, setLotSettings] = useState({})
+  const [previewImage, setPreviewImage] = useState(null)
   const [closing, setClosing] = useState(false)
   const [showActionsMenu, setShowActionsMenu] = useState(false)
   const [separacaoItems, setSeparacaoItems] = useState({}) // { order_id: boolean }
@@ -238,6 +240,13 @@ export default function LotDetail({ defaultTab }) {
     const link = `${window.location.origin}/catalogo/${lot?.link_compra || id}`
     navigator.clipboard.writeText(link)
     showNotification('success', 'Link copiado para a área de transferência!')
+  }
+
+  const openProductOrdersModal = (productId, productName) => {
+    // Switch to reservas tab and filter by product
+    setActiveTab('reservas')
+    // TODO: Add product filter to reservas view
+    console.log('Opening orders for product:', productId, productName)
   }
 
   const addProductsToLot = async () => {
@@ -720,7 +729,11 @@ export default function LotDetail({ defaultTab }) {
               <span className={`status-badge status-${lot.status}`}>
                 {lot.status === 'aberto' ? 'ABERTO' : 
                  lot.status === 'fechado' ? 'FECHADO' : 
-                 lot.status === 'preparacao' ? 'EM PREPARAÇÃO' : lot.status?.toUpperCase()}
+                 (lot.status === 'preparacao' || lot.status === 'em_preparacao') ? 'EM PREPARAÇÃO' : 
+                 lot.status === 'pago' ? 'PAGO' :
+                 lot.status === 'enviado' ? 'ENVIADO' :
+                 lot.status === 'concluido' ? 'CONCLUÍDO' :
+                 lot.status?.toUpperCase().replace('_', ' ')}
               </span>
               {lot.data_fim && (
                 <span className="lot-deadline">
@@ -980,37 +993,94 @@ export default function LotDetail({ defaultTab }) {
                 const pacotesCompletos = isPacote ? Math.floor(qtdReservada / qtdPacote) : 0
                 
                 return (
-                  <div key={lp.id} className="product-card">
-                    {/* Remove button */}
-                    {isOpen && (
-                      <button className="card-remove" onClick={() => openRemoveProductConfirm(lp.id)}>
-                        <X size={16} />
+                  <div 
+                    key={lp.id} 
+                    className="product-card-new"
+                  >
+                    {/* Image Container with Overlays */}
+                    <div className="card-image-container">
+                      {/* Main Image - clickable for preview */}
+                      <div 
+                        className="card-image-wrapper"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          if (product.imagem1) {
+                            setPreviewImage(product.imagem1)
+                          }
+                        }}
+                      >
+                        {product.imagem1 ? (
+                          <img src={product.imagem1} alt={product.nome} className="card-main-image" />
+                        ) : (
+                          <div className="card-no-image">
+                            <Image size={48} />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Overlays */}
+                      {/* Top Left: Delete Button (X) */}
+                      <button 
+                        className="overlay-btn overlay-delete" 
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          openDeleteProductConfirm(product.id)
+                        }}
+                        aria-label="Deletar produto"
+                        title="Deletar produto permanentemente"
+                      >
+                        <X size={18} />
                       </button>
-                    )}
 
-                    {/* Product image */}
-                    <div className="card-image">
-                      {product.imagem1 ? (
-                        <img src={product.imagem1} alt={product.nome} />
-                      ) : (
-                        <div className="no-image">
-                          <Image size={40} />
-                        </div>
-                      )}
-                      <span className="card-id">ID {index + 1}</span>
-                      {isPacote && (
-                        <span className="card-badge-pacote">Pacote {qtdPacote}</span>
-                      )}
+                      {/* Top Right: Edit Button */}
+                      <button 
+                        className="overlay-btn overlay-edit"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          openEditProductModal(product)
+                        }}
+                        aria-label="Editar produto"
+                      >
+                        Editar
+                      </button>
+
+                      {/* Bottom Right: ID Badge */}
+                      <div className="overlay-id-badge">
+                        ID {index + 1}
+                      </div>
                     </div>
 
-                    {/* Product info */}
-                    <div className="card-info">
-                      <p className="info-line"><strong>Qtde Reservadas:</strong> {qtdReservada}</p>
-                      <p className="info-line"><strong>Qtde Clientes:</strong> {lp.quantidade_clientes || 0}</p>
-                      <p className="info-line"><strong>Categoria:</strong> {product.category?.nome || '-'}</p>
-                      <p className="info-line"><strong>Descrição:</strong> {product.descricao || product.nome}</p>
-                      <p className="info-line price"><strong>Valor:</strong> R$ {product.preco?.toFixed(2) || '0,00'}</p>
+                    {/* Product Info Section */}
+                    <div className="card-info-section">
+                      <ul className="info-list">
+                        <li><b>Qtde Pedidos:</b> {qtdReservada}</li>
+                        <li><b>Qtde Clientes:</b> {lp.quantidade_clientes || 0}</li>
+                        <li><b>Categoria:</b> {product.category?.nome || '—'}</li>
+                        <li>
+                          <b>Obs/Descrição:</b> {(() => {
+                            const text = product.descricao || product.nome || '—';
+                            const words = text.split(' ').slice(0, 10);
+                            return words.join(' ') + (text.split(' ').length > 10 ? '...' : '');
+                          })()}
+                        </li>
+                        <li><b>Valor Unitário:</b> R$ {product.preco?.toFixed(2).replace('.', ',') || '0,00'}</li>
+                      </ul>
                     </div>
+
+                    {/* Footer: 4 action buttons - Pedidos + WhatsApp + Gallery + Edit */}
+                    <div className="card-footer-actions">
+                      <button 
+                        className="btn-pedidos justify-content-center justify-center"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          openProductOrdersModal(product.id, product.nome)
+                        }}
+                      >
+                        Pedidos
+                      </button>
+                    
+                    </div>
+
 
                     {/* Progresso do pacote */}
                     {isPacote && lot.requer_pacote_fechado && (
@@ -1027,22 +1097,6 @@ export default function LotDetail({ defaultTab }) {
                         </span>
                       </div>
                     )}
-
-                    {/* Card actions */}
-                    <div className="card-actions">
-                      <button 
-                        className="btn btn-sm btn-outline"
-                        onClick={() => openEditProductModal(product)}
-                      >
-                        <Edit size={14} /> Editar
-                      </button>
-                      <button 
-                        className="btn btn-sm btn-danger"
-                        onClick={() => openDeleteProductConfirm(product.id)}
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
                   </div>
                 )
               })
@@ -1396,6 +1450,96 @@ export default function LotDetail({ defaultTab }) {
               <button className="btn btn-primary" onClick={updateLotSettings}>
                 <Save size={16} /> Salvar Configurações
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Preview de Imagem (Lightbox) */}
+      {previewImage && (
+        <div 
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 9999,
+            backgroundColor: 'rgba(0, 0, 0, 0.85)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '16px'
+          }}
+          onClick={() => {
+            console.log('🔴 Fechando modal (clique no backdrop)')
+            setPreviewImage(null)
+          }}
+        >
+          <div 
+            style={{
+              position: 'relative',
+              backgroundColor: 'white',
+              borderRadius: '12px',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+              maxWidth: '600px',
+              width: '100%',
+              maxHeight: '80vh',
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column'
+            }}
+            onClick={(e) => {
+              console.log('⚪ Clique no modal (não fecha)')
+              e.stopPropagation()
+            }}
+          >
+            {/* Close button */}
+            <button 
+              style={{
+                position: 'absolute',
+                top: '12px',
+                right: '12px',
+                zIndex: 10,
+                backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                border: 'none',
+                borderRadius: '50%',
+                padding: '8px',
+                cursor: 'pointer',
+                boxShadow: '0 4px 6px rgba(0, 0, 0, 0.2)',
+                transition: 'all 0.2s',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+              onClick={() => {
+                console.log('❌ Fechando modal (botão X)')
+                setPreviewImage(null)
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'white'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.95)'}
+            >
+              <X size={20} style={{ color: '#374151' }} />
+            </button>
+
+            {/* Image Container */}
+            <div style={{
+              padding: '16px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              <img 
+                src={previewImage} 
+                alt="Preview" 
+                style={{
+                  width: '100%',
+                  height: 'auto',
+                  maxHeight: '70vh',
+                  objectFit: 'contain',
+                  display: 'block'
+                }}
+              />
             </div>
           </div>
         </div>
