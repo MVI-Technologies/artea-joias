@@ -267,6 +267,47 @@
   color: #f59e0b;
 }
 
+/* Checkbox para Prova Social */
+.checkbox-label-list {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  cursor: pointer;
+  font-size: 14px !important;
+  font-weight: 400 !important;
+  color: var(--text-primary);
+  user-select: none;
+  margin-bottom: 8px !important;
+  flex-wrap: nowrap !important;
+}
+
+.checkbox-label-list input[type="checkbox"] {
+  width: 18px !important;
+  height: 18px !important;
+  min-width: 18px !important;
+  max-width: 18px !important;
+  accent-color: #3b82f6;
+  cursor: pointer;
+  margin: 0 !important;
+  padding: 0 !important;
+  flex-shrink: 0;
+  -webkit-appearance: checkbox;
+  appearance: checkbox;
+}
+
+.checkbox-label-list span {
+  flex: 1;
+  line-height: 1.5;
+  font-weight: 400;
+}
+
+.help-text {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin: 4px 0 0 28px;
+  line-height: 1.5;
+}
+
 .notification-hint {
   font-size: 13px;
   color: var(--text-secondary);
@@ -345,10 +386,9 @@
 
 /* Configurações Section */
 .configuracoes-section {
-  background: var(--bg-primary);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  padding: 20px;
+  background: transparent;
+  border: none;
+  padding: 20px 0;
   margin-top: 16px;
 }
 
@@ -576,16 +616,45 @@
   }
 
   .configuracoes-section {
-    padding: 16px;
+    padding: 16px 0;
   }
 
   .configuracoes-grid {
     grid-template-columns: 1fr;
-    gap: 16px;
+    gap: 20px;
   }
 
   .config-col {
-    gap: 16px;
+    gap: 20px;
+  }
+
+  /* Cards individuais para cada campo de configuração no mobile */
+  .configuracoes-section .form-group {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 0;
+  }
+
+  /* Exceção: campos com checkbox não devem ter o card */
+  .configuracoes-section .form-group:has(.checkbox-label-list) {
+    background: transparent;
+    border: none;
+    padding: 0;
+  }
+
+  .configuracoes-section .form-group label {
+    display: block;
+    margin-bottom: 8px;
+  }
+
+  /* Exceção: labels de checkbox devem manter layout inline */
+  .configuracoes-section .form-group .checkbox-label-list {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 8px;
   }
 
   .payment-input-group textarea {
@@ -627,11 +696,11 @@
   }
 
   .configuracoes-section {
-    padding: 12px;
+    padding: 12px 0;
   }
 
   .config-col {
-    gap: 12px;
+    gap: 20px;
   }
 
   .form-group label {
