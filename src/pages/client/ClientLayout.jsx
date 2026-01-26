@@ -83,7 +83,7 @@ export default function ClientLayout() {
           <div className="header-actions">
             <Link 
                 to="/app/carrinho" 
-                className={`cart-btn ${cartCount > 0 ? 'has-items' : ''}`}
+                className={`cart-btn desktop-only ${cartCount > 0 ? 'has-items' : ''}`}
                 aria-label={`Carrinho com ${cartCount} itens`}
             >
               <ShoppingCart size={20} />
@@ -94,7 +94,7 @@ export default function ClientLayout() {
             </Link>
             
             <button 
-                className="logout-btn-icon" 
+                className="logout-btn-icon desktop-only" 
                 onClick={signOut} 
                 title="Sair"
                 aria-label="Sair da conta"
@@ -128,6 +128,29 @@ export default function ClientLayout() {
               <span>{item.label}</span>
             </Link>
           ))}
+          
+          {/* Mobile Cart Link */}
+          <Link 
+            to="/app/carrinho" 
+            className="mobile-nav-link"
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            <ShoppingCart size={20} />
+            <span>Carrinho {cartCount > 0 && `(${cartCount})`}</span>
+          </Link>
+
+          {/* Mobile Logout */}
+          <button 
+            className="mobile-nav-link text-red-500" 
+            onClick={() => {
+                setMobileMenuOpen(false)
+                signOut()
+            }}
+            style={{ color: '#ef4444', width: '100%', textAlign: 'left', background: 'none', border: 'none' }}
+          >
+            <LogOut size={20} />
+            <span>Sair</span>
+          </button>
       </div>
 
       {/* Conteúdo Principal */}
