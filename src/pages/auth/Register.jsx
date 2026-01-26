@@ -13,6 +13,8 @@ export default function Register() {
     nome: '',
     telefone: '',
     email: '',
+    instagram: '',
+    dataNascimento: '',
     senha: '',
     confirmarSenha: ''
   })
@@ -44,6 +46,9 @@ export default function Register() {
       // Converter telefone para email fake (mesmo esquema do login)
       const emailFake = `${formData.telefone.replace(/\D/g, '')}@artea.local`
       
+      // Preparar dados para metadados
+      const instagramValue = formData.instagram.trim().replace(/^@/, '')
+      
       // Criar usuário no Supabase Auth usando telefone como base do email
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: emailFake,
@@ -52,7 +57,9 @@ export default function Register() {
           data: {
             nome: formData.nome,
             telefone: formData.telefone.replace(/\D/g, ''),
-            email_real: formData.email || '', // Guardar email real nos metadados
+            email_real: formData.email, // Email real (agora obrigatório)
+            instagram: instagramValue,
+            data_nascimento: formData.dataNascimento,
             role: 'cliente' // ✅ CRÍTICO: Armazenar role no metadata para persistência
           }
         }
@@ -170,12 +177,38 @@ export default function Register() {
           </div>
 
           <div className="form-group">
-            <label className="form-label">E-mail (opcional)</label>
+            <label className="form-label">E-mail *</label>
             <input
               type="email"
               className="form-input"
+              placeholder="seu@email.com"
               value={formData.email}
               onChange={(e) => setFormData({...formData, email: e.target.value})}
+              required
+            />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Instagram *</label>
+            <input
+              type="text"
+              className="form-input"
+              placeholder="@seuusuario ou seuusuario"
+              value={formData.instagram}
+              onChange={(e) => setFormData({...formData, instagram: e.target.value})}
+              required
+            />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Data de Nascimento *</label>
+            <input
+              type="date"
+              className="form-input"
+              value={formData.dataNascimento}
+              onChange={(e) => setFormData({...formData, dataNascimento: e.target.value})}
+              max={new Date(new Date().setFullYear(new Date().getFullYear() - 18)).toISOString().split('T')[0]}
+              required
             />
           </div>
 

@@ -58,7 +58,7 @@ export default function Settings() {
   const [activeModal, setActiveModal] = useState(null)
   const [validatingIntegration, setValidatingIntegration] = useState(false)
   const [integrations, setIntegrations] = useState({
-    pix: { configured: false, chave: '', nome_beneficiario: '', cidade: '' },
+    pix: { configured: false, chave: '', nome_beneficiario: '', cidade: '', banco: '' },
     mercadopago: { configured: false, public_key: '', access_token: '', pix: false, cartao: false, boleto: false, debito_virtual: false, loteria: false },
     correios: { configured: false, usuario: '', chave_acesso: '', contrato: '', unidade_gestora: '', cartao_postagem: '', nome_remetente: '', endereco: '', numero: '', complemento: '', cidade: '', bairro: '', estado: '', cep: '', tamanho_caixa: '6,12,17', tipo: '' }
   })
@@ -288,7 +288,7 @@ export default function Settings() {
         .eq('type', type)
 
       const defaultValues = {
-        pix: { configured: false, chave: '', nome_beneficiario: '', cidade: '' },
+        pix: { configured: false, chave: '', nome_beneficiario: '', cidade: '', banco: '' },
         mercadopago: { configured: false, public_key: '', access_token: '', pix: false, cartao: false, boleto: false, debito_virtual: false, loteria: false },
         correios: { configured: false, usuario: '', chave_acesso: '', contrato: '', unidade_gestora: '', cartao_postagem: '', nome_remetente: '', endereco: '', numero: '', complemento: '', cidade: '', bairro: '', estado: '', cep: '', tamanho_caixa: '6,12,17', tipo: '' }
       }
@@ -990,6 +990,16 @@ export default function Settings() {
                   className="form-input"
                   value={integrations.pix.cidade}
                   onChange={e => updateIntegration('pix', 'cidade', e.target.value)}
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Banco</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={integrations.pix.banco}
+                  onChange={e => updateIntegration('pix', 'banco', e.target.value)}
+                  placeholder="Ex: Banco do Brasil, Nubank, etc."
                 />
               </div>
             </div>
