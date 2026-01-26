@@ -56,7 +56,7 @@ export default function LotList() {
     }
   }, [openDropdown])
 
-  /* Comentado para permitir scroll dentro do dropdown e não fechar ao rolar a página principal
+  // Fechar dropdown ao fazer scroll
   useEffect(() => {
     if (!openDropdown) return
 
@@ -70,7 +70,6 @@ export default function LotList() {
       window.removeEventListener('scroll', handleScroll, true)
     }
   }, [openDropdown])
-  */
 
   const fetchLots = async () => {
     try {
@@ -90,6 +89,29 @@ export default function LotList() {
     } finally {
       setLoading(false)
     }
+  }
+
+  // Função para calcular posição do dropdown
+  const calculateDropdownPosition = (buttonRect) => {
+    const dropdownWidth = 220
+    const padding = 4
+
+    // Sempre abaixo do botão, alinhado à direita
+    const top = buttonRect.bottom + padding
+    let left = buttonRect.right - dropdownWidth
+
+    // Ajustar se sair da tela pela esquerda
+    if (left < padding) {
+      left = padding
+    }
+
+    // Ajustar se sair da tela pela direita
+    const viewportWidth = window.innerWidth
+    if (left + dropdownWidth > viewportWidth) {
+      left = viewportWidth - dropdownWidth - padding
+    }
+
+    return { top, left }
   }
 
   const getStatusBadge = (status) => {
@@ -332,7 +354,7 @@ export default function LotList() {
                 setOpenDropdown(null)
               } else {
                 const rect = e.currentTarget.getBoundingClientRect()
-                setDropdownPos({ top: rect.bottom + 4, left: rect.right - 180 })
+                setDropdownPos(calculateDropdownPosition(rect))
                 setOpenDropdown('toolbar')
               }
             }}
@@ -383,7 +405,7 @@ export default function LotList() {
                             setOpenDropdown(null)
                           } else {
                             const rect = e.currentTarget.getBoundingClientRect()
-                            setDropdownPos({ top: rect.bottom + 4, left: rect.right - 180 })
+                            setDropdownPos(calculateDropdownPosition(rect))
                             setOpenDropdown(prontaEntrega.id)
                           }
                         }}
@@ -427,7 +449,7 @@ export default function LotList() {
                               setOpenDropdown(null)
                             } else {
                               const rect = e.currentTarget.getBoundingClientRect()
-                              setDropdownPos({ top: rect.bottom + 4, left: rect.right - 180 })
+                              setDropdownPos(calculateDropdownPosition(rect))
                               setOpenDropdown(lot.id)
                             }
                           }}
@@ -510,7 +532,7 @@ export default function LotList() {
                   className="btn btn-sm btn-success"
                   onClick={(e) => {
                     const rect = e.currentTarget.getBoundingClientRect()
-                    setDropdownPos({ top: rect.bottom + 4, left: rect.right - 180 })
+                    setDropdownPos(calculateDropdownPosition(rect))
                     setOpenDropdown(lot.id)
                   }}
                 >
@@ -769,26 +791,31 @@ export default function LotList() {
             </div>
           ) : (
             // Ações específicas de um catálogo
-            <div className="dropdown-content-scrollable">
-              <button type="button" onMouseDown={(e) => { e.preventDefault(); handleAction('editar', lots.find(l => l.id === openDropdown)); }}>
-                <Edit size={14} /> Editar
-              </button>
-              <button type="button" onMouseDown={(e) => { e.preventDefault(); handleAction('privacidade', lots.find(l => l.id === openDropdown)); }}>
-                <Settings size={14} /> Privacidade
-              </button>
-              <button type="button" onMouseDown={(e) => { e.preventDefault(); handleAction('duplicar', lots.find(l => l.id === openDropdown)); }}>
-                <Copy size={14} /> Duplicar
-              </button>
-              <button type="button" onMouseDown={(e) => { e.preventDefault(); handleAction('relatorio', lots.find(l => l.id === openDropdown)); }}>
-                <FileText size={14} /> Relatório Produtos
-              </button>
-              <button type="button" onMouseDown={(e) => { e.preventDefault(); handleAction('romaneios', lots.find(l => l.id === openDropdown)); }}>
-                <Package size={14} /> Romaneios
-              </button>
-              <button type="button" onMouseDown={(e) => { e.preventDefault(); handleAction('separacao', lots.find(l => l.id === openDropdown)); }}>
-                <Scissors size={14} /> Separação
-              </button>
-            </div>
+            <>
+              <div className="dropdown-catalog-header">
+                {lots.find(l => l.id === openDropdown)?.nome || 'Catálogo'}
+              </div>
+              <div className="dropdown-content-scrollable">
+                <button type="button" onMouseDown={(e) => { e.preventDefault(); handleAction('editar', lots.find(l => l.id === openDropdown)); }}>
+                  <Edit size={14} /> Editar
+                </button>
+                <button type="button" onMouseDown={(e) => { e.preventDefault(); handleAction('privacidade', lots.find(l => l.id === openDropdown)); }}>
+                  <Settings size={14} /> Privacidade
+                </button>
+                <button type="button" onMouseDown={(e) => { e.preventDefault(); handleAction('duplicar', lots.find(l => l.id === openDropdown)); }}>
+                  <Copy size={14} /> Duplicar
+                </button>
+                <button type="button" onMouseDown={(e) => { e.preventDefault(); handleAction('relatorio', lots.find(l => l.id === openDropdown)); }}>
+                  <FileText size={14} /> Relatório Produtos
+                </button>
+                <button type="button" onMouseDown={(e) => { e.preventDefault(); handleAction('romaneios', lots.find(l => l.id === openDropdown)); }}>
+                  <Package size={14} /> Romaneios
+                </button>
+                <button type="button" onMouseDown={(e) => { e.preventDefault(); handleAction('separacao', lots.find(l => l.id === openDropdown)); }}>
+                  <Scissors size={14} /> Separação
+                </button>
+              </div>
+            </>
           )}
         </div>
       )}

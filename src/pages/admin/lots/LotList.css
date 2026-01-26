@@ -432,7 +432,7 @@
 
 /* Dropdown Menu Fixo (fora da tabela) */
 .dropdown-menu-fixed {
-  position: fixed;
+  position: fixed !important;
   background: white;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
@@ -470,6 +470,20 @@
   color: #9ca3af;
   letter-spacing: 0.05em;
   text-transform: uppercase;
+}
+
+/* Header do Catálogo no Dropdown */
+.dropdown-catalog-header {
+  padding: 12px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #1f2937;
+  background: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+  border-radius: 8px 8px 0 0;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  line-height: 1.4;
 }
 
 /* Botão X vermelho no canto superior direito do dropdown */
@@ -618,6 +632,17 @@
 
   .grupos-table {
     min-width: 700px;
+  }
+
+  /* Ajustes do dropdown para mobile */
+  .dropdown-menu-fixed {
+    position: fixed !important;
+    max-width: calc(100vw - 24px) !important;
+  }
+
+  .dropdown-catalog-header {
+    font-size: 12px;
+    padding: 10px 14px;
   }
 }
 
