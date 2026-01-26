@@ -9,10 +9,10 @@ export default function ResetPassword() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const toast = useToast()
-  
+
   const telefone = searchParams.get('telefone') || ''
   const code = searchParams.get('code') || ''
-  
+
   const [formData, setFormData] = useState({
     code: code,
     newPassword: '',
@@ -24,24 +24,24 @@ export default function ResetPassword() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    
+
     if (formData.newPassword !== formData.confirmPassword) {
       toast.error('As senhas não coincidem')
       return
     }
-    
+
     if (formData.newPassword.length < 6) {
       toast.error('A senha deve ter pelo menos 6 caracteres')
       return
     }
-    
+
     if (!formData.code || formData.code.length !== 6) {
       toast.error('Código inválido')
       return
     }
-    
+
     setLoading(true)
-    
+
     try {
       // Validar código e resetar senha
       const { data: resetData, error: resetError } = await supabase
@@ -52,19 +52,18 @@ export default function ResetPassword() {
         .eq('used', false)
         .gt('expires_at', new Date().toISOString())
         .single()
-      
+
       if (resetError || !resetData) {
         toast.error('Código inválido ou expirado')
         setLoading(false)
         return
       }
-      
+
       // Chamar Edge Function para atualizar senha
       const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL
       const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
-      
-      const telefoneLimpo = telefone.replace(/\D/g, '')
-      
+
+      // Usar o telefone do resetData para garantir consistência
       const response = await fetch(`${SUPABASE_URL}/functions/v1/reset-password`, {
         method: 'POST',
         headers: {
@@ -74,26 +73,26 @@ export default function ResetPassword() {
         },
         body: JSON.stringify({
           code: formData.code,
-          telefone: telefoneLimpo,
+          telefone: resetData.telefone, // ← Usar o telefone do banco
           newPassword: formData.newPassword
         })
       })
-      
+
       const result = await response.json()
-      
+
       if (!response.ok || !result.success) {
         toast.error(result.error || 'Erro ao atualizar senha')
         setLoading(false)
         return
       }
-      
+
       toast.success('Senha alterada com sucesso!')
-      
+
       // Redirecionar para login após 2 segundos
       setTimeout(() => {
         navigate('/login')
       }, 2000)
-      
+
     } catch (error) {
       console.error('Erro ao resetar senha:', error)
       toast.error('Erro ao resetar senha. Tente novamente.')
@@ -199,8 +198,8 @@ export default function ResetPassword() {
             </div>
           </div>
 
-          <button 
-            type="submit" 
+          <button
+            type="submit"
             className="btn btn-primary btn-lg w-full"
             disabled={loading}
           >

@@ -31,7 +31,7 @@ export default function ForgotPassword() {
 
     try {
       const telefoneLimpo = telefone.replace(/\D/g, '')
-      
+
       // Verificar se o cliente existe
       const { data: clientData, error: clientError } = await supabase
         .from('clients')
@@ -39,36 +39,36 @@ export default function ForgotPassword() {
         .or(`telefone.eq.${telefoneLimpo},telefone.eq.${telefoneLimpo.slice(2)},telefone.eq.+55${telefoneLimpo}`)
         .limit(1)
         .single()
-      
+
       if (clientError || !clientData) {
         toast.error('Telefone não encontrado no sistema')
         setLoading(false)
         return
       }
-      
+
       // Gerar código de recuperação
       const resetCode = generateResetCode()
       const expiresAt = new Date()
       expiresAt.setMinutes(expiresAt.getMinutes() + 15) // Expira em 15 minutos
-      
-      // Salvar código no banco
+
+      // Salvar código no banco (usar o telefone do banco para garantir consistência)
       const { error: codeError } = await supabase
         .from('password_reset_codes')
         .insert({
           client_id: clientData.id,
-          telefone: telefoneLimpo,
+          telefone: clientData.telefone, // ← Usar o telefone do banco, não o digitado
           code: resetCode,
           expires_at: expiresAt.toISOString(),
           used: false
         })
-      
+
       if (codeError) {
         console.error('Erro ao salvar código:', codeError)
         toast.error('Erro ao gerar código de recuperação')
         setLoading(false)
         return
       }
-      
+
       // Enviar código via WhatsApp
       const message = `🔐 *Recuperação de Senha - Artea Joias*
 
@@ -84,23 +84,23 @@ Este código expira em 15 minutos.
 Se você não solicitou esta recuperação, ignore esta mensagem.
 
 _Artea Joias - Sistema de Compras Coletivas_`
-      
+
       const whatsappResult = await sendWhatsAppMessage(clientData.telefone, message)
-      
+
       if (!whatsappResult.success) {
         toast.error('Erro ao enviar código via WhatsApp. Tente novamente.')
         setLoading(false)
         return
       }
-      
+
       setSent(true)
       toast.success('Código enviado com sucesso!')
-      
+
       // Redirecionar para tela de reset após 2 segundos
       setTimeout(() => {
         navigate(`/redefinir-senha?telefone=${encodeURIComponent(telefone)}&code=${resetCode}`)
       }, 2000)
-      
+
     } catch (error) {
       console.error('Erro ao processar recuperação:', error)
       toast.error('Erro ao processar solicitação. Tente novamente.')
@@ -142,8 +142,8 @@ _Artea Joias - Sistema de Compras Coletivas_`
                 />
               </div>
 
-              <button 
-                type="submit" 
+              <button
+                type="submit"
                 className="btn btn-primary btn-lg w-full"
                 disabled={loading}
               >
