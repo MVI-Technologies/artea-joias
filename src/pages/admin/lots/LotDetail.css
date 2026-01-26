@@ -50,7 +50,7 @@
   font-size: 26px;
   font-weight: 600;
   color: var(--text-primary);
-  margin: 0;
+  margin: 0 0 8px 0;
   letter-spacing: -0.5px;
 }
 
@@ -402,29 +402,30 @@
 /* ========================================
    PRODUCTS GRID - 4 columns on desktop
    ======================================== */
-.products-grid {
+/* PRODUCTS GRID - 4 columns on desktop by default */
+.admin-products-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr) !important;
+  grid-template-columns: repeat(4, 1fr); /* Removed !important to allow overrides */
   gap: 20px;
   max-width: 100%;
 }
 
 /* Force max 4 columns on large screens */
 @media (min-width: 1400px) {
-  .products-grid {
-    grid-template-columns: repeat(4, 1fr) !important;
+  .admin-products-grid {
+    grid-template-columns: repeat(4, 1fr);
   }
 }
 
 @media (max-width: 1200px) {
-  .products-grid {
+  .admin-products-grid {
     grid-template-columns: repeat(3, 1fr);
   }
 }
 
 @media (max-width: 768px) {
-  .products-grid {
-    grid-template-columns: repeat(2, 1fr);
+  .admin-products-grid {
+    grid-template-columns: 1fr !important; /* Force single column */
     gap: 16px;
   }
 }

@@ -965,7 +965,7 @@ export default function LotDetail({ defaultTab }) {
           </div>
 
           {/* Product Grid */}
-          <div className="products-grid">
+          <div className="admin-products-grid">
             {filteredProducts.length === 0 ? (
               <div className="empty-products">
                 <Package size={48} />
