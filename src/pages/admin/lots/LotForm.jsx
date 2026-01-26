@@ -10,7 +10,7 @@ export default function LotForm() {
   const { id } = useParams()
   const navigate = useNavigate()
   const isEditing = !!id
-  
+
   const [loading, setLoading] = useState(isEditing)
   const [saving, setSaving] = useState(false)
   const [sendingNotification, setSendingNotification] = useState(false)
@@ -20,7 +20,7 @@ export default function LotForm() {
   const [notificationResult, setNotificationResult] = useState(null)
   const [originalStatus, setOriginalStatus] = useState('') // Status original para detectar mudança
   const [originalCatalog, setOriginalCatalog] = useState(null) // Dados originais do catálogo
-  
+
   const [formData, setFormData] = useState({
     nome: '',
     descricao: '',
@@ -43,7 +43,7 @@ export default function LotForm() {
     permitir_modificacao_produtos: 'permitir_reduzir_excluir',
     show_buyers_list: false
   })
-  
+
   const [showPaymentModal, setShowPaymentModal] = useState(false)
   const [paymentOptions, setPaymentOptions] = useState([])
   const [loadingPaymentOptions, setLoadingPaymentOptions] = useState(false)
@@ -102,7 +102,7 @@ export default function LotForm() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    
+
     if (!formData.nome.trim()) {
       alert('Nome é obrigatório')
       return
@@ -110,7 +110,7 @@ export default function LotForm() {
 
     setSaving(true)
     setNotificationResult(null)
-    
+
     try {
       const dataToSave = {
         nome: formData.nome,
@@ -149,7 +149,7 @@ export default function LotForm() {
         // Gerar link único para o catálogo
         const linkCode = generateLinkCode()
         dataToSave.link_compra = linkCode
-        
+
         const { data, error } = await supabase
           .from('lots')
           .insert(dataToSave)
@@ -166,7 +166,7 @@ export default function LotForm() {
       if (shouldNotifyNewCatalog || shouldNotifyClose) {
         setSaving(false)
         setSendingNotification(true)
-        
+
         try {
           // Buscar todos os clientes com telefone cadastrado
           const { data: clients, error: clientsError } = await supabase
@@ -174,12 +174,12 @@ export default function LotForm() {
             .select('id, nome, telefone')
             .eq('role', 'cliente')
             .not('telefone', 'is', null)
-          
+
           if (clientsError) throw clientsError
-          
+
           if (clients && clients.length > 0) {
             let result
-            
+
             if (shouldNotifyNewCatalog) {
               // Notificação de novo catálogo
               const catalogUrl = `https://arteajoias.semijoias.net/catalogo/${savedCatalog.link_compra}`
@@ -188,11 +188,11 @@ export default function LotForm() {
               // Notificação de fechamento
               result = await notifyCatalogClosed(savedCatalog, clients)
             }
-            
+
             if (result.success) {
               setNotificationResult({
                 type: 'success',
-                message: shouldNotifyNewCatalog 
+                message: shouldNotifyNewCatalog
                   ? `Catálogo criado e ${result.data?.success || clients.length} cliente(s) notificado(s) com sucesso!`
                   : `Catálogo fechado e ${result.data?.success || clients.length} cliente(s) notificado(s) com sucesso!`
               })
@@ -205,7 +205,7 @@ export default function LotForm() {
           } else {
             setNotificationResult({
               type: 'info',
-              message: shouldNotifyNewCatalog 
+              message: shouldNotifyNewCatalog
                 ? 'Catálogo criado! Nenhum cliente com telefone cadastrado para notificar.'
                 : 'Catálogo fechado! Nenhum cliente com telefone cadastrado para notificar.'
             })
@@ -219,7 +219,7 @@ export default function LotForm() {
         } finally {
           setSendingNotification(false)
         }
-        
+
         // Aguardar um pouco para mostrar o resultado antes de navegar
         setTimeout(() => navigate('/admin/lotes'), 2500)
       } else {
@@ -449,8 +449,7 @@ export default function LotForm() {
 
             <div className="form-group taxa-dinamica">
               <label>
-                Taxa Separação Dinâmica 
-                <Info size={14} className="info-icon" />
+                Taxa Separação Dinâmica
                 <span className="optional">Opcional</span>
               </label>
               <textarea
@@ -672,8 +671,8 @@ export default function LotForm() {
             ) : (
               <>
                 <Save size={16} />
-                {notifyClients && !isEditing 
-                  ? 'Salvar e Notificar Clientes' 
+                {notifyClients && !isEditing
+                  ? 'Salvar e Notificar Clientes'
                   : notifyOnClose && formData.status === 'fechado'
                     ? 'Fechar e Notificar Clientes'
                     : 'Salvar'}

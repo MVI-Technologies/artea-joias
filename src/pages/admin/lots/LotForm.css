@@ -155,10 +155,9 @@
 
 /* Taxas Section */
 .taxas-section {
-  background: var(--bg-primary);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  padding: 20px;
+  background: transparent;
+  border: none;
+  padding: 20px 0;
   margin-top: 16px;
 }
 
@@ -218,7 +217,9 @@
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Notification Section */
@@ -361,7 +362,8 @@
   display: flex;
   flex-direction: column;
   gap: 20px;
-  min-width: 0; /* Previne overflow em mobile */
+  min-width: 0;
+  /* Previne overflow em mobile */
 }
 
 /* Payment Input Group */
@@ -541,8 +543,32 @@
     padding: 16px;
   }
 
+  .taxas-section {
+    padding: 16px 0;
+  }
+
   .taxas-grid {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  /* Cards individuais para cada campo de taxa no mobile */
+  .taxas-grid .form-group {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 0;
+  }
+
+  .taxas-grid .form-group label {
+    display: block;
+    margin-bottom: 8px;
+  }
+
+  .taxas-grid .form-group label .optional {
+    margin-left: 0;
+    display: inline;
   }
 
   .flex-2 {
@@ -615,11 +641,22 @@
   .form-group input,
   .form-group textarea,
   .form-group select {
-    min-height: 48px; /* Touch-friendly */
+    min-height: 48px;
+    /* Touch-friendly */
     padding: 14px 12px;
-    font-size: 16px; /* Prevents iOS zoom */
+    font-size: 16px;
+    /* Prevents iOS zoom */
   }
-  
+
+  /* Card para taxa dinâmica também */
+  .taxas-section .taxa-dinamica {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 16px;
+    margin-top: 20px;
+  }
+
   /* Better dropdown styling on mobile */
   .form-group select {
     appearance: none;
@@ -628,7 +665,7 @@
     background-position: right 12px center;
     padding-right: 40px;
   }
-  
+
   .form-group select option {
     padding: 14px 16px;
     font-size: 16px;
@@ -636,7 +673,7 @@
     background: white;
     color: #111;
   }
-  
+
   /* Visual feedback */
   .form-group select:active {
     transform: scale(0.99);
