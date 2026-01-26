@@ -31,8 +31,8 @@ BEGIN
     extracted_phone,
     NEW.email,
     'cliente',
-    true,
-    'completo',
+    false, -- Aguardando aprovação do admin
+    'pendente', -- Status inicial pendente
     NOW()
   )
   ON CONFLICT (auth_id) DO UPDATE SET

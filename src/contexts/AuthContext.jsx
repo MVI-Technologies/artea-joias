@@ -100,6 +100,18 @@ export function AuthProvider({ children }) {
 
       if (data) {
         console.log('✅ Perfil encontrado na tabela clients:', data)
+        
+        // ⚠️ CRITICAL: Check if client is approved (only for non-admin users)
+        if (data.role !== 'admin' && data.approved === false) {
+          console.warn('⛔ Cliente não aprovado! Bloqueando acesso...')
+          
+          // Sign out the user
+          await supabase.auth.signOut()
+          
+          // Throw error to be caught by login flow
+          throw new Error('PENDING_APPROVAL:Seu cadastro ainda está pendente de aprovação pela administração. Aguarde o contato do administrador.')
+        }
+        
         setClient(data)
         
         // Verificar se role do DB é diferente do metadata
@@ -127,11 +139,17 @@ export function AuthProvider({ children }) {
         if (roleFromMetadata) {
           console.warn('⚠️ Erro ao buscar perfil do DB, mas temos metadata. Continuando...')
         } else {
-          console.warn('⚠️ Erro ao buscar perfil:', queryError)
+          console.error('⚠️ Erro ao buscar perfil:', queryError)
         }
       }
     } catch (error) {
       console.error('❌ Exceção ao buscar perfil:', error)
+      
+      // Check if it's the PENDING_APPROVAL error - if so, re-throw it
+      if (error.message?.includes('PENDING_APPROVAL')) {
+        throw error
+      }
+      
       console.error('❌ Tipo de erro:', error.name)
       console.error('❌ Stack:', error.stack)
       // NÃO resetar isAdmin se já foi definido do metadata

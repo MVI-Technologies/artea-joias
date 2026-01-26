@@ -8,6 +8,7 @@ export default function Register() {
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [success, setSuccess] = useState(false) // New state for success modal
   const [formData, setFormData] = useState({
     nome: '',
     telefone: '',
@@ -60,49 +61,28 @@ export default function Register() {
       if (authError) throw authError
 
       console.log('✅ Auth signup bem-sucedido!', authData.user)
-
-      // Criar perfil de cliente (aguardando aprovação)
-      if (authData.user) {
-        console.log('📝 Criando perfil do cliente na tabela clients...')
-        console.log('Dados:', {
-          auth_id: authData.user.id,
-          nome: formData.nome,
-          telefone: formData.telefone.replace(/\D/g, ''),
-          email: formData.email
-        })
-        
-        const { data: insertData, error: profileError } = await supabase
-          .from('clients')
-          .insert({
-            auth_id: authData.user.id,
-            nome: formData.nome,
-            telefone: formData.telefone.replace(/\D/g, ''),
-            email: formData.email,
-            role: 'cliente',
-            approved: false, // Aguardando aprovação
-            cadastro_status: 'pendente'
-          })
-          .select()
-
-        if (profileError) {
-          console.error('❌ Erro ao criar perfil:', profileError)
-          console.error('Código:', profileError.code)
-          console.error('Mensagem:', profileError.message)
-          console.error('Detalhes:', profileError.details)
-          throw profileError
-        }
-        
-        console.log('✅ Perfil criado com sucesso!', insertData)
-      }
-
-      console.log('🔄 Redirecionando para login...')
       
-      // Redirecionar com mensagem de sucesso
-      navigate('/login', { 
-        state: { 
-          message: 'Cadastro realizado! Aguarde aprovação da administração para fazer login.' 
-        } 
+      // ✅ Cliente é criado automaticamente pelo trigger on_auth_user_created
+      // Não precisa inserir manualmente - a migration 040 cuida disso
+      
+      // ⚠️ IMPORTANT: Sign out immediately to prevent auto-login redirect
+      console.log('🚪 Fazendo logout para evitar redirecionamento...')
+      await supabase.auth.signOut()
+      
+      console.log('✅ Cadastro completo! Mostrando modal de sucesso...')
+      
+      // Show success modal
+      setSuccess(true)
+      
+      // Clear form
+      setFormData({
+        nome: '',
+        telefone: '',
+        email: '',
+        senha: '',
+        confirmarSenha: ''
       })
+      setError('')
     } catch (err) {
       console.error('❌ Erro ao cadastrar:', err)
       console.error('❌ Nome do erro:', err.name)
@@ -129,6 +109,34 @@ export default function Register() {
         <p className="auth-subtitle">
           Preencha os dados abaixo para solicitar seu cadastro
         </p>
+
+        {/* Success Modal */}
+        {success && (
+          <div className="success-modal-overlay" onClick={() => {
+            setSuccess(false)
+            navigate('/login')
+          }}>
+            <div className="success-modal-content" onClick={(e) => e.stopPropagation()}>
+              <div className="success-modal-icon">✓</div>
+              <h2>Cadastro Realizado!</h2>
+              <p>
+                Seu cadastro foi enviado com sucesso e está aguardando aprovação da administração.
+              </p>
+              <p className="success-modal-note">
+                Você receberá uma notificação quando seu cadastro for aprovado.
+              </p>
+              <button 
+                className="btn btn-primary btn-lg w-full"
+                onClick={() => {
+                  setSuccess(false)
+                  navigate('/login')
+                }}
+              >
+                Entendi
+              </button>
+            </div>
+          </div>
+        )}
 
         <form className="auth-form" onSubmit={handleSubmit}>
           {error && (

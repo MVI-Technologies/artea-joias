@@ -46,6 +46,14 @@ export default function Login() {
       
       if (loginError) {
         console.error('Erro de login:', loginError)
+        
+        // Check for pending approval error
+        if (loginError.message?.includes('PENDING_APPROVAL')) {
+          const message = loginError.message.split(':')[1] || 'Cadastro pendente de aprovação'
+          setError(message)
+          return
+        }
+        
         // Mensagem mais específica baseada no tipo de erro
         if (loginError.message?.includes('Invalid login credentials')) {
           setError('Telefone ou senha incorretos. Verifique se o telefone está no formato correto (ex: (11) 99999-9999) e se a senha está correta.')
@@ -64,7 +72,14 @@ export default function Login() {
       // Não precisamos fazer nada aqui, apenas aguardar
     } catch (err) {
       console.error('Exceção no login:', err)
-      setError('Erro ao fazer login. Tente novamente.')
+      
+      // Check for pending approval in catch block too
+      if (err.message?.includes('PENDING_APPROVAL')) {
+        const message = err.message.split(':')[1] || 'Cadastro pendente de aprovação'
+        setError(message)
+      } else {
+        setError('Erro ao fazer login. Tente novamente.')
+      }
     } finally {
       setLoading(false)
     }
