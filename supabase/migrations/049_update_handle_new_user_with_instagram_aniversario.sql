@@ -1,7 +1,9 @@
--- Auto-create client record when user signs up
--- This prevents "client not found" errors in checkout and other flows
+-- =====================================================
+-- MIGRATION 049: UPDATE handle_new_user FUNCTION
+-- Atualiza a função para incluir instagram e aniversario
+-- =====================================================
 
--- Function to auto-create client from auth user
+-- Atualizar apenas a função handle_new_user para incluir os novos campos
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 DECLARE
@@ -54,38 +56,5 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Drop existing trigger if it exists
-DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
-
--- Create trigger on auth.users table
-CREATE TRIGGER on_auth_user_created
-  AFTER INSERT ON auth.users
-  FOR EACH ROW
-  EXECUTE FUNCTION public.handle_new_user();
-
--- Also handle the existing orphaned user (if not already exists)
-INSERT INTO public.clients (
-    auth_id,
-    nome,
-    telefone,
-    email,
-    role,
-    approved,
-    cadastro_status
-)
-SELECT 
-    id as auth_id,
-    COALESCE(raw_user_meta_data->>'name', 'Cliente Teste') as nome,
-    CASE 
-        WHEN email LIKE '%@artea.local' THEN REPLACE(SPLIT_PART(email, '@', 1), ' ', '')
-        ELSE phone
-    END as telefone,
-    email,
-    'cliente' as role,
-    true as approved,
-    'completo' as cadastro_status
-FROM auth.users
-WHERE id NOT IN (SELECT auth_id FROM public.clients WHERE auth_id IS NOT NULL)
-ON CONFLICT (auth_id) DO NOTHING;
-
-COMMENT ON FUNCTION public.handle_new_user IS 'Automatically creates a client record when a user signs up to prevent orphaned auth users';
+-- Verification
+SELECT 'Migration 049 applied: handle_new_user function updated with instagram and aniversario' as status;
