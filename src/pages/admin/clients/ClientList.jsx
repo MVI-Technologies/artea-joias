@@ -1,9 +1,9 @@
 
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { 
-  Plus, 
-  Search, 
+import {
+  Plus,
+  Search,
   Users,
   ChevronDown,
   BarChart3,
@@ -15,7 +15,7 @@ import {
   X,
   AlertTriangle,
   MessageCircle,
-  Trash2 
+  Trash2
 } from 'lucide-react'
 import WhatsAppIcon from '../../../components/icons/WhatsAppIcon'
 import { supabase } from '../../../lib/supabase'
@@ -27,7 +27,7 @@ export default function ClientList() {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
-  
+
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingClient, setEditingClient] = useState(null)
@@ -68,7 +68,7 @@ export default function ClientList() {
         .eq('id', client.id)
 
       if (error) throw error
-      
+
       // Update local state directly to avoid refetch flicker
       setClients(clients.filter(c => c.id !== client.id))
       // fetchClients() // Optional: refetch to be sure
@@ -100,7 +100,7 @@ export default function ClientList() {
 
   const getStatusBadge = (client) => {
     if (client.approved) {
-        return <span className="badge badge-completo">Aprovado</span>
+      return <span className="badge badge-completo">Aprovado</span>
     }
     if (client.cadastro_status === 'pendente') {
       return <span className="badge badge-pendente">Pendente</span>
@@ -111,52 +111,60 @@ export default function ClientList() {
     return <span className="badge badge-pendente">Aguardando</span>
   }
 
+  const formatTelefone = (value) => {
+    if (!value) return '-'
+    const numbers = value.replace(/\D/g, '')
+    if (numbers.length <= 2) return numbers
+    if (numbers.length <= 7) return `(${numbers.slice(0, 2)}) ${numbers.slice(2)}`
+    return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7, 11)}`
+  }
+
   const filteredClients = clients.filter(client => {
     const matchesSearch = client.nome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          client.telefone?.includes(searchTerm)
+      client.telefone?.includes(searchTerm)
     // Filter status logic can be refined if needed
     return matchesSearch
   })
 
   // Modal Handlers
   const openModal = (client, mode) => {
-      // Data agora é automática, apenas info
-      if (mode === 'ultima_compra') return 
+    // Data agora é automática, apenas info
+    if (mode === 'ultima_compra') return
 
-      setEditingClient(client)
-      setModalMode(mode)
-      
-      if (mode === 'saldo') setModalValue(client.saldo_devedor || 0)
-      if (mode === 'credito') setModalValue(client.credito_disponivel || 0)
-      
-      setIsModalOpen(true)
+    setEditingClient(client)
+    setModalMode(mode)
+
+    if (mode === 'saldo') setModalValue(client.saldo_devedor || 0)
+    if (mode === 'credito') setModalValue(client.credito_disponivel || 0)
+
+    setIsModalOpen(true)
   }
 
   const handleSave = async () => {
-      if (!editingClient) return
-      setSaving(true)
-      try {
-          const updates = {}
-          if (modalMode === 'saldo') updates.saldo_devedor = parseFloat(modalValue)
-          if (modalMode === 'credito') updates.credito_disponivel = parseFloat(modalValue)
-          if (modalMode === 'ultima_compra') updates.ultima_compra = modalValue ? new Date(modalValue).toISOString() : null
+    if (!editingClient) return
+    setSaving(true)
+    try {
+      const updates = {}
+      if (modalMode === 'saldo') updates.saldo_devedor = parseFloat(modalValue)
+      if (modalMode === 'credito') updates.credito_disponivel = parseFloat(modalValue)
+      if (modalMode === 'ultima_compra') updates.ultima_compra = modalValue ? new Date(modalValue).toISOString() : null
 
-          const { error } = await supabase
-              .from('clients')
-              .update(updates)
-              .eq('id', editingClient.id)
+      const { error } = await supabase
+        .from('clients')
+        .update(updates)
+        .eq('id', editingClient.id)
 
-          if (error) throw error
-          
-          // Update local state
-          setClients(clients.map(c => c.id === editingClient.id ? { ...c, ...updates } : c))
-          setIsModalOpen(false)
-      } catch (error) {
-          console.error('Erro ao salvar:', error)
-          alert('Erro ao salvar alterações.')
-      } finally {
-          setSaving(false)
-      }
+      if (error) throw error
+
+      // Update local state
+      setClients(clients.map(c => c.id === editingClient.id ? { ...c, ...updates } : c))
+      setIsModalOpen(false)
+    } catch (error) {
+      console.error('Erro ao salvar:', error)
+      alert('Erro ao salvar alterações.')
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -225,53 +233,62 @@ export default function ClientList() {
                     </td>
                     <td>
                       <div className="client-phone">
-                        {client.telefone}
+                        {formatTelefone(client.telefone)}
                         <WhatsAppIcon size={14} className="text-muted" />
                       </div>
                     </td>
                     <td>
                       <div className="financial-cell">
-                        <div className="financial-row text-danger" onClick={() => openModal(client, 'saldo')} title="Editar Saldo Devedor" style={{cursor: 'pointer'}}>
-                            <DollarSign size={14} /> Devedor: R$ {(client.saldo_devedor || 0).toFixed(2)} <Edit2 size={10} />
+                        <div className="financial-row text-danger" onClick={() => openModal(client, 'saldo')} title="Editar Saldo Devedor" style={{ cursor: 'pointer' }}>
+                          <DollarSign size={14} /> Devedor: R$ {(client.saldo_devedor || 0).toFixed(2)} <Edit2 size={10} />
                         </div>
-                        <div className="financial-row text-success" onClick={() => openModal(client, 'credito')} title="Editar Crédito" style={{cursor: 'pointer'}}>
-                            <CreditCard size={14} /> Crédito: R$ {(client.credito_disponivel || 0).toFixed(2)} <Edit2 size={10} />
+                        <div className="financial-row text-success" onClick={() => openModal(client, 'credito')} title="Editar Crédito" style={{ cursor: 'pointer' }}>
+                          <CreditCard size={14} /> Crédito: R$ {(client.credito_disponivel || 0).toFixed(2)} <Edit2 size={10} />
                         </div>
                       </div>
                     </td>
                     <td>
-                        <div className="date-cell" title="Atualizado via Romaneios">
-                            {client.ultima_compra ? new Date(client.ultima_compra).toLocaleDateString('pt-BR') : '-'}
-                        </div>
+                      <div className="date-cell" title="Atualizado via Romaneios">
+                        {client.ultima_compra ? new Date(client.ultima_compra).toLocaleDateString('pt-BR') : '-'}
+                      </div>
                     </td>
                     <td>
-                        {getStatusBadge(client)}
+                      {getStatusBadge(client)}
                     </td>
                     <td>
                       {/* Se cadastro incompleto, força edição */}
                       {client.cadastro_status === 'incompleto' ? (
-                          <button 
-                            className="btn btn-sm btn-warning"
-                            onClick={() => navigate(`/admin/clientes/${client.id}`)}
-                            title="Completar dados cadastrais"
-                          >
-                            <AlertTriangle size={12} style={{marginRight: 4}}/> Atualizar
-                          </button>
+                        <button
+                          className="btn btn-sm btn-warning"
+                          onClick={() => navigate(`/admin/clientes/${client.id}`)}
+                          title="Completar dados cadastrais"
+                        >
+                          <AlertTriangle size={12} style={{ marginRight: 4 }} /> Atualizar
+                        </button>
                       ) : (
-                          <button 
-                            className={`btn btn-sm ${!client.approved ? 'btn-success' : 'btn-outline-danger'}`}
-                            onClick={() => toggleApproval(client)}
-                            title={client.approved ? "Bloquear Cadastro" : "Aprovar Cadastro"}
-                          >
-                            {client.approved ? "Bloquear" : "Aprovar"}
-                          </button>
+                        <button
+                          className={`btn btn-sm ${!client.approved ? 'btn-success' : 'btn-outline-danger'}`}
+                          onClick={() => toggleApproval(client)}
+                          title={client.approved ? "Bloquear Cadastro" : "Aprovar Cadastro"}
+                        >
+                          {client.approved ? "Bloquear" : "Aprovar"}
+                        </button>
                       )}
-                      
-                      <button 
+
+                      <button
+                        className="btn btn-sm btn-outline-primary"
+                        onClick={() => navigate(`/admin/clientes/${client.id}`)}
+                        title="Editar Cliente"
+                        style={{ marginLeft: '8px' }}
+                      >
+                        <Edit size={16} />
+                      </button>
+
+                      <button
                         className="btn btn-sm btn-outline-danger ml-2"
                         onClick={() => handleDelete(client)}
                         title="Excluir Cliente"
-                        style={{marginLeft: '8px'}}
+                        style={{ marginLeft: '8px' }}
                       >
                         <Trash2 size={16} />
                       </button>
@@ -295,17 +312,17 @@ export default function ClientList() {
             <div className="mobile-card-body">
               <div className="mobile-card-row">
                 <span className="mobile-card-label">Contato:</span>
-                <span className="mobile-card-value">{client.telefone || 'N/A'}</span>
+                <span className="mobile-card-value">{formatTelefone(client.telefone)}</span>
               </div>
               <div className="mobile-card-row">
                 <span className="mobile-card-label">Saldo Devedor:</span>
-                <span className="mobile-card-value" style={{color: client.saldo_devedor > 0 ? '#ef4444' : 'inherit'}}>
+                <span className="mobile-card-value" style={{ color: client.saldo_devedor > 0 ? '#ef4444' : 'inherit' }}>
                   R$ {client.saldo_devedor?.toFixed(2) || '0.00'}
                 </span>
               </div>
               <div className="mobile-card-row">
                 <span className="mobile-card-label">Crédito:</span>
-                <span className="mobile-card-value" style={{color: '#22c55e'}}>
+                <span className="mobile-card-value" style={{ color: '#22c55e' }}>
                   R$ {client.credito_disponivel?.toFixed(2) || '0.00'}
                 </span>
               </div>
@@ -335,43 +352,43 @@ export default function ClientList() {
 
       {/* Modal de Edição Financeira */}
       {isModalOpen && (
-          <div className="modal-overlay">
-              <div className="modal-content">
-                  <div className="modal-header">
-                      <h3>
-                          {modalMode === 'saldo' && 'Gerenciar Saldo Devedor'}
-                          {modalMode === 'credito' && 'Gerenciar Crédito'}
-                          {modalMode === 'ultima_compra' && 'Data Última Compra'}
-                      </h3>
-                      <button className="btn-close" onClick={() => setIsModalOpen(false)}>
-                          <X size={20} />
-                      </button>
-                  </div>
-                  <div className="modal-body">
-                      <p>Cliente: <strong>{editingClient?.nome}</strong></p>
-                      
-                      <div className="form-group">
-                          <label>
-                              {modalMode === 'saldo' && 'Valor Devido (R$)'}
-                              {modalMode === 'credito' && 'Crédito Disponível (R$)'}
-                          </label>
-                          <input 
-                              type="number"
-                              step="0.01"
-                              className="form-control"
-                              value={modalValue}
-                              onChange={e => setModalValue(e.target.value)}
-                          />
-                      </div>
-                  </div>
-                  <div className="modal-footer">
-                      <button className="btn btn-secondary" onClick={() => setIsModalOpen(false)}>Cancelar</button>
-                      <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
-                          {saving ? 'Salvando...' : 'Salvar'}
-                      </button>
-                  </div>
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h3>
+                {modalMode === 'saldo' && 'Gerenciar Saldo Devedor'}
+                {modalMode === 'credito' && 'Gerenciar Crédito'}
+                {modalMode === 'ultima_compra' && 'Data Última Compra'}
+              </h3>
+              <button className="btn-close" onClick={() => setIsModalOpen(false)}>
+                <X size={20} />
+              </button>
+            </div>
+            <div className="modal-body">
+              <p>Cliente: <strong>{editingClient?.nome}</strong></p>
+
+              <div className="form-group">
+                <label>
+                  {modalMode === 'saldo' && 'Valor Devido (R$)'}
+                  {modalMode === 'credito' && 'Crédito Disponível (R$)'}
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  className="form-control"
+                  value={modalValue}
+                  onChange={e => setModalValue(e.target.value)}
+                />
               </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-secondary" onClick={() => setIsModalOpen(false)}>Cancelar</button>
+              <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
+                {saving ? 'Salvando...' : 'Salvar'}
+              </button>
+            </div>
           </div>
+        </div>
       )}
     </div>
   )

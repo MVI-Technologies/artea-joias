@@ -7,11 +7,13 @@ export default function ClientForm() {
   const { id } = useParams()
   const navigate = useNavigate()
   const isEditing = Boolean(id)
-  
+
   const [formData, setFormData] = useState({
     nome: '',
     telefone: '',
     email: '',
+    instagram: '',
+    cpf: '',
     aniversario: '',
     grupo: 'Grupo Compras',
     approved: false,
@@ -43,12 +45,14 @@ export default function ClientForm() {
         .single()
 
       if (error) throw error
-      
+
       const endereco = data.enderecos?.[0] || {}
       setFormData({
         nome: data.nome || '',
-        telefone: data.telefone || '',
+        telefone: data.telefone ? formatTelefone(data.telefone) : '',
         email: data.email || '',
+        instagram: data.instagram || '',
+        cpf: data.cpf ? formatCpfCnpj(data.cpf) : '',
         aniversario: data.aniversario || '',
         grupo: data.grupo || 'Grupo Compras',
         approved: data.approved || false,
@@ -68,6 +72,41 @@ export default function ClientForm() {
     }
   }
 
+  // Função para formatar CPF/CNPJ
+  const formatCpfCnpj = (value) => {
+    const numbers = value.replace(/\D/g, '')
+
+    if (numbers.length <= 11) {
+      // CPF: 000.000.000-00
+      return numbers
+        .replace(/(\d{3})(\d)/, '$1.$2')
+        .replace(/(\d{3})(\d)/, '$1.$2')
+        .replace(/(\d{3})(\d{1,2})$/, '$1-$2')
+    } else {
+      // CNPJ: 00.000.000/0000-00
+      return numbers
+        .replace(/(\d{2})(\d)/, '$1.$2')
+        .replace(/(\d{3})(\d)/, '$1.$2')
+        .replace(/(\d{3})(\d)/, '$1/$2')
+        .replace(/(\d{4})(\d{1,2})$/, '$1-$2')
+    }
+  }
+
+  // Função para formatar telefone
+  const formatTelefone = (value) => {
+    const numbers = value.replace(/\D/g, '')
+    if (numbers.length <= 2) return numbers
+    if (numbers.length <= 7) return `(${numbers.slice(0, 2)}) ${numbers.slice(2)}`
+    return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7, 11)}`
+  }
+
+  // Função para detectar tipo de pessoa
+  const getTipoPessoa = () => {
+    const numbers = formData.cpf.replace(/\D/g, '')
+    if (!numbers) return ''
+    return numbers.length <= 11 ? 'Pessoa Física' : 'Pessoa Jurídica'
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setSaving(true)
@@ -75,8 +114,10 @@ export default function ClientForm() {
     try {
       const clientData = {
         nome: formData.nome,
-        telefone: formData.telefone,
+        telefone: formData.telefone.replace(/\D/g, ''), // Remove formatação
         email: formData.email,
+        instagram: formData.instagram,
+        cpf: formData.cpf.replace(/\D/g, ''), // Remove formatação
         aniversario: formData.aniversario || null,
         grupo: formData.grupo,
         approved: formData.approved,
@@ -126,7 +167,7 @@ export default function ClientForm() {
 
   return (
     <div className="client-form-page">
-      <div className="page-header" style={{flexDirection: 'column', alignItems: 'flex-start', gap: '1rem'}}>
+      <div className="page-header" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '1rem' }}>
         <Link to="/admin/clientes" className="btn btn-outline btn-sm">
           <ArrowLeft size={16} /> Voltar
         </Link>
@@ -144,7 +185,7 @@ export default function ClientForm() {
                   type="text"
                   className="form-input"
                   value={formData.nome}
-                  onChange={e => setFormData({...formData, nome: e.target.value})}
+                  onChange={e => setFormData({ ...formData, nome: e.target.value })}
                   required
                 />
               </div>
@@ -154,8 +195,10 @@ export default function ClientForm() {
                 <input
                   type="tel"
                   className="form-input"
+                  placeholder="(00) 00000-0000"
                   value={formData.telefone}
-                  onChange={e => setFormData({...formData, telefone: e.target.value})}
+                  onChange={e => setFormData({ ...formData, telefone: formatTelefone(e.target.value) })}
+                  maxLength={15}
                   required
                 />
               </div>
@@ -166,7 +209,41 @@ export default function ClientForm() {
                   type="email"
                   className="form-input"
                   value={formData.email}
-                  onChange={e => setFormData({...formData, email: e.target.value})}
+                  onChange={e => setFormData({ ...formData, email: e.target.value })}
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Instagram</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="@usuario"
+                  value={formData.instagram}
+                  onChange={e => setFormData({ ...formData, instagram: e.target.value })}
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">CPF/CNPJ</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="000.000.000-00 ou 00.000.000/0000-00"
+                  value={formData.cpf}
+                  onChange={e => setFormData({ ...formData, cpf: formatCpfCnpj(e.target.value) })}
+                  maxLength={18}
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Tipo de Pessoa</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={getTipoPessoa()}
+                  disabled
+                  style={{ background: 'var(--bg-tertiary)', cursor: 'not-allowed' }}
                 />
               </div>
 
@@ -176,7 +253,7 @@ export default function ClientForm() {
                   type="date"
                   className="form-input"
                   value={formData.aniversario}
-                  onChange={e => setFormData({...formData, aniversario: e.target.value})}
+                  onChange={e => setFormData({ ...formData, aniversario: e.target.value })}
                 />
               </div>
 
@@ -185,7 +262,7 @@ export default function ClientForm() {
                 <select
                   className="form-select"
                   value={formData.grupo}
-                  onChange={e => setFormData({...formData, grupo: e.target.value})}
+                  onChange={e => setFormData({ ...formData, grupo: e.target.value })}
                 >
                   <option value="Grupo Compras">Grupo Compras</option>
                   <option value="Atacado">Atacado</option>
@@ -198,7 +275,7 @@ export default function ClientForm() {
                 <select
                   className="form-select"
                   value={formData.cadastro_status}
-                  onChange={e => setFormData({...formData, cadastro_status: e.target.value})}
+                  onChange={e => setFormData({ ...formData, cadastro_status: e.target.value })}
                 >
                   <option value="pendente">Pendente</option>
                   <option value="incompleto">Incompleto</option>
@@ -215,7 +292,7 @@ export default function ClientForm() {
                   type="text"
                   className="form-input"
                   value={formData.endereco}
-                  onChange={e => setFormData({...formData, endereco: e.target.value})}
+                  onChange={e => setFormData({ ...formData, endereco: e.target.value })}
                 />
               </div>
 
@@ -225,7 +302,7 @@ export default function ClientForm() {
                   type="text"
                   className="form-input"
                   value={formData.numero}
-                  onChange={e => setFormData({...formData, numero: e.target.value})}
+                  onChange={e => setFormData({ ...formData, numero: e.target.value })}
                 />
               </div>
 
@@ -235,7 +312,7 @@ export default function ClientForm() {
                   type="text"
                   className="form-input"
                   value={formData.complemento}
-                  onChange={e => setFormData({...formData, complemento: e.target.value})}
+                  onChange={e => setFormData({ ...formData, complemento: e.target.value })}
                 />
               </div>
 
@@ -245,7 +322,7 @@ export default function ClientForm() {
                   type="text"
                   className="form-input"
                   value={formData.bairro}
-                  onChange={e => setFormData({...formData, bairro: e.target.value})}
+                  onChange={e => setFormData({ ...formData, bairro: e.target.value })}
                 />
               </div>
 
@@ -255,7 +332,7 @@ export default function ClientForm() {
                   type="text"
                   className="form-input"
                   value={formData.cidade}
-                  onChange={e => setFormData({...formData, cidade: e.target.value})}
+                  onChange={e => setFormData({ ...formData, cidade: e.target.value })}
                 />
               </div>
 
@@ -264,16 +341,36 @@ export default function ClientForm() {
                 <select
                   className="form-select"
                   value={formData.estado}
-                  onChange={e => setFormData({...formData, estado: e.target.value})}
+                  onChange={e => setFormData({ ...formData, estado: e.target.value })}
                 >
                   <option value="">Selecione...</option>
-                  <option value="SP">São Paulo</option>
-                  <option value="RJ">Rio de Janeiro</option>
+                  <option value="AC">Acre</option>
+                  <option value="AL">Alagoas</option>
+                  <option value="AP">Amapá</option>
+                  <option value="AM">Amazonas</option>
+                  <option value="BA">Bahia</option>
+                  <option value="CE">Ceará</option>
+                  <option value="DF">Distrito Federal</option>
+                  <option value="ES">Espírito Santo</option>
+                  <option value="GO">Goiás</option>
+                  <option value="MA">Maranhão</option>
+                  <option value="MT">Mato Grosso</option>
+                  <option value="MS">Mato Grosso do Sul</option>
                   <option value="MG">Minas Gerais</option>
+                  <option value="PA">Pará</option>
+                  <option value="PB">Paraíba</option>
                   <option value="PR">Paraná</option>
-                  <option value="SC">Santa Catarina</option>
+                  <option value="PE">Pernambuco</option>
+                  <option value="PI">Piauí</option>
+                  <option value="RJ">Rio de Janeiro</option>
+                  <option value="RN">Rio Grande do Norte</option>
                   <option value="RS">Rio Grande do Sul</option>
-                  {/* Adicionar outros estados */}
+                  <option value="RO">Rondônia</option>
+                  <option value="RR">Roraima</option>
+                  <option value="SC">Santa Catarina</option>
+                  <option value="SP">São Paulo</option>
+                  <option value="SE">Sergipe</option>
+                  <option value="TO">Tocantins</option>
                 </select>
               </div>
 
@@ -283,25 +380,24 @@ export default function ClientForm() {
                   type="text"
                   className="form-input"
                   value={formData.cep}
-                  onChange={e => setFormData({...formData, cep: e.target.value})}
+                  onChange={e => setFormData({ ...formData, cep: e.target.value })}
                 />
               </div>
             </div>
 
             <div className="form-group mt-md">
-              <label className="flex items-center gap-sm" style={{display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer'}}>
+              <label className="checkbox-label-list">
                 <input
                   type="checkbox"
                   checked={formData.approved}
-                  onChange={e => setFormData({...formData, approved: e.target.checked})}
-                  style={{width: 'auto', margin: 0}}
+                  onChange={e => setFormData({ ...formData, approved: e.target.checked })}
                 />
-                Cliente aprovado para compras
+                <span>Cliente aprovado para compras</span>
               </label>
             </div>
           </div>
 
-          <div className="card-footer" style={{display: 'flex', justifyContent: 'flex-end', gap: '10px'}}>
+          <div className="card-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
             <button type="button" className="btn btn-secondary" onClick={() => navigate('/admin/clientes')}>
               Cancelar
             </button>
