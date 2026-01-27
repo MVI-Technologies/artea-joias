@@ -406,12 +406,12 @@ export default function LotDetail({ defaultTab }) {
       // Enviar romaneios automaticamente se configurado
       if (updatedLot?.enviar_romaneio_automaticamente) {
         setSendingNotification(true)
-        
+
         try {
           showNotification('info', 'Enviando romaneios automaticamente...')
-          
+
           const romaneiosResult = await sendRomaneiosAutomaticamente(supabase, id, updatedLot)
-          
+
           if (romaneiosResult.success) {
             showNotification('success', `Romaneios enviados! ${romaneiosResult.sent} de ${romaneiosResult.total} enviado(s) com sucesso.`)
           } else {
@@ -1434,28 +1434,22 @@ export default function LotDetail({ defaultTab }) {
                 </div>
 
                 <div className="checkbox-group">
-                  <label className="checkbox-wrapper">
+                  <label className="checkbox-label-list">
                     <input
                       type="checkbox"
                       checked={lotSettings.requer_pacote_fechado || false}
                       onChange={(e) => setLotSettings({ ...lotSettings, requer_pacote_fechado: e.target.checked })}
                     />
-                    <div className="checkbox-content">
-                      <span className="checkbox-text">Requer pacote fechado</span>
-                      <p className="checkbox-hint">Só permite fechar quando todos os pacotes estiverem completos</p>
-                    </div>
+                    <span>Requer pacote fechado - Só permite fechar quando todos os pacotes estiverem completos</span>
                   </label>
 
-                  <label className="checkbox-wrapper">
+                  <label className="checkbox-label-list">
                     <input
                       type="checkbox"
                       checked={lotSettings.show_buyers_list || false}
                       onChange={(e) => setLotSettings({ ...lotSettings, show_buyers_list: e.target.checked })}
                     />
-                    <div className="checkbox-content">
-                      <span className="checkbox-text">Exibir quem já comprou</span>
-                      <p className="checkbox-hint">Mostra lista de compradores na página do produto (Prova Social)</p>
-                    </div>
+                    <span>Exibir quem já comprou - Mostra lista de compradores na página do produto (Prova Social)</span>
                   </label>
                 </div>
               </div>
