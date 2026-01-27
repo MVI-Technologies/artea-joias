@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react'
-import { 
-  MessageSquare, 
-  Send, 
-  Users, 
-  Clock, 
-  CheckCircle2, 
+import {
+  MessageSquare,
+  Send,
+  Users,
+  Clock,
+  CheckCircle2,
   XCircle,
   History,
   RefreshCw,
@@ -175,10 +175,10 @@ export default function WhatsApp() {
       return
     }
 
-    const targetClients = filterDestination === 'selecionados' 
+    const targetClients = filterDestination === 'selecionados'
       ? clients.filter(c => selectedClients.includes(c.id))
       : getFilteredClients()
-    
+
     if (targetClients.length === 0) {
       showNotification('error', 'Nenhum cliente selecionado para envio.')
       return
@@ -217,14 +217,14 @@ export default function WhatsApp() {
 
     // Enviar em massa via Edge Function
     const result = await sendBulkWhatsAppMessage(recipients, message.trim())
-    
+
     let successCount = 0
     let errorCount = 0
     let errors = []
 
     if (result.success && result.data) {
-      successCount = result.data.success || 0
-      errorCount = result.data.errors || 0
+      successCount = result.data.successCount || 0
+      errorCount = result.data.errorCount || 0
       errors = result.data.details?.filter(d => !d.success).map(d => ({
         client: d.nome,
         error: d.error
@@ -309,7 +309,7 @@ export default function WhatsApp() {
     if (!phone) return '-'
     const cleaned = phone.replace(/\D/g, '')
     if (cleaned.length === 11) {
-      return `(${cleaned.slice(0,2)}) ${cleaned.slice(2,7)}-${cleaned.slice(7)}`
+      return `(${cleaned.slice(0, 2)}) ${cleaned.slice(2, 7)}-${cleaned.slice(7)}`
     }
     return phone
   }
@@ -409,14 +409,14 @@ export default function WhatsApp() {
           {/* Lista de Clientes */}
           <div className="clients-section">
             <div className="clients-header">
-              <button 
+              <button
                 className="btn btn-secondary btn-sm"
                 onClick={() => setShowClientList(!showClientList)}
               >
                 {showClientList ? <EyeOff size={14} /> : <Eye size={14} />}
                 {showClientList ? 'Ocultar clientes' : 'Ver clientes'}
               </button>
-              
+
               {showClientList && (
                 <div className="clients-actions">
                   <button className="btn btn-link btn-sm" onClick={selectAll}>
@@ -435,8 +435,8 @@ export default function WhatsApp() {
                   <p className="no-clients">Nenhum cliente com telefone cadastrado</p>
                 ) : (
                   clients.map(client => (
-                    <div 
-                      key={client.id} 
+                    <div
+                      key={client.id}
                       className={`client-item ${selectedClients.includes(client.id) ? 'selected' : ''}`}
                       onClick={() => toggleClientSelection(client.id)}
                     >
@@ -472,7 +472,7 @@ export default function WhatsApp() {
           {sending && (
             <div className="progress-container">
               <div className="progress-bar">
-                <div 
+                <div
                   className="progress-fill"
                   style={{ width: `${(sendProgress.current / sendProgress.total) * 100}%` }}
                 />
@@ -510,7 +510,7 @@ export default function WhatsApp() {
               Histórico
             </h2>
             <div className="history-actions">
-              <button 
+              <button
                 className="btn btn-secondary btn-sm"
                 onClick={fetchHistory}
                 disabled={loadingHistory}
@@ -518,7 +518,7 @@ export default function WhatsApp() {
                 <RefreshCw size={14} className={loadingHistory ? 'spinning' : ''} />
               </button>
               {history.length > 0 && (
-                <button 
+                <button
                   className="btn btn-danger btn-sm"
                   onClick={clearAllHistory}
                 >
@@ -554,7 +554,7 @@ export default function WhatsApp() {
                         <Clock size={12} />
                         {formatDate(item.created_at)}
                       </span>
-                      <button 
+                      <button
                         className="btn-delete"
                         onClick={() => deleteHistoryItem(item.id)}
                         title="Apagar"

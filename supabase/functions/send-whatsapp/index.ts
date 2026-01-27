@@ -25,20 +25,20 @@ const EVOLUTION_INSTANCE = Deno.env.get('EVOLUTION_INSTANCE') || 'artea';
 const ANTI_BAN_CONFIG = {
   // Delay mínimo entre mensagens (em ms)
   MIN_DELAY: 4000,  // 4 segundos
-  
+
   // Delay máximo entre mensagens (em ms)
   MAX_DELAY: 10000, // 10 segundos
-  
+
   // A cada X mensagens, fazer uma pausa maior
   BATCH_SIZE: 10,
-  
+
   // Pausa maior após cada lote (em ms)
   BATCH_PAUSE_MIN: 30000,  // 30 segundos
   BATCH_PAUSE_MAX: 60000,  // 60 segundos
-  
+
   // Máximo de mensagens por execução (0 = sem limite)
   MAX_MESSAGES_PER_EXECUTION: 100,
-  
+
   // Adicionar pequenas variações no texto para evitar detecção de spam
   ADD_INVISIBLE_VARIATION: true,
 };
@@ -66,11 +66,11 @@ function sleep(ms: number): Promise<void> {
  */
 function formatPhoneNumber(phone: string): string {
   let cleaned = phone.replace(/\D/g, '');
-  
+
   if (!cleaned.startsWith('55')) {
     cleaned = '55' + cleaned;
   }
-  
+
   return cleaned;
 }
 
@@ -80,18 +80,18 @@ function formatPhoneNumber(phone: string): string {
  */
 function addInvisibleVariation(text: string): string {
   if (!ANTI_BAN_CONFIG.ADD_INVISIBLE_VARIATION) return text;
-  
+
   // Caracteres zero-width invisíveis
   const invisibleChars = ['\u200B', '\u200C', '\u200D', '\uFEFF'];
-  
+
   // Adiciona 2-4 caracteres invisíveis aleatórios no final
   const numChars = Math.floor(Math.random() * 3) + 2;
   let variation = '';
-  
+
   for (let i = 0; i < numChars; i++) {
     variation += invisibleChars[Math.floor(Math.random() * invisibleChars.length)];
   }
-  
+
   return text + variation;
 }
 
@@ -100,9 +100,9 @@ function addInvisibleVariation(text: string): string {
  */
 async function sendSingleMessage(to: string, message: string) {
   const formattedNumber = formatPhoneNumber(to);
-  
+
   console.log(`📤 Enviando para: ${formattedNumber}`);
-  
+
   const response = await fetch(`${EVOLUTION_API_URL}/message/sendText/${EVOLUTION_INSTANCE}`, {
     method: 'POST',
     headers: {
@@ -116,14 +116,14 @@ async function sendSingleMessage(to: string, message: string) {
   });
 
   const responseText = await response.text();
-  
+
   let data;
   try {
     data = JSON.parse(responseText);
   } catch {
     throw new Error(`Resposta inválida da API: ${responseText.substring(0, 100)}`);
   }
-  
+
   if (!response.ok) {
     throw new Error(data?.message || `Erro ${response.status}`);
   }
@@ -140,17 +140,17 @@ async function sendSingleMessage(to: string, message: string) {
  * @param mimeType - Tipo MIME do arquivo (default: application/pdf)
  */
 async function sendFileMessage(
-  to: string, 
-  fileBase64: string, 
-  fileName: string, 
+  to: string,
+  fileBase64: string,
+  fileName: string,
   caption?: string,
   mimeType: string = 'application/pdf'
 ) {
   const formattedNumber = formatPhoneNumber(to);
-  
+
   console.log(`📎 Enviando arquivo para: ${formattedNumber}`);
   console.log(`📄 Arquivo: ${fileName}`);
-  
+
   // Determinar mediaType baseado no mimeType
   let mediaType = 'document';
   if (mimeType.startsWith('image/')) {
@@ -160,7 +160,7 @@ async function sendFileMessage(
   } else if (mimeType.startsWith('audio/')) {
     mediaType = 'audio';
   }
-  
+
   const response = await fetch(`${EVOLUTION_API_URL}/message/sendMedia/${EVOLUTION_INSTANCE}`, {
     method: 'POST',
     headers: {
@@ -179,14 +179,14 @@ async function sendFileMessage(
   });
 
   const responseText = await response.text();
-  
+
   let data;
   try {
     data = JSON.parse(responseText);
   } catch {
     throw new Error(`Resposta inválida da API: ${responseText.substring(0, 100)}`);
   }
-  
+
   if (!response.ok) {
     throw new Error(data?.message || `Erro ${response.status}`);
   }
@@ -207,13 +207,13 @@ Deno.serve(async (req: Request) => {
   try {
     console.log('=== 🚀 INICIANDO FUNÇÃO WHATSAPP ===');
     console.log('⏰ Horário:', new Date().toISOString());
-    
+
     // Verificar configuração da API
     if (!EVOLUTION_API_URL || !EVOLUTION_API_TOKEN) {
       return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: 'Evolution API não configurada. Verifique os Secrets no Supabase.' 
+        JSON.stringify({
+          success: false,
+          error: 'Evolution API não configurada. Verifique os Secrets no Supabase.'
         }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -230,12 +230,12 @@ Deno.serve(async (req: Request) => {
     // =====================================
     if (action === 'single') {
       const { to, message } = body;
-      
+
       if (!to || !message) {
         return new Response(
-          JSON.stringify({ 
-            success: false, 
-            error: 'Parâmetros inválidos: "to" e "message" são obrigatórios' 
+          JSON.stringify({
+            success: false,
+            error: 'Parâmetros inválidos: "to" e "message" são obrigatórios'
           }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
@@ -243,52 +243,52 @@ Deno.serve(async (req: Request) => {
 
       const finalMessage = addInvisibleVariation(message);
       const result = await sendSingleMessage(to, finalMessage);
-      
+
       console.log('✅ Mensagem individual enviada com sucesso');
-      
+
       return new Response(
         JSON.stringify({ success: true, data: result }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
-    } 
-    
+    }
+
     // =====================================
     // ENVIO DE ARQUIVO/DOCUMENTO
     // =====================================
     else if (action === 'file') {
       const { to, fileBase64, fileName, caption, mimeType } = body;
-      
+
       if (!to || !fileBase64 || !fileName) {
         return new Response(
-          JSON.stringify({ 
-            success: false, 
-            error: 'Parâmetros inválidos: "to", "fileBase64" e "fileName" são obrigatórios' 
+          JSON.stringify({
+            success: false,
+            error: 'Parâmetros inválidos: "to", "fileBase64" e "fileName" são obrigatórios'
           }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
       const result = await sendFileMessage(to, fileBase64, fileName, caption, mimeType);
-      
+
       console.log('✅ Arquivo enviado com sucesso');
-      
+
       return new Response(
         JSON.stringify({ success: true, data: result }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-    
+
     // =====================================
     // ENVIO EM MASSA (COM PROTEÇÕES ANTI-BAN)
     // =====================================
     else if (action === 'bulk') {
       const { recipients, message } = body;
-      
+
       if (!recipients || !message || recipients.length === 0) {
         return new Response(
-          JSON.stringify({ 
-            success: false, 
-            error: 'Parâmetros inválidos: "recipients" e "message" são obrigatórios' 
+          JSON.stringify({
+            success: false,
+            error: 'Parâmetros inválidos: "recipients" e "message" são obrigatórios'
           }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
@@ -297,7 +297,7 @@ Deno.serve(async (req: Request) => {
       // Verificar limite máximo de mensagens
       const maxMessages = ANTI_BAN_CONFIG.MAX_MESSAGES_PER_EXECUTION;
       let recipientsToProcess = recipients;
-      
+
       if (maxMessages > 0 && recipients.length > maxMessages) {
         console.log(`⚠️ Limite de ${maxMessages} mensagens por execução. Processando apenas os primeiros.`);
         recipientsToProcess = recipients.slice(0, maxMessages);
@@ -308,8 +308,8 @@ Deno.serve(async (req: Request) => {
       console.log(`📦 Pausa a cada ${ANTI_BAN_CONFIG.BATCH_SIZE} mensagens`);
 
       const results = {
-        success: 0,
-        errors: 0,
+        successCount: 0,
+        errorCount: 0,
         total: recipientsToProcess.length,
         details: [] as Array<{ nome: string; success: boolean; error?: string }>
       };
@@ -319,42 +319,42 @@ Deno.serve(async (req: Request) => {
       for (let i = 0; i < recipientsToProcess.length; i++) {
         const recipient = recipientsToProcess[i];
         const messageNumber = i + 1;
-        
+
         try {
           // Substituir variáveis e adicionar variação
           let personalizedMessage = message.replace(/%Nome%/gi, recipient.nome || 'Cliente');
           personalizedMessage = addInvisibleVariation(personalizedMessage);
-          
+
           console.log(`\n📨 [${messageNumber}/${recipientsToProcess.length}] Enviando para: ${recipient.nome}`);
-          
+
           await sendSingleMessage(recipient.telefone, personalizedMessage);
-          
-          results.success++;
+
+          results.successCount++;
           results.details.push({ nome: recipient.nome, success: true });
-          
+
           console.log(`✅ [${messageNumber}] Sucesso!`);
-          
+
         } catch (err: any) {
           console.error(`❌ [${messageNumber}] Erro para ${recipient.nome}:`, err?.message);
-          results.errors++;
-          results.details.push({ 
-            nome: recipient.nome, 
-            success: false, 
-            error: err?.message || 'Erro desconhecido' 
+          results.errorCount++;
+          results.details.push({
+            nome: recipient.nome,
+            success: false,
+            error: err?.message || 'Erro desconhecido'
           });
         }
 
         // =====================================
         // DELAYS ANTI-BAN
         // =====================================
-        
+
         // Não aplicar delay após a última mensagem
         if (i < recipientsToProcess.length - 1) {
-          
+
           // Verificar se é hora de fazer pausa maior (a cada BATCH_SIZE mensagens)
           if ((i + 1) % ANTI_BAN_CONFIG.BATCH_SIZE === 0) {
             const batchPause = getRandomDelay(
-              ANTI_BAN_CONFIG.BATCH_PAUSE_MIN, 
+              ANTI_BAN_CONFIG.BATCH_PAUSE_MIN,
               ANTI_BAN_CONFIG.BATCH_PAUSE_MAX
             );
             console.log(`\n⏸️ Pausa de lote: aguardando ${(batchPause / 1000).toFixed(1)} segundos...`);
@@ -362,7 +362,7 @@ Deno.serve(async (req: Request) => {
           } else {
             // Delay normal entre mensagens
             const delay = getRandomDelay(
-              ANTI_BAN_CONFIG.MIN_DELAY, 
+              ANTI_BAN_CONFIG.MIN_DELAY,
               ANTI_BAN_CONFIG.MAX_DELAY
             );
             console.log(`⏳ Aguardando ${(delay / 1000).toFixed(1)} segundos...`);
@@ -372,16 +372,16 @@ Deno.serve(async (req: Request) => {
       }
 
       const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
-      
+
       console.log(`\n=== 📊 RESUMO DO ENVIO ===`);
-      console.log(`✅ Sucesso: ${results.success}`);
-      console.log(`❌ Erros: ${results.errors}`);
+      console.log(`✅ Sucesso: ${results.successCount}`);
+      console.log(`❌ Erros: ${results.errorCount}`);
       console.log(`⏱️ Tempo total: ${totalTime} segundos`);
       console.log(`📈 Média por mensagem: ${(parseFloat(totalTime) / recipientsToProcess.length).toFixed(1)} segundos`);
 
       return new Response(
-        JSON.stringify({ 
-          success: true, 
+        JSON.stringify({
+          success: true,
           data: {
             ...results,
             executionTime: `${totalTime}s`,
