@@ -39,7 +39,7 @@ export default function LotForm() {
     // Configurações
     exigir_dados_galvanica: false,
     adicionar_marca_agua: false,
-    enviar_romaneio_automaticamente: true, // Por padrão, envia automaticamente
+    enviar_romaneio_automaticamente: false, // Por padrão, NÃO envia automaticamente
     dados_pagamento: '',
     payment_option_id: null,
     permitir_modificacao_produtos: 'permitir_reduzir_excluir',
@@ -87,7 +87,7 @@ export default function LotForm() {
         taxa_separacao_dinamica: data.taxa_separacao_dinamica || '',
         exigir_dados_galvanica: data.exigir_dados_galvanica || false,
         adicionar_marca_agua: data.adicionar_marca_agua || false,
-        enviar_romaneio_automaticamente: data.enviar_romaneio_automaticamente !== false, // true por padrão
+        enviar_romaneio_automaticamente: data.enviar_romaneio_automaticamente === true, // Default para false se não definido
         dados_pagamento: data.dados_pagamento || '',
         payment_option_id: data.payment_option_id || null,
         permitir_modificacao_produtos: data.permitir_modificacao_produtos || 'permitir_reduzir_excluir',
