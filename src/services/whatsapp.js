@@ -27,7 +27,7 @@ export async function sendWhatsAppMessage(to, message) {
     })
 
     const data = await response.json()
-    
+
     if (!response.ok || !data.success) {
       throw new Error(data.error || 'Erro ao enviar mensagem')
     }
@@ -60,7 +60,7 @@ export async function sendBulkWhatsAppMessage(recipients, message) {
     })
 
     const data = await response.json()
-    
+
     if (!response.ok || !data.success) {
       throw new Error(data.error || 'Erro ao enviar mensagens')
     }
@@ -155,23 +155,91 @@ _Artea Joias - Compras Coletivas_`
 export async function notifyNewCatalog(catalog, clients, catalogUrl) {
   // Gerar número do link baseado no ID ou criar sequencial
   const linkNumber = catalog.numero_link || catalog.id?.slice(-4).toUpperCase() || Date.now().toString().slice(-4)
-  
-  const message = `Olá, %Nome%
 
-Acabamos de lançar um link repleto de novidades para você. As peças estão incríveis e escolhidas com muito amor.
+  const message = `🎉 *Novo Link Disponível!*
 
 *LINK ${linkNumber}* - ${catalog.nome || 'Semijóias de Luxo no Precinho'}
 
-Não fique de fora, entre no link abaixo ⬇️😃
+${catalog.descricao || 'Acabamos de lançar um link repleto de novidades para você. As peças estão incríveis e escolhidas com muito amor.'}
 
+🔗 Acesse agora:
 ${catalogUrl}
 
-Att, Equipe ARTEA JOIAS
+⏰ Não perca tempo! Garanta já suas peças favoritas.
 
-_Mensagem automática_`
+_Att, Equipe ARTEA JOIAS_`
 
   const recipients = clients.map(c => ({ telefone: c.telefone, nome: c.nome }))
-  return sendBulkWhatsAppMessage(recipients, message)
+
+  // Se o catálogo tiver imagem de capa, enviar como imagem com legenda
+  if (catalog.cover_image_url) {
+    try {
+      // Baixar a imagem e converter para base64
+      const imageResponse = await fetch(catalog.cover_image_url)
+      const imageBlob = await imageResponse.blob()
+      const arrayBuffer = await imageBlob.arrayBuffer()
+      const bytes = new Uint8Array(arrayBuffer)
+
+      // Converter para base64
+      let binary = ''
+      const len = bytes.byteLength
+      for (let i = 0; i < len; i++) {
+        binary += String.fromCharCode(bytes[i])
+      }
+      const base64 = btoa(binary)
+
+      // Determinar tipo MIME
+      const mimeType = imageBlob.type || 'image/jpeg'
+
+      // Enviar para cada cliente individualmente com imagem
+      const results = {
+        successCount: 0,
+        errorCount: 0,
+        total: recipients.length,
+        details: []
+      }
+
+      for (const recipient of recipients) {
+        try {
+          const personalizedMessage = message.replace(/%Nome%/gi, recipient.nome || 'Cliente')
+
+          const result = await sendWhatsAppFile(
+            recipient.telefone,
+            base64,
+            `${catalog.nome || 'Catálogo'}.jpg`,
+            personalizedMessage,
+            mimeType
+          )
+
+          if (result.success) {
+            results.successCount++
+            results.details.push({ nome: recipient.nome, success: true })
+          } else {
+            results.errorCount++
+            results.details.push({ nome: recipient.nome, success: false, error: result.error })
+          }
+
+          // Delay entre envios para evitar rate limiting
+          await new Promise(resolve => setTimeout(resolve, 2000))
+        } catch (error) {
+          results.errorCount++
+          results.details.push({ nome: recipient.nome, success: false, error: error.message })
+        }
+      }
+
+      return {
+        success: results.errorCount === 0,
+        data: results
+      }
+    } catch (error) {
+      console.error('Erro ao processar imagem, enviando apenas texto:', error)
+      // Se falhar ao processar imagem, enviar apenas texto
+      return sendBulkWhatsAppMessage(recipients, message)
+    }
+  } else {
+    // Sem imagem, enviar apenas texto
+    return sendBulkWhatsAppMessage(recipients, message)
+  }
 }
 
 /**
@@ -181,7 +249,7 @@ _Mensagem automática_`
  */
 export async function notifyCatalogClosed(catalog, clients) {
   const linkNumber = catalog.numero_link || catalog.id?.slice(-4).toUpperCase() || ''
-  
+
   const message = `Olá, %Nome%
 
 O *LINK ${linkNumber}* - ${catalog.nome || 'Catálogo'} foi *FECHADO*! 🔒
@@ -225,7 +293,7 @@ export async function sendWhatsAppFile(to, fileBase64, fileName, caption = '', m
     })
 
     const data = await response.json()
-    
+
     if (!response.ok || !data.success) {
       throw new Error(data.error || 'Erro ao enviar arquivo')
     }
@@ -289,7 +357,7 @@ export async function sendRomaneiosAutomaticamente(supabase, lotId, lot) {
     // 3. Para cada romaneio, gerar PDF e enviar
     for (const romaneio of romaneios) {
       const client = romaneio.client
-      
+
       // Verificar se cliente tem telefone
       if (!client?.telefone) {
         results.errors++
@@ -322,7 +390,7 @@ export async function sendRomaneiosAutomaticamente(supabase, lotId, lot) {
         const pdfBlob = await pdfResponse.blob()
         const arrayBuffer = await pdfBlob.arrayBuffer()
         const bytes = new Uint8Array(arrayBuffer)
-        
+
         // Converter para base64 de forma mais eficiente
         let binary = ''
         const len = bytes.byteLength
