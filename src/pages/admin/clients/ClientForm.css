@@ -1,0 +1,43 @@
+/* src/pages/admin/clients/ClientForm.css */
+
+/* No mobile, o cabeçalho fica em coluna */
+@media (max-width: 768px) {
+    .client-form-page .page-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+        padding: var(--spacing-sm) 0;
+    }
+
+    .form-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    .full-width {
+        grid-column: span 1 !important;
+    }
+
+    .client-form-page {
+        padding: var(--spacing-sm);
+    }
+}
+
+/* Garante que o grid funcione bem */
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--spacing-md);
+}
+
+.full-width {
+    grid-column: span 2;
+}
+
+/* Evita zoom no iOS */
+@media (max-width: 480px) {
+
+    .form-input,
+    .form-select {
+        font-size: 16px !important;
+    }
+}

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { ArrowLeft, Save, Users } from 'lucide-react'
 import { supabase } from '../../../lib/supabase'
+import './ClientForm.css'
 
 export default function ClientForm() {
   const { id } = useParams()
@@ -167,7 +168,7 @@ export default function ClientForm() {
 
   return (
     <div className="client-form-page">
-      <div className="page-header" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '1rem' }}>
+      <div className="page-header">
         <Link to="/admin/clientes" className="btn btn-outline btn-sm">
           <ArrowLeft size={16} /> Voltar
         </Link>
