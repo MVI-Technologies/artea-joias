@@ -33,11 +33,13 @@ export default function LotForm() {
     custo_motoboy: 0,
     custo_digitacao: 0,
     escritorio_pct: 0,
+    adicional_por_produto: 0,
     percentual_entrada: 0,
     taxa_separacao_dinamica: '',
     // Configurações
     exigir_dados_galvanica: false,
     adicionar_marca_agua: false,
+    enviar_romaneio_automaticamente: true, // Por padrão, envia automaticamente
     dados_pagamento: '',
     payment_option_id: null,
     permitir_modificacao_produtos: 'permitir_reduzir_excluir',
@@ -80,10 +82,12 @@ export default function LotForm() {
         custo_motoboy: data.custo_motoboy || 0,
         custo_digitacao: data.custo_digitacao || 0,
         escritorio_pct: data.escritorio_pct || 0,
+        adicional_por_produto: data.adicional_por_produto || 0,
         percentual_entrada: data.percentual_entrada || 0,
         taxa_separacao_dinamica: data.taxa_separacao_dinamica || '',
         exigir_dados_galvanica: data.exigir_dados_galvanica || false,
         adicionar_marca_agua: data.adicionar_marca_agua || false,
+        enviar_romaneio_automaticamente: data.enviar_romaneio_automaticamente !== false, // true por padrão
         dados_pagamento: data.dados_pagamento || '',
         payment_option_id: data.payment_option_id || null,
         permitir_modificacao_produtos: data.permitir_modificacao_produtos || 'permitir_reduzir_excluir',
@@ -123,11 +127,13 @@ export default function LotForm() {
         custo_motoboy: formData.custo_motoboy,
         custo_digitacao: formData.custo_digitacao,
         escritorio_pct: formData.escritorio_pct,
+        adicional_por_produto: formData.adicional_por_produto,
         percentual_entrada: formData.percentual_entrada,
         taxa_separacao_dinamica: formData.taxa_separacao_dinamica,
         // Configurações
         exigir_dados_galvanica: formData.exigir_dados_galvanica,
         adicionar_marca_agua: formData.adicionar_marca_agua,
+        enviar_romaneio_automaticamente: formData.enviar_romaneio_automaticamente,
         dados_pagamento: formData.dados_pagamento,
         payment_option_id: formData.payment_option_id,
         permitir_modificacao_produtos: formData.permitir_modificacao_produtos,
@@ -381,7 +387,7 @@ export default function LotForm() {
           <div className="form-section taxas-section">
             <div className="taxas-grid">
               <div className="form-group">
-                <label>Custo Separação <span className="optional">Opcional</span></label>
+                <label>Custo Separação <span className="optional">Opcional ($)</span></label>
                 <input
                   type="number"
                   step="0.01"
@@ -392,7 +398,7 @@ export default function LotForm() {
               </div>
 
               <div className="form-group">
-                <label>Custo Operacional <span className="optional">opcional, ($ por produto)</span></label>
+                <label>Custo Operacional <span className="optional">Opcional ($ por produto)</span></label>
                 <input
                   type="number"
                   step="0.01"
@@ -403,7 +409,7 @@ export default function LotForm() {
               </div>
 
               <div className="form-group">
-                <label>Escritório <span className="optional">Opcional, (% s/ produtos)</span></label>
+                <label>Escritório <span className="optional">Opcional (% s/ produtos)</span></label>
                 <input
                   type="number"
                   step="0.01"
@@ -414,7 +420,7 @@ export default function LotForm() {
               </div>
 
               <div className="form-group">
-                <label>Custo Motoboy <span className="optional">Opcional</span></label>
+                <label>Custo Motoboy <span className="optional">Opcional ($)</span></label>
                 <input
                   type="number"
                   step="0.01"
@@ -425,7 +431,7 @@ export default function LotForm() {
               </div>
 
               <div className="form-group">
-                <label>Custo Digitação <span className="optional">Opcional</span></label>
+                <label>Custo Digitação <span className="optional">Opcional ($)</span></label>
                 <input
                   type="number"
                   step="0.01"
@@ -436,13 +442,24 @@ export default function LotForm() {
               </div>
 
               <div className="form-group">
-                <label>Percentual Entrada <span className="optional">Opcional</span></label>
+                <label>Adicional por produto <span className="optional">Opcional (%)</span></label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={formData.adicional_por_produto}
+                  onChange={(e) => handleChange('adicional_por_produto', parseFloat(e.target.value) || 0)}
+                  placeholder="0"
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Percentual Entrada <span className="optional">Opcional (%)</span></label>
                 <input
                   type="number"
                   step="0.01"
                   value={formData.percentual_entrada}
                   onChange={(e) => handleChange('percentual_entrada', parseFloat(e.target.value) || 0)}
-                  placeholder="0"
+                  placeholder="100"
                 />
               </div>
             </div>
@@ -535,6 +552,18 @@ export default function LotForm() {
                     <option value="permitir_reduzir_excluir">Permitir o cliente reduzir e excluir produtos antes do fechamento</option>
                     <option value="nao_permitir">Não permitir o cliente reduzir e excluir produtos antes do fechamento</option>
                     <option value="permitir_reduzir_nao_excluir">Permitir o cliente reduzir mas não excluir</option>
+                  </select>
+                </div>
+
+                {/* Enviar Romaneio Automaticamente */}
+                <div className="form-group">
+                  <label>Enviar Romaneio Automaticamente</label>
+                  <select
+                    value={formData.enviar_romaneio_automaticamente ? 'enviar' : 'nao_enviar'}
+                    onChange={(e) => handleChange('enviar_romaneio_automaticamente', e.target.value === 'enviar')}
+                  >
+                    <option value="enviar">Enviar Romaneio Automaticamente</option>
+                    <option value="nao_enviar">Não enviar o romaneio para os clientes automaticamente</option>
                   </select>
                 </div>
 

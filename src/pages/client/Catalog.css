@@ -18,7 +18,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(to bottom, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.6) 60%, rgba(0,0,0,0.85) 100%);
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.2) 0%, rgba(0, 0, 0, 0.6) 60%, rgba(0, 0, 0, 0.85) 100%);
   z-index: 1;
 }
 
@@ -62,7 +62,7 @@
   font-size: 32px;
   font-weight: 700;
   margin: 8px 0;
-  text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 .hero-date {
@@ -91,15 +91,15 @@
   .catalog-hero {
     height: 220px;
   }
-  
+
   .hero-content {
     padding: 20px 16px;
   }
-  
+
   .hero-text h1 {
     font-size: 24px;
   }
-  
+
   .btn-back-hero {
     top: 16px;
     left: 16px;
@@ -117,7 +117,7 @@
   margin-bottom: 24px;
   padding: 12px 60px 12px 16px;
   border-radius: 0 0 12px 12px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.03);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.03);
   overflow: visible !important;
   margin-right: 0;
 }
@@ -244,7 +244,8 @@
   font-size: 15px;
   line-height: 1.6;
   color: #334155;
-  white-space: pre-line; /* Essential for preserving line breaks */
+  white-space: pre-line;
+  /* Essential for preserving line breaks */
 }
 
 /* Filters Bar */
@@ -280,11 +281,13 @@
 
 @media (min-width: 768px) {
   .products-grid {
-    grid-template-columns: repeat(auto-fill, 200px); /* Fixed width columns */
+    grid-template-columns: repeat(auto-fill, 200px);
+    /* Fixed width columns */
     gap: 24px;
-    justify-content: center; /* Center grid if space remains */
+    justify-content: center;
+    /* Center grid if space remains */
   }
-  
+
   .catalog-content-wrapper {
     padding: 0 24px;
   }
@@ -294,11 +297,12 @@
   .catalog-content-wrapper {
     padding: 0 4px;
   }
-  
+
   .product-card {
     border-radius: 4px;
     border: none;
-    height: 200px; /* Force height on mobile */
+    height: 200px;
+    /* Force height on mobile */
     /* Width is handled by grid (3 cols ~ 128px) */
   }
 }
@@ -331,14 +335,14 @@
 }
 
 .product-card:hover {
-  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
   border-color: #cbd5e1;
   transform: translateY(-2px);
 }
 
 .product-card:active {
   transform: translateY(0);
-  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
 }
 
 .product-card.adding {
@@ -349,7 +353,8 @@
 
 .product-image-area {
   width: 100%;
-  height: 100%; /* Fill the fixed card height */
+  height: 100%;
+  /* Fill the fixed card height */
   /* Remove aspect-ratio: 1/1 to allow non-square shapes */
   background-color: #f8fafc;
   position: relative;
@@ -401,6 +406,39 @@
 
 .product-card.out-of-stock .product-info {
   opacity: 0.7;
+}
+
+/* Watermark Overlay */
+.watermark-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 5;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.watermark-text {
+  font-size: 20px;
+  font-weight: 700;
+  color: rgba(0, 0, 0, 0.15);
+  text-transform: uppercase;
+  letter-spacing: 3px;
+  transform: rotate(-45deg);
+  white-space: nowrap;
+  user-select: none;
+}
+
+@media (max-width: 768px) {
+  .watermark-text {
+    font-size: 14px;
+    letter-spacing: 2px;
+  }
 }
 
 /* Indicadores de Quantidade sobre a imagem */
@@ -481,28 +519,28 @@
     font-size: 8px !important;
     padding: 2px 6px !important;
   }
-  
+
   .quantity-stock {
     font-size: 10px;
     padding: 4px 8px;
   }
-  
+
   .quantity-sold {
     font-size: 11px;
     padding: 4px 8px;
     min-width: 20px;
   }
-  
+
   .quantity-purchased {
     font-size: 9px;
     padding: 3px 6px;
   }
-  
+
   .quantity-missing {
     font-size: 10px;
     padding: 4px 8px;
   }
-  
+
   .out-of-stock-text {
     font-size: 18px;
     padding: 10px 20px;
@@ -564,7 +602,7 @@
   background-color: #0f172a;
   color: white;
   transition: all 0.2s;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .btn-add-cart:hover {
@@ -634,11 +672,11 @@
     align-items: stretch;
     gap: 10px;
   }
-  
+
   .quantity-controls {
     justify-content: center;
   }
-  
+
   .btn-add-cart {
     width: 100%;
     border-radius: 8px;
@@ -652,20 +690,26 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.35); /* Fundo leve conforme pedido */
+  background: rgba(0, 0, 0, 0.35);
+  /* Fundo leve conforme pedido */
   display: flex;
-  align-items: flex-start; /* Alinhado mais ao topo */
+  align-items: flex-start;
+  /* Alinhado mais ao topo */
   justify-content: center;
   z-index: 1000;
-  padding: 40px 20px 20px; /* Mais espaço no topo */
+  padding: 40px 20px 20px;
+  /* Mais espaço no topo */
 }
 
 .product-modal {
   background: white;
-  border-radius: 8px; /* Bordas menos arredondadas */
+  border-radius: 8px;
+  /* Bordas menos arredondadas */
   width: 90%;
-  max-width: 1400px; /* Bem largo */
-  max-height: 90vh; /* Altura máxima */
+  max-width: 1400px;
+  /* Bem largo */
+  max-height: 90vh;
+  /* Altura máxima */
   display: flex;
   flex-direction: column;
   box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
@@ -686,7 +730,8 @@
   margin: 0;
   font-size: 18px;
   font-weight: 500;
-  color: #374151; /* Cinza escuro, não preto puro */
+  color: #374151;
+  /* Cinza escuro, não preto puro */
 }
 
 .btn-close-modal {
@@ -710,13 +755,15 @@
 /* Corpo do Modal com Grid */
 .product-modal-body {
   padding: 24px;
-  overflow-y: auto; /* Scroll se necessário (mobile) */
+  overflow-y: auto;
+  /* Scroll se necessário (mobile) */
   flex: 1;
 }
 
 .modal-grid {
   display: grid;
-  grid-template-columns: 32% 34% 34%; /* Proporções aproximadas */
+  grid-template-columns: 32% 34% 34%;
+  /* Proporções aproximadas */
   gap: 24px;
   height: 100%;
 }
@@ -724,7 +771,8 @@
 /* Coluna 1: Imagem */
 .modal-col-image {
   height: 100%;
-  min-height: 400px; /* Altura mínima para desktop */
+  min-height: 400px;
+  /* Altura mínima para desktop */
   background: #f9fafb;
   border-radius: 4px;
   overflow: hidden;
@@ -736,7 +784,8 @@
 .modal-product-img {
   width: 100%;
   height: 100%;
-  object-fit: cover; /* Não esticar */
+  object-fit: cover;
+  /* Não esticar */
   display: block;
 }
 
@@ -760,7 +809,8 @@
 .info-card {
   background: white;
   border: 1px solid #e5e7eb;
-  border-radius: 8px; /* Card branco com borda */
+  border-radius: 8px;
+  /* Card branco com borda */
   padding: 24px;
   box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   height: 100%;
@@ -800,17 +850,20 @@
 }
 
 .info-row .label {
-  font-weight: 600; /* Semibold conforme pedido */
+  font-weight: 600;
+  /* Semibold conforme pedido */
   margin-right: 4px;
 }
 
 /* Área de Ação e Alert */
 .info-action-area {
-  margin-top: auto; /* Empurrar para baixo se sobrar espaço */
+  margin-top: auto;
+  /* Empurrar para baixo se sobrar espaço */
 }
 
 .closed-link-alert {
-  background-color: #fce7f3; /* Rosa claro */
+  background-color: #fce7f3;
+  /* Rosa claro */
   border: 1px solid #fbcfe8;
   color: #be185d;
   padding: 12px;
@@ -855,7 +908,8 @@
   justify-content: center;
   gap: 8px;
   padding: 12px;
-  background: #22c55e; /* Verde compra */
+  background: #22c55e;
+  /* Verde compra */
   color: white;
   border: none;
   border-radius: 6px;
@@ -879,7 +933,8 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  overflow: hidden; /* Para scroll interno */
+  overflow: hidden;
+  /* Para scroll interno */
 }
 
 .purchases-title {
@@ -895,11 +950,13 @@
   flex: 1;
   overflow-y: auto;
   margin-bottom: 16px;
-  padding-right: 4px; /* Espaço para scrollbar */
+  padding-right: 4px;
+  /* Espaço para scrollbar */
 }
 
 .purchases-list {
-  list-style-type: decimal; /* Lista numerada */
+  list-style-type: decimal;
+  /* Lista numerada */
   padding-left: 20px;
   margin: 0;
 }
@@ -959,7 +1016,8 @@
 /* Responsividade */
 @media (max-width: 1024px) {
   .modal-grid {
-    grid-template-columns: 1fr; /* 1 Coluna única */
+    grid-template-columns: 1fr;
+    /* 1 Coluna única */
     gap: 32px;
     display: flex;
     flex-direction: column;
@@ -977,7 +1035,8 @@
 
   .modal-col-image {
     min-height: 300px;
-    max-height: 400px; /* Limitar altura no mobile */
+    max-height: 400px;
+    /* Limitar altura no mobile */
   }
 
   .info-card {
@@ -985,7 +1044,7 @@
   }
 
   .modal-col-purchases {
-    max-height: 400px; /* Limitar altura compras no mobile */
+    max-height: 400px;
+    /* Limitar altura compras no mobile */
   }
 }
-

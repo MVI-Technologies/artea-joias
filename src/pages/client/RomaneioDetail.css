@@ -81,7 +81,7 @@
   border-radius: 12px;
   padding: 24px;
   margin-bottom: 20px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   border: 1px solid #e2e8f0;
 }
 
@@ -108,7 +108,7 @@
 }
 
 .payment-method {
-  background: rgba(255,255,255,0.1);
+  background: rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(10px);
   border-radius: 12px;
   padding: 20px;
@@ -163,7 +163,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  background: rgba(255,255,255,0.2);
+  background: rgba(255, 255, 255, 0.2);
   padding: 10px 12px;
   border-radius: 8px;
 }
@@ -179,7 +179,7 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  background: rgba(255,255,255,0.3);
+  background: rgba(255, 255, 255, 0.3);
   border: none;
   color: white;
   padding: 6px 12px;
@@ -191,14 +191,14 @@
 }
 
 .btn-copy:hover {
-  background: rgba(255,255,255,0.4);
+  background: rgba(255, 255, 255, 0.4);
 }
 
 .valor-destaque {
-  background: rgba(255,255,255,0.15);
+  background: rgba(255, 255, 255, 0.15);
   padding: 12px;
   border-radius: 8px;
-  border-left: 3px solid rgba(255,255,255,0.5);
+  border-left: 3px solid rgba(255, 255, 255, 0.5);
 }
 
 .valor-destaque .valor {
@@ -217,7 +217,7 @@
 .payment-message {
   margin-top: 16px;
   padding: 12px;
-  background: rgba(255,255,255,0.15);
+  background: rgba(255, 255, 255, 0.15);
   border-radius: 8px;
   font-size: 14px;
   line-height: 1.6;
@@ -258,11 +258,36 @@
   font-size: 12px;
 }
 
+/* Payment Additional Info */
+.payment-additional-info {
+  margin-top: 20px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  border-left: 3px solid rgba(255, 255, 255, 0.5);
+}
+
+.payment-additional-info h4 {
+  margin: 0 0 12px 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.payment-info-text {
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.payment-info-text p {
+  margin: 6px 0;
+  opacity: 0.95;
+}
+
 /* Upload Proof */
 .upload-proof {
   margin-top: 24px;
   padding-top: 24px;
-  border-top: 1px solid rgba(255,255,255,0.2);
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .upload-proof h4 {
@@ -277,8 +302,8 @@
 }
 
 .btn-upload {
-  background: rgba(255,255,255,0.2);
-  border: 2px dashed rgba(255,255,255,0.5);
+  background: rgba(255, 255, 255, 0.2);
+  border: 2px dashed rgba(255, 255, 255, 0.5);
   color: white;
   padding: 12px 20px;
   display: inline-flex;
@@ -289,8 +314,8 @@
 }
 
 .btn-upload:hover {
-  background: rgba(255,255,255,0.3);
-  border-color: rgba(255,255,255,0.7);
+  background: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.7);
 }
 
 .proof-uploaded {
@@ -461,7 +486,9 @@
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Responsive */

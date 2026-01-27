@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { 
-  ArrowLeft, 
-  Download, 
-  Copy, 
+import {
+  ArrowLeft,
+  Download,
+  Copy,
   CheckCircle,
   Clock,
   AlertCircle,
@@ -20,7 +20,7 @@ export default function RomaneioDetail() {
   const { romaneioId } = useParams()
   const navigate = useNavigate()
   const { user } = useAuth()
-  
+
   const [romaneio, setRomaneio] = useState(null)
   const [products, setProducts] = useState([])
   const [lot, setLot] = useState(null)
@@ -41,7 +41,7 @@ export default function RomaneioDetail() {
         .select('config')
         .eq('type', 'pix')
         .single()
-      
+
       if (pixIntegration?.config) {
         setPixConfig(pixIntegration.config)
       }
@@ -52,7 +52,7 @@ export default function RomaneioDetail() {
         .select(`
           *,
           client:clients(id, nome, telefone, email, enderecos),
-          lot:lots(id, nome, prazo_pagamento_horas)
+          lot:lots(id, nome, prazo_pagamento_horas, dados_pagamento)
         `)
         .eq('id', romaneioId)
         .single()
@@ -83,33 +83,33 @@ export default function RomaneioDetail() {
 
   const getStatusInfo = (status) => {
     const statusMap = {
-      'aguardando': { 
-        label: 'Aguardando Pagamento', 
-        class: 'status-warning', 
+      'aguardando': {
+        label: 'Aguardando Pagamento',
+        class: 'status-warning',
         icon: Clock,
         description: 'Realize o pagamento para confirmar seu pedido'
       },
-      'aguardando_pagamento': { 
-        label: 'Aguardando Pagamento', 
-        class: 'status-warning', 
+      'aguardando_pagamento': {
+        label: 'Aguardando Pagamento',
+        class: 'status-warning',
         icon: Clock,
         description: 'Realize o pagamento para confirmar seu pedido'
       },
-      'pago': { 
-        label: 'Pagamento Confirmado', 
-        class: 'status-success', 
+      'pago': {
+        label: 'Pagamento Confirmado',
+        class: 'status-success',
         icon: CheckCircle,
         description: 'Seu pagamento foi confirmado!'
       },
-      'pendente': { 
-        label: 'Pendente', 
-        class: 'status-secondary', 
+      'pendente': {
+        label: 'Pendente',
+        class: 'status-secondary',
         icon: AlertCircle,
         description: 'Aguardando processamento'
       },
-      'cancelado': { 
-        label: 'Cancelado', 
-        class: 'status-error', 
+      'cancelado': {
+        label: 'Cancelado',
+        class: 'status-error',
         icon: AlertCircle,
         description: 'Este pedido foi cancelado'
       }
@@ -132,7 +132,7 @@ export default function RomaneioDetail() {
     const pixKey = pixConfig?.chave || ''
     const beneficiary = pixConfig?.nome_beneficiario || ''
     const amount = romaneio?.valor_total || 0
-    
+
     // This is a simplified version. For production, implement full PIX BR Code spec
     return `PIX|${pixKey}|${beneficiary}|${amount.toFixed(2)}`
   }
@@ -162,7 +162,7 @@ export default function RomaneioDetail() {
       // Update romaneio
       const { error: updateError } = await supabase
         .from('romaneios')
-        .update({ 
+        .update({
           comprovante_url: urlData.publicUrl,
           updated_at: new Date().toISOString()
         })
@@ -287,14 +287,14 @@ export default function RomaneioDetail() {
         {romaneio.status_pagamento !== 'pago' && !expired && (
           <div className="payment-section card">
             <h2>💳 Pagamento</h2>
-            
+
             {/* PIX Payment - Usando config centralizada */}
             {pixConfig?.chave && (
               <div className="payment-method pix">
                 <h3>Pix</h3>
                 <div className="pix-details">
                   <div className="qr-code-container">
-                    <QRCodeSVG 
+                    <QRCodeSVG
                       value={generatePixQRCodeValue()}
                       size={200}
                       level="H"
@@ -344,16 +344,28 @@ export default function RomaneioDetail() {
               </div>
             )}
 
+            {/* Dados de pagamento adicionais do lote */}
+            {lot?.dados_pagamento && (
+              <div className="payment-additional-info">
+                <h4>📋 Informações Adicionais de Pagamento</h4>
+                <div className="payment-info-text">
+                  {lot.dados_pagamento.split('\n').map((line, i) => (
+                    <p key={i}>{line}</p>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Upload Comprovante */}
             <div className="upload-proof">
               <h4>Já realizou o pagamento?</h4>
               <p>Envie o comprovante para agilizar a confirmação</p>
-             <label className="btn btn-outline btn-upload">
+              <label className="btn btn-outline btn-upload">
                 <Upload size={18} />
                 {uploadingProof ? 'Enviando...' : 'Enviar Comprovante'}
-                <input 
-                  type="file" 
-                  accept="image/*,.pdf" 
+                <input
+                  type="file"
+                  accept="image/*,.pdf"
                   onChange={handleUploadProof}
                   disabled={uploadingProof}
                   style={{ display: 'none' }}
