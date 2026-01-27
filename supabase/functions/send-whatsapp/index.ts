@@ -131,6 +131,69 @@ async function sendSingleMessage(to: string, message: string) {
   return data;
 }
 
+/**
+ * Envia um arquivo/documento via Evolution API
+ * @param to - Número do destinatário
+ * @param fileBase64 - Arquivo em base64
+ * @param fileName - Nome do arquivo
+ * @param caption - Legenda opcional
+ * @param mimeType - Tipo MIME do arquivo (default: application/pdf)
+ */
+async function sendFileMessage(
+  to: string, 
+  fileBase64: string, 
+  fileName: string, 
+  caption?: string,
+  mimeType: string = 'application/pdf'
+) {
+  const formattedNumber = formatPhoneNumber(to);
+  
+  console.log(`📎 Enviando arquivo para: ${formattedNumber}`);
+  console.log(`📄 Arquivo: ${fileName}`);
+  
+  // Determinar mediaType baseado no mimeType
+  let mediaType = 'document';
+  if (mimeType.startsWith('image/')) {
+    mediaType = 'image';
+  } else if (mimeType.startsWith('video/')) {
+    mediaType = 'video';
+  } else if (mimeType.startsWith('audio/')) {
+    mediaType = 'audio';
+  }
+  
+  const response = await fetch(`${EVOLUTION_API_URL}/message/sendMedia/${EVOLUTION_INSTANCE}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': EVOLUTION_API_TOKEN || ''
+    },
+    body: JSON.stringify({
+      number: formattedNumber,
+      mediaMessage: {
+        mediaType: mediaType,
+        fileName: fileName,
+        caption: caption || '',
+        media: fileBase64
+      }
+    })
+  });
+
+  const responseText = await response.text();
+  
+  let data;
+  try {
+    data = JSON.parse(responseText);
+  } catch {
+    throw new Error(`Resposta inválida da API: ${responseText.substring(0, 100)}`);
+  }
+  
+  if (!response.ok) {
+    throw new Error(data?.message || `Erro ${response.status}`);
+  }
+
+  return data;
+}
+
 // ============================================
 // HANDLER PRINCIPAL
 // ============================================
@@ -188,6 +251,32 @@ Deno.serve(async (req: Request) => {
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     } 
+    
+    // =====================================
+    // ENVIO DE ARQUIVO/DOCUMENTO
+    // =====================================
+    else if (action === 'file') {
+      const { to, fileBase64, fileName, caption, mimeType } = body;
+      
+      if (!to || !fileBase64 || !fileName) {
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: 'Parâmetros inválidos: "to", "fileBase64" e "fileName" são obrigatórios' 
+          }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const result = await sendFileMessage(to, fileBase64, fileName, caption, mimeType);
+      
+      console.log('✅ Arquivo enviado com sucesso');
+      
+      return new Response(
+        JSON.stringify({ success: true, data: result }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
     
     // =====================================
     // ENVIO EM MASSA (COM PROTEÇÕES ANTI-BAN)
@@ -304,7 +393,7 @@ Deno.serve(async (req: Request) => {
     }
 
     return new Response(
-      JSON.stringify({ success: false, error: 'Ação não reconhecida. Use "single" ou "bulk".' }),
+      JSON.stringify({ success: false, error: 'Ação não reconhecida. Use "single", "bulk" ou "file".' }),
       { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 

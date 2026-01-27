@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Plus, Search, Bell, ChevronDown, Copy, ExternalLink, Link as LinkIcon, MoreVertical, Edit, Lock, FileText, Package, Scissors, X, Settings, AlertTriangle, CheckCircle, MessageSquare, Clock } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../../../lib/supabase'
-import { notifyCatalogClosed } from '../../../services/whatsapp'
+import { notifyCatalogClosed, sendRomaneiosAutomaticamente } from '../../../services/whatsapp'
 import './LotList.css'
 
 export default function LotList() {
@@ -231,6 +231,15 @@ export default function LotList() {
     setProcessing(true)
 
     try {
+      // Buscar dados atualizados do lote antes de fechar
+      const { data: lotData, error: lotError } = await supabase
+        .from('lots')
+        .select('*')
+        .eq('id', showConfirmModal.lot.id)
+        .single()
+
+      if (lotError) throw lotError
+
       const { error } = await supabase
         .from('lots')
         .update({ status: 'fechado' })
@@ -251,8 +260,34 @@ export default function LotList() {
         }
       }
 
+      // Enviar romaneios automaticamente se configurado
+      if (lotData?.enviar_romaneio_automaticamente) {
+        showToast('info', 'Enviando romaneios automaticamente...')
+        
+        try {
+          const romaneiosResult = await sendRomaneiosAutomaticamente(
+            supabase, 
+            showConfirmModal.lot.id, 
+            lotData
+          )
+          
+          if (romaneiosResult.success) {
+            showToast('success', `Romaneios enviados! ${romaneiosResult.sent} de ${romaneiosResult.total} enviado(s) com sucesso.`)
+          } else {
+            const errorMsg = romaneiosResult.error || 'Erro desconhecido'
+            const sentMsg = romaneiosResult.sent > 0 ? ` ${romaneiosResult.sent} enviado(s),` : ''
+            showToast('warning', `Envio parcial:${sentMsg} ${romaneiosResult.errors} erro(s). ${errorMsg}`)
+          }
+        } catch (romaneiosError) {
+          console.error('Erro ao enviar romaneios:', romaneiosError)
+          showToast('warning', 'Erro ao enviar romaneios automaticamente. Você pode enviá-los manualmente.')
+        }
+      }
+
       fetchLots()
-      showToast('success', 'Grupo fechado com sucesso!')
+      if (!lotData?.enviar_romaneio_automaticamente) {
+        showToast('success', 'Grupo fechado com sucesso!')
+      }
     } catch (error) {
       console.error('Erro ao fechar:', error)
       showToast('error', 'Erro ao fechar grupo')

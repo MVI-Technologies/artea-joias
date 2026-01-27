@@ -34,7 +34,7 @@ import {
 } from 'lucide-react'
 import ImageUpload from '../../../components/common/ImageUpload'
 import { supabase } from '../../../lib/supabase'
-import { notifyCatalogClosed } from '../../../services/whatsapp'
+import { notifyCatalogClosed, sendRomaneiosAutomaticamente } from '../../../services/whatsapp'
 import PortalDropdown from '../../../components/ui/PortalDropdown'
 import './LotDetail.css'
 
@@ -401,6 +401,30 @@ export default function LotDetail({ defaultTab }) {
         }
       } else {
         showNotification('success', 'Link fechado com sucesso!')
+      }
+
+      // Enviar romaneios automaticamente se configurado
+      if (updatedLot?.enviar_romaneio_automaticamente) {
+        setSendingNotification(true)
+        
+        try {
+          showNotification('info', 'Enviando romaneios automaticamente...')
+          
+          const romaneiosResult = await sendRomaneiosAutomaticamente(supabase, id, updatedLot)
+          
+          if (romaneiosResult.success) {
+            showNotification('success', `Romaneios enviados! ${romaneiosResult.sent} de ${romaneiosResult.total} enviado(s) com sucesso.`)
+          } else {
+            const errorMsg = romaneiosResult.error || 'Erro desconhecido'
+            const sentMsg = romaneiosResult.sent > 0 ? ` ${romaneiosResult.sent} enviado(s),` : ''
+            showNotification('warning', `Envio parcial:${sentMsg} ${romaneiosResult.errors} erro(s). ${errorMsg}`)
+          }
+        } catch (romaneiosError) {
+          console.error('Erro ao enviar romaneios:', romaneiosError)
+          showNotification('warning', 'Erro ao enviar romaneios automaticamente. Você pode enviá-los manualmente.')
+        } finally {
+          setSendingNotification(false)
+        }
       }
 
       fetchData()

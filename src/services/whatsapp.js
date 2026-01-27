@@ -197,3 +197,210 @@ _Mensagem automática_`
   const recipients = clients.map(c => ({ telefone: c.telefone, nome: c.nome }))
   return sendBulkWhatsAppMessage(recipients, message)
 }
+
+/**
+ * Enviar arquivo/PDF via WhatsApp
+ * @param {string} to - Número do destinatário (com DDD)
+ * @param {string} fileBase64 - Arquivo em base64
+ * @param {string} fileName - Nome do arquivo
+ * @param {string} caption - Legenda opcional
+ * @param {string} mimeType - Tipo MIME (default: application/pdf)
+ */
+export async function sendWhatsAppFile(to, fileBase64, fileName, caption = '', mimeType = 'application/pdf') {
+  try {
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/send-whatsapp?action=file`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        'apikey': SUPABASE_ANON_KEY
+      },
+      body: JSON.stringify({
+        to,
+        fileBase64,
+        fileName,
+        caption,
+        mimeType
+      })
+    })
+
+    const data = await response.json()
+    
+    if (!response.ok || !data.success) {
+      throw new Error(data.error || 'Erro ao enviar arquivo')
+    }
+
+    return { success: true, data: data.data }
+  } catch (error) {
+    console.error('Erro ao enviar arquivo via WhatsApp:', error)
+    return { success: false, error: error.message }
+  }
+}
+
+/**
+ * Enviar romaneios automaticamente para todos os clientes de um lote
+ * @param {Object} supabase - Cliente Supabase autenticado
+ * @param {string} lotId - ID do lote
+ * @param {Object} lot - Dados do lote (para nome)
+ * @returns {Promise<{success: boolean, sent: number, errors: number, details: Array}>}
+ */
+export async function sendRomaneiosAutomaticamente(supabase, lotId, lot) {
+  try {
+    // 1. Buscar todos os romaneios do lote com dados do cliente
+    const { data: romaneios, error: romaneiosError } = await supabase
+      .from('romaneios')
+      .select(`
+        id,
+        numero_romaneio,
+        client:clients(
+          id,
+          nome,
+          telefone
+        )
+      `)
+      .eq('lot_id', lotId)
+
+    if (romaneiosError) {
+      throw new Error(`Erro ao buscar romaneios: ${romaneiosError.message}`)
+    }
+
+    if (!romaneios || romaneios.length === 0) {
+      return {
+        success: true,
+        sent: 0,
+        errors: 0,
+        details: [],
+        message: 'Nenhum romaneio encontrado para este lote'
+      }
+    }
+
+    // 2. Obter token de autenticação
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.access_token) {
+      throw new Error('Sessão não encontrada. Faça login novamente.')
+    }
+
+    const results = {
+      sent: 0,
+      errors: 0,
+      details: []
+    }
+
+    // 3. Para cada romaneio, gerar PDF e enviar
+    for (const romaneio of romaneios) {
+      const client = romaneio.client
+      
+      // Verificar se cliente tem telefone
+      if (!client?.telefone) {
+        results.errors++
+        results.details.push({
+          romaneioId: romaneio.id,
+          clientName: client?.nome || 'Cliente desconhecido',
+          success: false,
+          error: 'Cliente não possui telefone cadastrado'
+        })
+        continue
+      }
+
+      try {
+        // 3.1. Gerar PDF do romaneio
+        const pdfResponse = await fetch(`${SUPABASE_URL}/functions/v1/generate-romaneio-pdf`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+            'apikey': SUPABASE_ANON_KEY
+          },
+          body: JSON.stringify({ romaneioId: romaneio.id })
+        })
+
+        if (!pdfResponse.ok) {
+          throw new Error(`Erro ao gerar PDF: ${pdfResponse.statusText}`)
+        }
+
+        // 3.2. Converter PDF para base64
+        const pdfBlob = await pdfResponse.blob()
+        const arrayBuffer = await pdfBlob.arrayBuffer()
+        const bytes = new Uint8Array(arrayBuffer)
+        
+        // Converter para base64 de forma mais eficiente
+        let binary = ''
+        const len = bytes.byteLength
+        for (let i = 0; i < len; i++) {
+          binary += String.fromCharCode(bytes[i])
+        }
+        const base64 = btoa(binary)
+
+        // 3.3. Preparar mensagem
+        const fileName = `Romaneio-${romaneio.numero_romaneio || romaneio.id.slice(-6)}.pdf`
+        const caption = `📄 *Romaneio - ${lot.nome || 'Pedido'}*
+
+Olá ${client.nome}!
+
+Seu romaneio está pronto. Segue em anexo o documento com todos os detalhes do seu pedido.
+
+*Número do Romaneio:* ${romaneio.numero_romaneio || 'N/A'}
+
+Em caso de dúvidas, entre em contato conosco.
+
+Att, Equipe ARTEA JOIAS`
+
+        // 3.4. Enviar via WhatsApp
+        const sendResult = await sendWhatsAppFile(
+          client.telefone,
+          base64,
+          fileName,
+          caption
+        )
+
+        if (sendResult.success) {
+          results.sent++
+          results.details.push({
+            romaneioId: romaneio.id,
+            clientName: client.nome,
+            success: true
+          })
+        } else {
+          results.errors++
+          results.details.push({
+            romaneioId: romaneio.id,
+            clientName: client.nome,
+            success: false,
+            error: sendResult.error
+          })
+        }
+
+        // Delay entre envios para evitar rate limiting
+        await new Promise(resolve => setTimeout(resolve, 2000))
+
+      } catch (error) {
+        console.error(`Erro ao processar romaneio ${romaneio.id}:`, error)
+        results.errors++
+        results.details.push({
+          romaneioId: romaneio.id,
+          clientName: client?.nome || 'Cliente desconhecido',
+          success: false,
+          error: error.message || 'Erro desconhecido'
+        })
+      }
+    }
+
+    return {
+      success: results.errors === 0,
+      sent: results.sent,
+      errors: results.errors,
+      total: romaneios.length,
+      details: results.details
+    }
+
+  } catch (error) {
+    console.error('Erro ao enviar romaneios automaticamente:', error)
+    return {
+      success: false,
+      sent: 0,
+      errors: 0,
+      details: [],
+      error: error.message
+    }
+  }
+}
