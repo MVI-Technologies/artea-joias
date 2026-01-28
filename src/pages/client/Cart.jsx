@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ShoppingCart, Trash2, ArrowRight, AlertTriangle, CheckCircle, Plus, Minus, FileText } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import { generateRomaneioPDF } from '../../utils/pdfGenerator'
 import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../components/common/Toast'
 import './Cart.css'
@@ -127,7 +128,7 @@ export default function Cart() {
         return `ROM-${dateStr}-${random}`
     }
 
-    const handleDownloadRomaneioPDF = async (romaneioId, fileName, items) => {
+    const handleDownloadRomaneioPDF = async (romaneioId, fileName, items, lot) => {
         if (!romaneioId) {
             throw new Error('ID do romaneio não fornecido')
         }
@@ -141,47 +142,60 @@ export default function Cart() {
                 throw new Error('Sessão não encontrada. Faça login novamente.')
             }
 
-            const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-romaneio-pdf`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${session.access_token}`,
-                    'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ romaneioId, items })
+            // Buscar dados adicionais para o PDF (Company, PIX)
+            const { data: company } = await supabase
+                .from('company_settings')
+                .select('*')
+                .single()
+
+            const { data: pixInt } = await supabase
+                .from('integrations')
+                .select('config')
+                .eq('type', 'pix')
+                .single()
+
+            // Buscar dados do romaneio completo se não passados
+            let romaneioData = {
+                id: romaneioId,
+                numero_romaneio: romaneioId, // Fallback
+                valor_total: items.reduce((acc, i) => acc + i.valor_total, 0),
+                valor_produtos: items.reduce((acc, i) => acc + i.valor_total, 0),
+                quantidade_itens: items.reduce((acc, i) => acc + i.quantidade, 0),
+                created_at: new Date().toISOString(),
+                // Default props expected by generator
+                client: client || { nome: 'Cliente' }
+            }
+
+            // Tentar buscar romaneio real para garantir dados corretos (ex: numero_romaneio gerado pelo trigger)
+            const { data: realRomaneio } = await supabase
+                .from('romaneios')
+                .select('*')
+                .eq('id', romaneioId)
+                .single()
+
+            if (realRomaneio) {
+                romaneioData = realRomaneio
+            }
+
+            const pdfBase64 = await generateRomaneioPDF({
+                romaneio: romaneioData,
+                lot: lot || { nome: 'Catálogo' },
+                client: client,
+                items: items,
+                company: company,
+                pixConfig: pixInt?.config
             })
 
-            if (!response.ok) {
-                let errorMessage = 'Falha ao gerar PDF'
-                try {
-                    const err = await response.json()
-                    errorMessage = err.error || errorMessage
-                    console.error('Erro da função:', err)
-                } catch {
-                    const text = await response.text()
-                    console.error('Resposta de erro (texto):', text)
-                    errorMessage = `Erro ${response.status}: ${response.statusText}`
-                }
-                throw new Error(errorMessage)
+            if (!pdfBase64) {
+                throw new Error('Falha ao gerar conteúdo do PDF')
             }
 
-            const blob = await response.blob()
-
-            if (blob.type === 'application/json') {
-                // Se retornou JSON em vez de PDF, é um erro
-                const errorData = await blob.text()
-                const parsed = JSON.parse(errorData)
-                throw new Error(parsed.error || 'Erro ao gerar PDF')
-            }
-
-            const url = window.URL.createObjectURL(blob)
-            const a = document.createElement('a')
-            a.href = url
-            a.download = fileName || `Romaneio-${romaneioId.slice(0, 8)}.pdf`
-            document.body.appendChild(a)
-            a.click()
-            window.URL.revokeObjectURL(url)
-            document.body.removeChild(a)
+            const link = document.createElement('a')
+            link.href = `data:application/pdf;base64,${pdfBase64}`
+            link.download = fileName || `Romaneio-${romaneioId.slice(0, 8)}.pdf`
+            document.body.appendChild(link)
+            link.click()
+            document.body.removeChild(link)
 
             return true
         } catch (error) {
@@ -428,7 +442,7 @@ export default function Cart() {
             }))
 
             // 4. Gerar e baixar PDF
-            await handleDownloadRomaneioPDF(romaneio.id, `Romaneio-${group.lot.nome}.pdf`, itemsForPDF)
+            await handleDownloadRomaneioPDF(romaneio.id, `Romaneio-${group.lot.nome}.pdf`, itemsForPDF, group.lot)
 
             // 5. Limpar Carrinho Local
             localStorage.removeItem(`cart_${lotId}`)
