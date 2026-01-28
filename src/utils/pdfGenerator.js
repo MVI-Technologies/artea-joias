@@ -23,24 +23,82 @@ const formatCPF = (cpf) => {
 }
 
 // Convert image URL to Base64
-const getBase64ImageFromURL = (url) => {
-    return new Promise((resolve, reject) => {
-        const img = new Image()
-        img.crossOrigin = 'Anonymous'
-        img.src = url
-        img.onload = () => {
-            const canvas = document.createElement('canvas')
-            canvas.width = img.width
-            canvas.height = img.height
-            const ctx = canvas.getContext('2d')
-            ctx.drawImage(img, 0, 0)
-            resolve(canvas.toDataURL('image/jpeg'))
+// Convert image URL to Base64 using fetch -> Blob -> Canvas (Standardize to JPEG)
+const getBase64ImageFromURL = async (url) => {
+    try {
+        // 1. Fetch Blob (Bypass CORS using our own Edge Function)
+        // This is more reliable than public proxies
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+        const proxyUrl = `${supabaseUrl}/functions/v1/proxy-image?url=`
+
+        const targetUrl = url.startsWith('http') ? url : `https://${url}`
+
+        let finalUrl = targetUrl
+        // Apply proxy for external restrictive CDNs
+        if (targetUrl.includes('semijoias.net')) {
+            finalUrl = proxyUrl + encodeURIComponent(targetUrl)
         }
-        img.onerror = () => {
-            console.warn('Failed to load image for PDF:', url)
-            resolve(null) // Resolve with null on error to continue generating PDF without image
+
+        // Timeout wrapper for fetch
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), 3000) // 3 seconds max per image
+
+        try {
+            const response = await fetch(finalUrl, {
+                signal: controller.signal
+            })
+            clearTimeout(timeoutId)
+
+            if (!response.ok) throw new Error(`Status ${response.status}`)
+            const blob = await response.blob()
+
+            // 2. Create Object URL
+            const objectUrl = URL.createObjectURL(blob)
+
+            // 3. Draw to Canvas to force JPEG format and resize if needed
+            return new Promise((resolve, reject) => {
+                const img = new Image()
+                img.onload = () => {
+                    const canvas = document.createElement('canvas')
+                    // Optional: Resize if too big to save PDF size
+                    const maxDim = 500
+                    let width = img.width
+                    let height = img.height
+
+                    if (width > maxDim || height > maxDim) {
+                        const ratio = Math.min(maxDim / width, maxDim / height)
+                        width *= ratio
+                        height *= ratio
+                    }
+
+                    canvas.width = width
+                    canvas.height = height
+
+                    const ctx = canvas.getContext('2d')
+                    // Fill white background for transparency handling
+                    ctx.fillStyle = '#FFFFFF'
+                    ctx.fillRect(0, 0, width, height)
+
+                    ctx.drawImage(img, 0, 0, width, height)
+
+                    URL.revokeObjectURL(objectUrl)
+                    resolve(canvas.toDataURL('image/jpeg', 0.8)) // Force JPEG 80% quality
+                }
+                img.onerror = (e) => {
+                    console.warn('Canvas draw failed', e)
+                    URL.revokeObjectURL(objectUrl)
+                    resolve(null)
+                }
+                img.src = objectUrl
+            })
+        } catch (err) {
+            clearTimeout(timeoutId)
+            throw err
         }
-    })
+    } catch (error) {
+        console.warn('Failed to load image for PDF:', url, error)
+        return null
+    }
 }
 
 export const generateRomaneioPDF = async ({ romaneio, lot, client, items, company, pixConfig }) => {
@@ -107,10 +165,29 @@ export const generateRomaneioPDF = async ({ romaneio, lot, client, items, compan
     drawLabelValue('Data Fechamento: ', formatDate(lot?.updated_at), currentY + 4)
 
     // --- Products Table ---
-    // Prepare items data with images
+    // Group items by product_id to merge duplicates
+    const groupedItemsMap = {}
+
+    items.forEach(item => {
+        const prodId = item.product_id || item.product?.id
+        if (!prodId) return // Skip invalid items
+
+        if (!groupedItemsMap[prodId]) {
+            groupedItemsMap[prodId] = {
+                ...item,
+                quantidade: Number(item.quantidade),
+                valor_total: Number(item.valor_total)
+            }
+        } else {
+            groupedItemsMap[prodId].quantidade += Number(item.quantidade)
+            groupedItemsMap[prodId].valor_total += Number(item.valor_total)
+        }
+    })
+
+    const uniqueItems = Object.values(groupedItemsMap)
     const tableRows = []
 
-    for (const item of items) {
+    for (const item of uniqueItems) {
         const product = item.product || {}
         // We will handle images via didDrawCell
 
@@ -118,7 +195,7 @@ export const generateRomaneioPDF = async ({ romaneio, lot, client, items, compan
             '', // Image placeholder
             product.category?.nome || 'Geral', // Categoria
             product.descricao || product.nome || '', // Descrição
-            formatCurrency(item.valor_unitario),
+            formatCurrency(item.valor_unitario || item.preco_unitario),
             item.quantidade,
             formatCurrency(item.valor_total)
         ])
@@ -131,10 +208,14 @@ export const generateRomaneioPDF = async ({ romaneio, lot, client, items, compan
 
     // Sequential loading to avoid overwhelming network/canvas
     for (let i = 0; i < items.length; i++) {
-        if (items[i].product?.imagem1) {
-            const base64 = await getBase64ImageFromURL(items[i].product.imagem1)
+        const url = items[i].product?.imagem1
+        if (url) {
+            console.log(`[PDF] Baixando imagem para item ${i}:`, url)
+            const base64 = await getBase64ImageFromURL(url)
             if (base64) {
                 imageMap[i] = base64
+                // Log simplified size info
+                console.log(`[PDF] Imagem ${i} carregada (Size: ${base64.length})`)
             }
         }
     }
@@ -148,11 +229,16 @@ export const generateRomaneioPDF = async ({ romaneio, lot, client, items, compan
             fontSize: 9,
             cellPadding: 3,
             valign: 'middle',
-            halign: 'center'
+            halign: 'center',
+            minCellHeight: 24 // Ensure height for image (20px + padding)
         },
         columnStyles: {
-            0: { cellWidth: 25, minCellHeight: 25 }, // Image column
-            2: { halign: 'left' } // Description left aligned
+            0: { cellWidth: 25 }, // Image
+            1: { cellWidth: 25 }, // Category
+            2: { halign: 'left' }, // Description (Auto width)
+            3: { cellWidth: 30 }, // Price
+            4: { cellWidth: 20 }, // Qty
+            5: { cellWidth: 30 }  // Total
         },
         headStyles: {
             fillColor: [255, 255, 255],
@@ -161,13 +247,28 @@ export const generateRomaneioPDF = async ({ romaneio, lot, client, items, compan
             lineColor: [0, 0, 0],
             fontStyle: 'bold'
         },
+        // Prevent row splitting to protect images
+        rowPageBreak: 'avoid',
         didDrawCell: (data) => {
             // Add image to first column (index 0) of body rows
             if (data.section === 'body' && data.column.index === 0) {
                 const rowIndex = data.row.index
                 const imageBase64 = imageMap[rowIndex]
+
                 if (imageBase64) {
-                    doc.addImage(imageBase64, 'JPEG', data.cell.x + 2, data.cell.y + 2, 20, 20)
+                    try {
+                        let format = 'JPEG'
+                        if (imageBase64.includes('image/png')) format = 'PNG'
+
+                        // Center image in cell
+                        const imgSize = 20
+                        const x = data.cell.x + (data.cell.width - imgSize) / 2
+                        const y = data.cell.y + (data.cell.height - imgSize) / 2
+
+                        doc.addImage(imageBase64, format, x, y, imgSize, imgSize)
+                    } catch (err) {
+                        console.error('Erro ao desenhar imagem:', err)
+                    }
                 }
             }
         }
