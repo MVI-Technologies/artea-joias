@@ -66,12 +66,32 @@ Deno.serve(async (req: Request) => {
         
         if (products && products.length > 0 && products[0].product?.imagem1) {
             imageUrl = products[0].product.imagem1;
+            console.log('Using product image:', imageUrl);
         } else {
-            // System branding fallback (placeholder)
-            imageUrl = 'https://artea-joias.vercel.app/logo-og.png'; 
+            // System branding fallback
+            imageUrl = 'https://artea-joias.vercel.app/logo.png'; 
+            console.log('Using fallback logo:', imageUrl);
         }
     }
 
+    // Ensure absolute URL
+    if (imageUrl && !imageUrl.startsWith('http')) {
+        // If it's a relative path, we try to construct a storage URL
+        // We assume it might be in catalog-covers or products if it's just a filename
+        // But since we don't know the bucket easily, this is a best-effort.
+        // However, if it starts with /, it might be a local asset in Vercel? Unlikely for DB content.
+        
+        const supabaseUrl = Deno.env.get('SUPABASE_URL');
+        if (supabaseUrl && !imageUrl.startsWith('/')) {
+             // Heuristic: if it looks like a filename, assume catalog-covers
+             imageUrl = `${supabaseUrl}/storage/v1/object/public/catalog-covers/${imageUrl}`;
+             console.log('Constructed storage URL:', imageUrl);
+        } else if (imageUrl.startsWith('/')) {
+             // Relative to frontend domain
+             imageUrl = `https://artea-joias.vercel.app${imageUrl}`;
+             console.log('Constructed frontend URL:', imageUrl);
+        }
+    }
     const title = lot.nome || 'Catálogo Artea Joias';
     const description = lot.descricao || 'Participe do grupo de compras e garanta preços especiais.';
     const frontendUrl = 'https://artea-joias.vercel.app'; 
