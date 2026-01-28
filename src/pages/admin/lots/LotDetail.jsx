@@ -891,7 +891,7 @@ export default function LotDetail({ defaultTab }) {
         <div className="link-info">
           <span className="link-label">Link para compartilhar:</span>
           <span className="link-url">
-            {window.location.origin}/catalogo/{lot.link_compra || lot.id}
+            {window.location.origin}/app/catalogo/{lot.link_compra || lot.id}
           </span>
         </div>
         <div className="link-actions">

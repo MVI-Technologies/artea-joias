@@ -1,6 +1,17 @@
 {
   "rewrites": [
     {
+      "source": "/app/catalogo/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "User-Agent",
+          "value": ".*(facebookexternalhit|whatsapp|twitterbot|linkedinbot|telegrambot|discordbot|bingbot|yandex|turnitinbot|slackbot|slackbot-linkexpanding).*"
+        }
+      ],
+      "destination": "https://[YOUR_PROJECT_REF].supabase.co/functions/v1/preview-catalog?id=$1"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
