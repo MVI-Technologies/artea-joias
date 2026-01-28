@@ -1137,62 +1137,34 @@
   font-size: 14px;
 }
 
-/* Override mobile.css mobile-card-actions for LotList */
-@media (max-width: 768px) {
-  .mobile-lots-container .mobile-card-actions {
-    display: grid !important;
-    grid-template-columns: repeat(2, 1fr) !important;
-    /* 2 colunas de tamanho EXATAMENTE igual */
-    gap: 8px !important;
-  }
+  /* Override mobile.css mobile-card-actions for LotList */
+  @media (max-width: 768px) {
+    .mobile-lots-container .mobile-card-actions {
+      display: grid !important;
+      grid-template-columns: 1fr 1fr !important;
+      gap: 8px !important;
+    }
 
-  .mobile-lots-container .mobile-card-actions .btn {
-    width: 100% !important;
-    justify-content: center;
-    font-size: 12px !important;
-    padding: 8px 12px !important;
-    min-height: 36px !important;
-    /* Altura mínima consistente */
-    box-sizing: border-box !important;
-    min-width: auto !important;
-    max-width: none !important;
-    flex: 1 1 0 !important;
-    /* Força todos a terem a mesma largura no flex/grid */
-  }
+    /* Target direct children buttons/links explicitly for uniform sizing */
+    .mobile-lots-container .mobile-card-actions .btn {
+      width: 100% !important;
+      height: 36px !important;
+      min-height: 36px !important;
+      max-height: 36px !important;
+      padding: 0 8px !important;
+      font-size: 12px !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      box-sizing: border-box !important;
+      margin: 0 !important;
+      min-width: 0 !important;
+    }
 
-  /* Garantir que btn-sm também tenha o mesmo tamanho */
-  .mobile-lots-container .mobile-card-actions .btn-sm {
-    min-height: 36px !important;
-    padding: 8px 12px !important;
-    width: 100% !important;
-    min-width: auto !important;
-    max-width: none !important;
-    flex: 1 1 0 !important;
+    /* Ensure icons are properly sized */
+    .mobile-lots-container .mobile-card-actions .btn svg {
+      width: 14px !important;
+      height: 14px !important;
+      margin-right: 4px !important;
+    }
   }
-
-  /* Forçar btn-primary e btn-secondary a terem o mesmo tamanho */
-  .mobile-lots-container .mobile-card-actions .btn-primary,
-  .mobile-lots-container .mobile-card-actions .btn-secondary,
-  .mobile-lots-container .mobile-card-actions .btn-success {
-    width: 100% !important;
-    min-width: auto !important;
-    max-width: none !important;
-    padding: 8px 12px !important;
-    font-size: 12px !important;
-    flex: 1 1 0 !important;
-    /* Força todos a ocuparem o mesmo espaço */
-  }
-
-  /* Regra ultra-específica para btn-primary */
-  .mobile-lots-container .mobile-card-actions a.btn.btn-sm.btn-primary,
-  .mobile-lots-container .mobile-card-actions a.btn.btn-sm.btn-secondary,
-  .mobile-lots-container .mobile-card-actions button.btn.btn-sm.btn-success {
-    width: 100% !important;
-    min-width: 0 !important;
-    max-width: 100% !important;
-    padding: 8px 12px !important;
-    font-size: 12px !important;
-    flex: 1 1 0% !important;
-    box-sizing: border-box !important;
-  }
-}
