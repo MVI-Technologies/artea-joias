@@ -1,3 +1,5 @@
+import { generateRomaneioPDF } from '../utils/pdfGenerator'
+
 /**
  * Serviço de integração com WhatsApp via Supabase Edge Function
  * A Edge Function faz a comunicação segura com a Evolution API
@@ -314,16 +316,38 @@ export async function sendWhatsAppFile(to, fileBase64, fileName, caption = '', m
  */
 export async function sendRomaneiosAutomaticamente(supabase, lotId, lot) {
   try {
-    // 1. Buscar todos os romaneios do lote com dados do cliente
+    // 1. Buscar configurações necessárias (Company e PIX)
+    const { data: company } = await supabase
+      .from('company_settings')
+      .select('*')
+      .single()
+
+    const { data: pixInt } = await supabase
+      .from('integrations')
+      .select('config')
+      .eq('type', 'pix')
+      .single()
+
+    const pixConfig = pixInt?.config || null
+
+    // 2. Buscar todos os romaneios do lote com dados completos (cliente e itens)
     const { data: romaneios, error: romaneiosError } = await supabase
       .from('romaneios')
       .select(`
-        id,
-        numero_romaneio,
+        *,
         client:clients(
           id,
           nome,
-          telefone
+          telefone,
+          cpf,
+          email
+        ),
+        items:romaneio_items(
+            *,
+            product:products(
+                *,
+                category:categories(nome)
+            )
         )
       `)
       .eq('lot_id', lotId)
@@ -342,19 +366,13 @@ export async function sendRomaneiosAutomaticamente(supabase, lotId, lot) {
       }
     }
 
-    // 2. Obter token de autenticação
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session?.access_token) {
-      throw new Error('Sessão não encontrada. Faça login novamente.')
-    }
-
     const results = {
       sent: 0,
       errors: 0,
       details: []
     }
 
-    // 3. Para cada romaneio, gerar PDF e enviar
+    // 3. Para cada romaneio, gerar PDF localmente e enviar
     for (const romaneio of romaneios) {
       const client = romaneio.client
 
@@ -371,52 +389,43 @@ export async function sendRomaneiosAutomaticamente(supabase, lotId, lot) {
       }
 
       try {
-        // 3.1. Gerar PDF do romaneio
-        const pdfResponse = await fetch(`${SUPABASE_URL}/functions/v1/generate-romaneio-pdf`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.access_token}`,
-            'apikey': SUPABASE_ANON_KEY
-          },
-          body: JSON.stringify({ romaneioId: romaneio.id })
+        // 3.1. Gerar PDF do romaneio LOCALMENTE
+        const fileBase64 = await generateRomaneioPDF({
+          romaneio,
+          lot,
+          client,
+          items: romaneio.items || [],
+          company,
+          pixConfig
         })
 
-        if (!pdfResponse.ok) {
-          throw new Error(`Erro ao gerar PDF: ${pdfResponse.statusText}`)
+        if (!fileBase64) {
+          throw new Error('Falha ao gerar PDF (conteúdo vazio)')
         }
 
-        // 3.2. Converter PDF para base64
-        const pdfBlob = await pdfResponse.blob()
-        const arrayBuffer = await pdfBlob.arrayBuffer()
-        const bytes = new Uint8Array(arrayBuffer)
-
-        // Converter para base64 de forma mais eficiente
-        let binary = ''
-        const len = bytes.byteLength
-        for (let i = 0; i < len; i++) {
-          binary += String.fromCharCode(bytes[i])
-        }
-        const base64 = btoa(binary)
-
-        // 3.3. Preparar mensagem
+        // 3.2. Preparar mensagem
         const fileName = `Romaneio-${romaneio.numero_romaneio || romaneio.id.slice(-6)}.pdf`
-        const caption = `📄 *Romaneio - ${lot.nome || 'Pedido'}*
 
-Olá ${client.nome}!
+        // Personalizar mensagem
+        const firstName = client.nome ? client.nome.split(' ')[0] : 'Cliente'
+        const caption = `📄 *Seu Pedido Chegou!*
+        
+Olá ${firstName}! 
 
-Seu romaneio está pronto. Segue em anexo o documento com todos os detalhes do seu pedido.
+Seu romaneio do grupo *${lot.nome}* já está pronto.
+        
+Confira no PDF anexo todos os detalhes dos seus produtos e as informações para pagamento.
 
-*Número do Romaneio:* ${romaneio.numero_romaneio || 'N/A'}
+*Importante:* O pagamento deve ser realizado em até 24h.
 
-Em caso de dúvidas, entre em contato conosco.
+Dúvidas? Estamos à disposição.
 
-Att, Equipe ARTEA JOIAS`
+Att, ${company?.nome_empresa || 'Artea Joias'}`
 
-        // 3.4. Enviar via WhatsApp
+        // 3.3. Enviar via WhatsApp
         const sendResult = await sendWhatsAppFile(
           client.telefone,
-          base64,
+          fileBase64,
           fileName,
           caption
         )
@@ -438,7 +447,7 @@ Att, Equipe ARTEA JOIAS`
           })
         }
 
-        // Delay entre envios para evitar rate limiting
+        // Delay entre envios para evitar rate limiting (2s)
         await new Promise(resolve => setTimeout(resolve, 2000))
 
       } catch (error) {

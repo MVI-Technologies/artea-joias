@@ -12,6 +12,7 @@ import {
   Upload
 } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
+import { generateRomaneioPDF } from '../../utils/pdfGenerator'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import './RomaneioDetail.css'
@@ -25,6 +26,7 @@ export default function RomaneioDetail() {
   const [products, setProducts] = useState([])
   const [lot, setLot] = useState(null)
   const [pixConfig, setPixConfig] = useState(null) // Centralized payment config
+  const [company, setCompany] = useState(null)
   const [loading, setLoading] = useState(true)
   const [copiedPix, setCopiedPix] = useState(false)
   const [uploadingProof, setUploadingProof] = useState(false)
@@ -66,12 +68,19 @@ export default function RomaneioDetail() {
         .from('romaneio_items')
         .select(`
           *,
-          product:products(id, nome, codigo_sku, imagem1, preco)
+          product:products(id, nome, codigo_sku, imagem1, preco, descricao, categoria_id, category:categories(nome))
         `)
         .eq('romaneio_id', romaneioId)
 
       if (itemsError) throw itemsError
       setProducts(itemsData || [])
+
+      // 4. Buscar configurações da empresa
+      const { data: companyData } = await supabase
+        .from('company_settings')
+        .select('*')
+        .single()
+      setCompany(companyData)
 
     } catch (error) {
       console.error('Erro ao carregar romaneio:', error)
@@ -182,29 +191,23 @@ export default function RomaneioDetail() {
 
   const downloadPDF = async () => {
     try {
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-romaneio-pdf`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
-          },
-          body: JSON.stringify({ romaneioId })
-        }
-      )
+      const pdfBase64 = await generateRomaneioPDF({
+        romaneio,
+        lot,
+        client: romaneio.client,
+        items: products, // products state already has item structure from romaneio_items fetch
+        company,
+        pixConfig
+      })
 
-      if (!response.ok) throw new Error('Erro ao gerar PDF')
+      if (!pdfBase64) throw new Error('Erro ao gerar PDF')
 
-      const blob = await response.blob()
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `Romaneio-${romaneio.numero_romaneio}.pdf`
-      document.body.appendChild(a)
-      a.click()
-      window.URL.revokeObjectURL(url)
-      document.body.removeChild(a)
+      const link = document.createElement('a')
+      link.href = `data:application/pdf;base64,${pdfBase64}`
+      link.download = `Romaneio-${romaneio.numero_romaneio || romaneio.numero_pedido}.pdf`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
     } catch (error) {
       console.error('Erro ao baixar PDF:', error)
       alert('Erro ao baixar PDF. Tente novamente.')
