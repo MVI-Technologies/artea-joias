@@ -1,6 +1,17 @@
 {
   "rewrites": [
     {
+      "source": "/catalogo/(.*)",
+      "has": [
+        {
+          "type": "header",
+          "key": "User-Agent",
+          "value": ".*(facebookexternalhit|whatsapp|twitterbot|linkedinbot|telegrambot|discordbot|bingbot|yandex|turnitinbot|slackbot|slackbot-linkexpanding).*"
+        }
+      ],
+      "destination": "https://ziefqkgdfbutsaolbemt.supabase.co/functions/v1/smart-endpoint?id=$1"
+    },
+    {
       "source": "/app/catalogo/(.*)",
       "has": [
         {
