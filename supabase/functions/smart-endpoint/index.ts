@@ -69,7 +69,7 @@ Deno.serve(async (req: Request) => {
             console.log('Using product image:', imageUrl);
         } else {
             // System branding fallback
-            imageUrl = 'https://artea-joias.vercel.app/logo.png'; 
+            imageUrl = 'https://www.grupoaadecomprascoletivas.site/logo.png'; 
             console.log('Using fallback logo:', imageUrl);
         }
     }
@@ -88,13 +88,13 @@ Deno.serve(async (req: Request) => {
              console.log('Constructed storage URL:', imageUrl);
         } else if (imageUrl.startsWith('/')) {
              // Relative to frontend domain
-             imageUrl = `https://artea-joias.vercel.app${imageUrl}`;
+             imageUrl = `https://www.grupoaadecomprascoletivas.site${imageUrl}`;
              console.log('Constructed frontend URL:', imageUrl);
         }
     }
     const title = lot.nome || 'Catálogo Artea Joias';
     const description = lot.descricao || 'Participe do grupo de compras e garanta preços especiais.';
-    const frontendUrl = 'https://artea-joias.vercel.app'; 
+    const frontendUrl = 'https://www.grupoaadecomprascoletivas.site'; 
     const finalUrl = `${frontendUrl}/app/catalogo/${lot.link_compra || lot.id}`;
 
 
