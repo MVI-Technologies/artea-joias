@@ -313,6 +313,24 @@ export default function LotForm() {
           </div>
 
           <div className="form-group">
+            <label>Capa do Catálogo (Destaque)</label>
+            <div className="cover-image-upload-wrapper" style={{ marginBottom: '16px' }}>
+              <ImageUpload
+                value={formData.cover_image_url}
+                onChange={(url) => handleChange('cover_image_url', url)}
+                bucketName="catalog-covers"
+                label="Adicionar Capa"
+                height="200px"
+                width="100%"
+                rounded={true}
+              />
+              <small className="field-hint" style={{ display: 'block', marginTop: '4px', color: '#666', fontSize: '0.85rem' }}>
+                Esta imagem aparecerá ao compartilhar o link no WhatsApp e na listagem.
+              </small>
+            </div>
+          </div>
+
+          <div className="form-group">
             <label>Descrição <span className="optional">Opcional</span></label>
             <textarea
               value={formData.descricao}
