@@ -18,7 +18,7 @@ import {
   User
 } from 'lucide-react'
 import { supabase } from '../../../lib/supabase'
-import { sendBulkWhatsAppMessage } from '../../../services/whatsapp'
+import { sendWhatsAppMessage } from '../../../services/whatsapp'
 import './WhatsApp.css'
 
 export default function WhatsApp() {
@@ -184,10 +184,12 @@ export default function WhatsApp() {
       return
     }
 
-    showConfirm(`Enviar mensagem para ${targetClients.length} cliente(s)?`, () => {
+    showConfirm(`Enviar mensagem para ${targetClients.length} cliente(s)?\nIMPORTANTE: Mantenha esta janela aberta durante o envio.`, () => {
       executeSend(targetClients)
     })
   }
+
+  const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms))
 
   const executeSend = async (targetClients) => {
     setSending(true)
@@ -209,35 +211,55 @@ export default function WhatsApp() {
       console.error('Erro ao criar registro:', insertError)
     }
 
-    // Preparar lista de destinatários
-    const recipients = targetClients.map(c => ({
-      telefone: c.telefone,
-      nome: c.nome
-    }))
-
-    // Enviar em massa via Edge Function
-    const result = await sendBulkWhatsAppMessage(recipients, message.trim())
-
     let successCount = 0
     let errorCount = 0
     let errors = []
 
-    if (result.success && result.data) {
-      successCount = result.data.successCount || 0
-      errorCount = result.data.errorCount || 0
-      errors = result.data.details?.filter(d => !d.success).map(d => ({
-        client: d.nome,
-        error: d.error
-      })) || []
-    } else {
-      // Erro geral
-      errorCount = targetClients.length
-      errors = [{ client: 'Todos', error: result.error || 'Erro desconhecido' }]
+    // Processar envio um por um no frontend para evitar timeout e controlar delay
+    for (let i = 0; i < targetClients.length; i++) {
+      const client = targetClients[i]
+
+      try {
+        // Personalizar mensagem (simples substituição no frontend também)
+        // A Edge Function também faz isso, mas se usarmos o envio single, mandamos a mensagem crua
+        // e deixamos a edge function (ou fazemos aqui). 
+        // A função sendWhatsAppMessage manda para 'single' que chama 'addInvisibleVariation' e manda.
+        // A substituição de %Nome% no 'bulk' era feita na Edge Function. No 'single', não tem substituição automática.
+        // Precisamos fazer a substituição AQUI antes de enviar.
+
+        const personalizedMessage = message.trim().replace(/%Nome%/gi, client.nome || 'Cliente')
+
+        const result = await sendWhatsAppMessage(client.telefone, personalizedMessage)
+
+        if (result.success) {
+          successCount++
+        } else {
+          errorCount++
+          errors.push({
+            client: client.nome,
+            error: result.error
+          })
+        }
+      } catch (err) {
+        errorCount++
+        errors.push({
+          client: client.nome,
+          error: err.message
+        })
+      }
+
+      // Atualizar progresso
+      setSendProgress({ current: i + 1, total: targetClients.length })
+
+      // Delay aleatório (Anti-ban) - Entre 3 e 7 segundos
+      // Não esperar no último
+      if (i < targetClients.length - 1) {
+        const delay = Math.floor(Math.random() * (7000 - 3000 + 1)) + 3000
+        await wait(delay)
+      }
     }
 
-    setSendProgress({ current: targetClients.length, total: targetClients.length })
-
-    // Atualizar registro com resultado
+    // Atualizar registro com resultado final
     if (messageRecord) {
       await supabase
         .from('whatsapp_messages')
