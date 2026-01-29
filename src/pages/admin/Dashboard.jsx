@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { 
-  Package, 
-  Users, 
-  ShoppingBag, 
-  LinkIcon, 
+import {
+  Package,
+  Users,
+  ShoppingBag,
+  LinkIcon,
   TrendingUp,
   Calendar,
   DollarSign
@@ -48,11 +48,12 @@ export default function Dashboard() {
         .select('*', { count: 'exact', head: true })
         .eq('ativo', true)
 
-      // Lotes abertos
-      const { count: openLots } = await supabase
+      // Lotes (Todos) - Contagem explícita sem head:true para evitar cache issues
+      const { data: allLots, error: lotsError } = await supabase
         .from('lots')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'aberto')
+        .select('id')
+
+      const realTotalLots = allLots ? allLots.length : 0
 
       // Total de pedidos
       const { count: totalOrders } = await supabase
@@ -74,7 +75,7 @@ export default function Dashboard() {
         totalClients: totalClients || 0,
         pendingClients: pendingClients || 0,
         totalProducts: totalProducts || 0,
-        openLots: openLots || 0,
+        openLots: realTotalLots || 0, // Usando a variável correta
         totalOrders: totalOrders || 0,
         monthRevenue: 0
       })
@@ -100,10 +101,10 @@ export default function Dashboard() {
       value: stats.totalProducts,
       icon: Package,
       color: 'success',
-      link: '/admin/produtos'
+      // Sem link para produtos
     },
     {
-      title: 'Lotes Abertos',
+      title: 'Total Lotes',
       value: stats.openLots,
       icon: LinkIcon,
       color: 'warning',
@@ -126,18 +127,30 @@ export default function Dashboard() {
 
       {/* Stats Cards */}
       <div className="stats-grid">
-        {statCards.map((card, index) => (
-          <Link to={card.link} key={index} className={`stat-card stat-card-${card.color}`}>
-            <div className="stat-card-icon">
-              <card.icon size={24} />
+        {statCards.map((card, index) => {
+          const CardContent = () => (
+            <>
+              <div className="stat-card-icon">
+                <card.icon size={24} />
+              </div>
+              <div className="stat-card-content">
+                <span className="stat-value">{card.value}</span>
+                <span className="stat-title">{card.title}</span>
+                {card.badge && <span className="stat-badge">{card.badge}</span>}
+              </div>
+            </>
+          )
+
+          return card.link ? (
+            <Link to={card.link} key={index} className={`stat-card stat-card-${card.color}`}>
+              <CardContent />
+            </Link>
+          ) : (
+            <div key={index} className={`stat-card stat-card-${card.color}`} style={{ cursor: 'default' }}>
+              <CardContent />
             </div>
-            <div className="stat-card-content">
-              <span className="stat-value">{card.value}</span>
-              <span className="stat-title">{card.title}</span>
-              {card.badge && <span className="stat-badge">{card.badge}</span>}
-            </div>
-          </Link>
-        ))}
+          )
+        })}
       </div>
 
       {/* Recent Activity */}
@@ -196,10 +209,6 @@ export default function Dashboard() {
               <Link to="/admin/clientes/novo" className="btn btn-primary">
                 <Users size={18} />
                 Novo Cliente
-              </Link>
-              <Link to="/admin/produtos" className="btn btn-secondary">
-                <Package size={18} />
-                Novo Produto
               </Link>
             </div>
           </div>
