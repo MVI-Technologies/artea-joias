@@ -177,11 +177,27 @@ export default function Cart() {
                 romaneioData = realRomaneio
             }
 
+            // BUSCAR ITENS REAIS DO BANCO para garantir Total e Imagens corretos
+            // Isso resolve o problema de mostrar apenas o carrinho atual mas com total acumulado
+            const { data: allItems } = await supabase
+                .from('romaneio_items')
+                .select(`
+                    *,
+                    product:products (nome, imagem1, descricao, codigo_sku, categoria_id, category:categories(nome))
+                `)
+                .eq('romaneio_id', romaneioId)
+
+            if (!allItems || allItems.length === 0) {
+                console.warn('Nenhum item encontrado no banco para este romaneio. Usando itens locais (pode estar incompleto).')
+            }
+
+            const itemsToUse = allItems && allItems.length > 0 ? allItems : items
+
             const pdfBase64 = await generateRomaneioPDF({
                 romaneio: romaneioData,
                 lot: lot || { nome: 'Catálogo' },
                 client: client,
-                items: items,
+                items: itemsToUse,
                 company: company,
                 pixConfig: pixInt?.config
             })
@@ -428,21 +444,8 @@ export default function Cart() {
 
             console.log('Romaneio criado/atualizado com sucesso:', romaneio.id)
 
-            // 3. Preparar itens para PDF (Snapshots visuais)
-            const itemsForPDF = group.items.map(item => ({
-                quantidade: item.quantity,
-                valor_unitario: item.preco,
-                valor_total: item.preco * item.quantity,
-                product: {
-                    nome: item.nome,
-                    descricao: item.descricao,
-                    codigo_sku: item.codigo_sku,
-                    category: item.category || item.categoria || (item.categoria_nome ? { nome: item.categoria_nome } : null)
-                }
-            }))
-
-            // 4. Gerar e baixar PDF
-            await handleDownloadRomaneioPDF(romaneio.id, `Romaneio-${group.lot.nome}.pdf`, itemsForPDF, group.lot)
+            // 4. Gerar e baixar PDF (Passando null nos items para forçar busca do banco)
+            await handleDownloadRomaneioPDF(romaneio.id, `Romaneio-${group.lot.nome}.pdf`, [], group.lot)
 
             // 5. Limpar Carrinho Local
             localStorage.removeItem(`cart_${lotId}`)
