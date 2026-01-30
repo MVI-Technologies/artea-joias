@@ -93,7 +93,7 @@ Deno.serve(async (req: Request) => {
         }
     }
     const title = lot.nome || 'Catálogo Grupo AA de Semijoias';
-    const description = lot.descricao || 'Participe do grupo de compras e garanta preços especiais.';
+    const description = lot.descricao || 'Participe do grupo de compras e garanta preços especiais!';
     const frontendUrl = 'https://www.grupoaadecomprascoletivas.site'; 
     const finalUrl = `${frontendUrl}/app/catalogo/${lot.link_compra || lot.id}`;
 
