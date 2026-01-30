@@ -1,8 +1,8 @@
-import { useState } from 'react'
 import { Link, useSearchParams, useNavigate } from 'react-router-dom'
-import { Lock, ArrowLeft, Eye, EyeOff } from 'lucide-react'
+import { Lock, ArrowLeft } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useToast } from '../../components/common/Toast'
+import PasswordInput from '../../components/ui/PasswordInput'
 import './ForgotPassword.css'
 
 export default function ResetPassword() {
@@ -19,8 +19,7 @@ export default function ResetPassword() {
     confirmPassword: ''
   })
   const [loading, setLoading] = useState(false)
-  const [showPassword, setShowPassword] = useState(false)
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  // local showPassword states removed
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -138,64 +137,24 @@ export default function ResetPassword() {
 
           <div className="form-group">
             <label className="form-label">Nova Senha</label>
-            <div style={{ position: 'relative' }}>
-              <input
-                type={showPassword ? 'text' : 'password'}
-                className="form-input"
-                placeholder="Digite sua nova senha"
-                value={formData.newPassword}
-                onChange={(e) => setFormData({ ...formData, newPassword: e.target.value })}
-                required
-                minLength={6}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                style={{
-                  position: 'absolute',
-                  right: '12px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  color: 'var(--text-secondary)'
-                }}
-              >
-                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
-            </div>
+            <PasswordInput
+              value={formData.newPassword}
+              onChange={(e) => setFormData({ ...formData, newPassword: e.target.value })}
+              placeholder="Digite sua nova senha"
+              required
+              minLength={6}
+            />
           </div>
 
           <div className="form-group">
             <label className="form-label">Confirmar Nova Senha</label>
-            <div style={{ position: 'relative' }}>
-              <input
-                type={showConfirmPassword ? 'text' : 'password'}
-                className="form-input"
-                placeholder="Confirme sua nova senha"
-                value={formData.confirmPassword}
-                onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                required
-                minLength={6}
-              />
-              <button
-                type="button"
-                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                style={{
-                  position: 'absolute',
-                  right: '12px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  color: 'var(--text-secondary)'
-                }}
-              >
-                {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
-            </div>
+            <PasswordInput
+              value={formData.confirmPassword}
+              onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+              placeholder="Confirme sua nova senha"
+              required
+              minLength={6}
+            />
           </div>
 
           <button

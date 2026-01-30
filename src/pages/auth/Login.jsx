@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
-import { LogIn, Eye, EyeOff } from 'lucide-react'
+import { LogIn } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
+import PasswordInput from '../../components/ui/PasswordInput'
 import './Login.css'
 
 export default function Login() {
   const [telefone, setTelefone] = useState('')
   const [senha, setSenha] = useState('')
-  const [showPassword, setShowPassword] = useState(false)
+  // showPassword state removed (handled by component)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const { signIn, user, isAdmin, loading: authLoading } = useAuth()
@@ -122,26 +123,15 @@ export default function Login() {
             />
           </div>
 
-          <div className="form-group" style={{ position: 'relative' }}>
+          <div className="form-group">
             <label className="form-label">Senha</label>
-            <div className="password-input-wrapper">
-              <input
-                type={showPassword ? "text" : "password"}
-                className="form-input"
-                placeholder="Digite sua senha"
-                value={senha}
-                onChange={(e) => setSenha(e.target.value)}
-                required
-              />
-              <button
-                type="button"
-                className="password-toggle-btn"
-                onClick={() => setShowPassword(!showPassword)}
-                tabIndex="-1"
-              >
-                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-              </button>
-            </div>
+            <PasswordInput
+              value={senha}
+              onChange={(e) => setSenha(e.target.value)}
+              placeholder="Digite sua senha"
+              required
+              className="form-input-reset" /* Reset some Login.css specific styles if needed */
+            />
           </div>
 
           <button 

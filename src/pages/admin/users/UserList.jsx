@@ -1,15 +1,20 @@
 import { useState, useEffect } from 'react'
-import { Plus, Search, Edit, Trash2, Shield, User, Mail, CheckCircle, XCircle } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { Plus, Search, Edit, Trash2, Shield, User, Mail, CheckCircle, XCircle, Lock } from 'lucide-react'
 import WhatsAppIcon from '../../../components/icons/WhatsAppIcon'
 import { supabase } from '../../../lib/supabase'
+import PasswordInput from '../../../components/ui/PasswordInput'
 import './UserList.css'
 
 export default function UserList() {
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
-  const [showModal, setShowModal] = useState(false)
-  const [editingUser, setEditingUser] = useState(null)
+  const [modalMode, setModalMode] = useState('') // 'create', 'edit'
+  const [selectedUser, setSelectedUser] = useState(null)
+  const [passwordResetModalOpen, setPasswordResetModalOpen] = useState(false)
+  const [resetPasswordData, setResetPasswordData] = useState({ newPassword: '', confirmPassword: '' })
+  const [resettingPassword, setResettingPassword] = useState(false)
   const [formData, setFormData] = useState({
     nome: '',
     email: '',
@@ -52,18 +57,18 @@ export default function UserList() {
       return
     }
 
-    if (!editingUser && !formData.password) {
+    if (modalMode === 'create' && !formData.password) {
       alert('Senha é obrigatória para novos usuários')
       return
     }
 
     setSaving(true)
     try {
-      if (editingUser) {
+      if (modalMode === 'edit') {
         const { error } = await supabase
           .from('clients')
           .update(formData)
-          .eq('id', editingUser.id)
+          .eq('id', selectedUser.id)
         if (error) throw error
       } else {
         // Create user via Edge Function to ensure Auth + Client sync
@@ -79,7 +84,7 @@ export default function UserList() {
         
         if (error) throw error
       }
-      setShowModal(false)
+      setModalMode('')
       fetchUsers()
     } catch (error) {
       alert('Erro ao salvar usuário')
@@ -94,7 +99,7 @@ export default function UserList() {
   )
 
   const openEdit = (user) => {
-    setEditingUser(user)
+    setSelectedUser(user)
     setFormData({
       nome: user.nome,
       email: user.email,
@@ -103,14 +108,61 @@ export default function UserList() {
       role: user.role,
       cadastro_status: user.cadastro_status || 'completo'
     })
-    setShowModal(true)
+    setModalMode('edit')
+  }
+
+  const handlePasswordUpdate = async () => {
+    if (!selectedUser) return;
+    
+    if (resetPasswordData.newPassword !== resetPasswordData.confirmPassword) {
+        alert('As senhas não coincidem.');
+        return;
+    }
+
+    if (resetPasswordData.newPassword.length < 6) {
+        alert('A senha deve ter no mínimo 6 caracteres.');
+        return;
+    }
+
+    setResettingPassword(true);
+    try {
+        const { data, error } = await supabase.functions.invoke('admin-update-password', {
+            body: {
+                userId: selectedUser.auth_id, // Assuming auth_id links to auth.users
+                newPassword: resetPasswordData.newPassword
+            }
+        });
+
+        if (error) {
+            throw error;
+        }
+
+        if (data && data.error) {
+            throw new Error(data.error);
+        }
+
+        alert('Senha atualizada com sucesso!');
+        setPasswordResetModalOpen(false);
+        setResetPasswordData({ newPassword: '', confirmPassword: '' });
+    } catch (error) {
+        console.error('Erro ao atualizar senha:', error);
+        alert('Erro ao atualizar senha: ' + error.message);
+    } finally {
+        setResettingPassword(false);
+    }
+  }
+
+  const openPasswordResetModal = (user) => {
+    setSelectedUser(user);
+    setResetPasswordData({ newPassword: '', confirmPassword: '' });
+    setPasswordResetModalOpen(true);
   }
 
   return (
     <div className="page-container">
       <div className="page-header">
         <h1>Gerenciar Usuários</h1>
-        <button className="btn btn-primary" onClick={() => { setEditingUser(null); setShowModal(true) }}>
+        <button className="btn btn-primary" onClick={() => { setSelectedUser(null); setFormData({ nome: '', email: '', password: '', telefone: '', role: 'cliente', cadastro_status: 'completo' }); setModalMode('create') }}>
           <Plus size={16} /> Novo Usuário
         </button>
       </div>
@@ -176,6 +228,15 @@ export default function UserList() {
                     <button className="btn btn-sm btn-primary" onClick={() => openEdit(user)}>
                       <Edit size={14} />
                     </button>
+
+                    <button
+                      className="btn btn-sm btn-outline-warning"
+                      onClick={() => openPasswordResetModal(user)}
+                      title="Alterar Senha"
+                      style={{ marginLeft: '8px' }}
+                    >
+                      <Lock size={14} />
+                    </button>
                   </div>
                 </td>
               </tr>
@@ -223,6 +284,9 @@ export default function UserList() {
               <button className="btn btn-sm btn-primary" onClick={() => openEdit(user)}>
                 <Edit size={14} /> Editar
               </button>
+              <button onClick={() => openPasswordResetModal(user)} className="btn btn-sm btn-outline-warning">
+                <Lock size={14} /> Senha
+              </button>
             </div>
           </div>
         ))}
@@ -233,11 +297,11 @@ export default function UserList() {
         )}
       </div>
 
-      {showModal && (
-        <div className="modal-overlay" onClick={() => setShowModal(false)}>
+      {(modalMode === 'create' || modalMode === 'edit') && (
+        <div className="modal-overlay" onClick={() => setModalMode('')}>
           <div className="modal-content" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>{editingUser ? 'Editar Usuário' : 'Novo Usuário'}</h2>
+              <h2>{modalMode === 'edit' ? 'Editar Usuário' : 'Novo Usuário'}</h2>
             </div>
             <div className="modal-body">
               <div className="form-group">
@@ -255,13 +319,13 @@ export default function UserList() {
                 />
               </div>
 
-              {!editingUser && (
+              {modalMode === 'create' && (
                 <div className="form-group">
                   <label>Senha</label>
-                  <input 
-                    type="password"
-                    value={formData.password} 
-                    onChange={e => setFormData({...formData, password: e.target.value})} 
+                  <PasswordInput
+                    value={formData.password}
+                    onChange={e => setFormData({ ...formData, password: e.target.value })}
+                    className="form-control"
                     placeholder="Mínimo 6 caracteres"
                   />
                 </div>
@@ -285,8 +349,47 @@ export default function UserList() {
               </div>
             </div>
             <div className="modal-footer">
-              <button className="btn btn-outline" onClick={() => setShowModal(false)}>Cancelar</button>
+              <button className="btn btn-outline" onClick={() => setModalMode('')}>Cancelar</button>
               <button className="btn btn-primary" onClick={handleSave} disabled={saving}>Salvar</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Modal de Reset de Senha */}
+      {passwordResetModalOpen && (
+        <div className="modal-overlay" onClick={() => setPasswordResetModalOpen(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Alterar Senha - {selectedUser?.nome}</h3>
+              <button className="btn-close" onClick={() => setPasswordResetModalOpen(false)}>
+                <XCircle size={24} />
+              </button>
+            </div>
+            <div className="modal-body">
+                <div className="form-group">
+                  <label>Nova Senha</label>
+                  <PasswordInput
+                    value={resetPasswordData.newPassword}
+                    onChange={e => setResetPasswordData({ ...resetPasswordData, newPassword: e.target.value })}
+                    className="form-control"
+                    placeholder="Mínimo 6 caracteres"
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Confirmar Nova Senha</label>
+                  <PasswordInput
+                    value={resetPasswordData.confirmPassword}
+                    onChange={e => setResetPasswordData({ ...resetPasswordData, confirmPassword: e.target.value })}
+                    className="form-control"
+                    placeholder="Confirme a nova senha"
+                  />
+                </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-secondary" onClick={() => setPasswordResetModalOpen(false)}>Cancelar</button>
+              <button className="btn btn-primary" onClick={handlePasswordUpdate} disabled={resettingPassword}>
+                {resettingPassword ? 'Salvando...' : 'Salvar Nova Senha'}
+              </button>
             </div>
           </div>
         </div>

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { UserPlus, ArrowLeft } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import PasswordInput from '../../components/ui/PasswordInput'
 import './Register.css'
 
 export default function Register() {
@@ -214,23 +215,20 @@ export default function Register() {
 
           <div className="form-group">
             <label className="form-label">Senha *</label>
-            <input
-              type="password"
-              className="form-input"
-              placeholder="Mínimo 6 caracteres"
+            <PasswordInput
               value={formData.senha}
               onChange={(e) => setFormData({...formData, senha: e.target.value})}
+              placeholder="Mínimo 6 caracteres"
               required
             />
           </div>
 
           <div className="form-group">
             <label className="form-label">Confirmar Senha *</label>
-            <input
-              type="password"
-              className="form-input"
+            <PasswordInput
               value={formData.confirmarSenha}
               onChange={(e) => setFormData({...formData, confirmarSenha: e.target.value})}
+              placeholder="Confirme sua senha"
               required
             />
           </div>

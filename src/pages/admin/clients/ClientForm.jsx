@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { ArrowLeft, Save, Users } from 'lucide-react'
 import { supabase } from '../../../lib/supabase'
+import PasswordInput from '../../../components/ui/PasswordInput'
 import './ClientForm.css'
 
 export default function ClientForm() {
@@ -220,12 +221,10 @@ export default function ClientForm() {
               {!isEditing && (
                 <div className="form-group">
                   <label className="form-label">Senha *</label>
-                  <input
-                    type="password"
-                    className="form-input"
-                    placeholder="Mínimo 6 caracteres"
+                  <PasswordInput
                     value={formData.password}
                     onChange={e => setFormData({ ...formData, password: e.target.value })}
+                    placeholder="Mínimo 6 caracteres"
                     required
                   />
                 </div>

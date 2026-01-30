@@ -182,30 +182,7 @@
     0 2px 8px rgba(139, 116, 95, 0.1);
 }
 
-/* Password Toggle */
-.password-input-wrapper {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
-.password-toggle-btn {
-  position: absolute;
-  right: 12px;
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: #8b7d72;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 4px;
-  transition: color 0.2s;
-}
-
-.password-toggle-btn:hover {
-  color: #6b5847;
-}
+/* Password Toggle styles moved to PasswordInput.css */
 
 /* Premium Button - Taller and more prominent */
 .auth-form .btn-primary {
