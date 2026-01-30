@@ -70,7 +70,7 @@ export default function ForgotPassword() {
       }
 
       // Enviar código via WhatsApp
-      const message = `🔐 *Recuperação de Senha - Artea Joias*
+      const message = `🔐 *Recuperação de Senha - Grupo AA de Semioias*
 
 Olá ${clientData.nome}!
 
@@ -83,7 +83,7 @@ Este código expira em 15 minutos.
 
 Se você não solicitou esta recuperação, ignore esta mensagem.
 
-_Artea Joias - Sistema de Compras Coletivas_`
+_Grupo AA de Semijoias - Sistema de Compras Coletivas_`
 
       const whatsappResult = await sendWhatsAppMessage(clientData.telefone, message)
 

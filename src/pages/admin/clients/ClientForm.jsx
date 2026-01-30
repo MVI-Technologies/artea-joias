@@ -25,7 +25,8 @@ export default function ClientForm() {
     bairro: '',
     cidade: '',
     estado: '',
-    cep: ''
+    cep: '',
+    password: '' 
   })
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -142,9 +143,21 @@ export default function ClientForm() {
 
         if (error) throw error
       } else {
-        const { error } = await supabase
-          .from('clients')
-          .insert({ ...clientData, role: 'cliente' })
+        // Validation for new user
+        if (!formData.password || formData.password.length < 6) {
+            alert('Senha é obrigatória e deve ter no mínimo 6 caracteres');
+            setSaving(false);
+            return;
+        }
+
+        // Call Edge Function to create Auth User + Client Record
+        const { error } = await supabase.functions.invoke('create-user', {
+            body: {
+                ...clientData,
+                password: formData.password,
+                role: 'cliente'
+            }
+        });
 
         if (error) throw error
       }
@@ -203,6 +216,20 @@ export default function ClientForm() {
                   required
                 />
               </div>
+
+              {!isEditing && (
+                <div className="form-group">
+                  <label className="form-label">Senha *</label>
+                  <input
+                    type="password"
+                    className="form-input"
+                    placeholder="Mínimo 6 caracteres"
+                    value={formData.password}
+                    onChange={e => setFormData({ ...formData, password: e.target.value })}
+                    required
+                  />
+                </div>
+              )}
 
               <div className="form-group">
                 <label className="form-label">E-mail</label>

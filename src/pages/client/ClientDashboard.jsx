@@ -50,7 +50,7 @@ export default function ClientDashboard() {
     <div className="client-dashboard">
       <div className="client-welcome">
         <h1>Olá, {client?.nome?.split(' ')[0]}! 👋</h1>
-        <p>Bem-vinda de volta ao Artea Joias</p>
+        <p>Bem-vinda de volta ao Grupo AA de Semijoias</p>
       </div>
 
       {/* Stars / Loyalty */}

@@ -13,9 +13,10 @@ export default function UserList() {
   const [formData, setFormData] = useState({
     nome: '',
     email: '',
-      telefone: '',
-      role: 'admin', // admin ou cliente (mas aqui focamos em gestão)
-      cadastro_status: 'completo'
+    password: '',
+    telefone: '',
+    role: 'cliente',
+    cadastro_status: 'completo'
   })
   const [saving, setSaving] = useState(false)
 
@@ -51,6 +52,11 @@ export default function UserList() {
       return
     }
 
+    if (!editingUser && !formData.password) {
+      alert('Senha é obrigatória para novos usuários')
+      return
+    }
+
     setSaving(true)
     try {
       if (editingUser) {
@@ -60,11 +66,17 @@ export default function UserList() {
           .eq('id', editingUser.id)
         if (error) throw error
       } else {
-        // Criar usuário (Nota: criar Auth seria ideal via Edge Function, 
-        // mas aqui vamos criar o registro client apenas para visualização/gestão)
-        const { error } = await supabase
-          .from('clients')
-          .insert(formData)
+        // Create user via Edge Function to ensure Auth + Client sync
+        const { error } = await supabase.functions.invoke('create-user', {
+          body: {
+            email: formData.email,
+            password: formData.password,
+            nome: formData.nome,
+            telefone: formData.telefone,
+            role: formData.role
+          }
+        })
+        
         if (error) throw error
       }
       setShowModal(false)
@@ -86,6 +98,7 @@ export default function UserList() {
     setFormData({
       nome: user.nome,
       email: user.email,
+      password: '', // Don't show existing hash
       telefone: user.telefone,
       role: user.role,
       cadastro_status: user.cadastro_status || 'completo'
@@ -241,6 +254,18 @@ export default function UserList() {
                   onChange={e => setFormData({...formData, email: e.target.value})} 
                 />
               </div>
+
+              {!editingUser && (
+                <div className="form-group">
+                  <label>Senha</label>
+                  <input 
+                    type="password"
+                    value={formData.password} 
+                    onChange={e => setFormData({...formData, password: e.target.value})} 
+                    placeholder="Mínimo 6 caracteres"
+                  />
+                </div>
+              )}
               <div className="form-group">
                 <label>Telefone</label>
                 <input 

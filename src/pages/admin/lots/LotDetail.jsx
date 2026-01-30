@@ -1084,6 +1084,7 @@ export default function LotDetail({ defaultTab }) {
                     {/* Product Info Section */}
                     <div className="card-info-section">
                       <ul className="info-list">
+                        <li><b>Estoque:</b> {product.estoque || 0}</li>
                         <li><b>Qtde Pedidos:</b> {qtdReservada}</li>
                         <li><b>Qtde Clientes:</b> {lp.quantidade_clientes || 0}</li>
                         <li><b>Categoria:</b> {product.category?.nome || '—'}</li>

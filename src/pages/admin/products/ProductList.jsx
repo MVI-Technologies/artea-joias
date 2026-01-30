@@ -167,10 +167,13 @@ export default function ProductList() {
               </div>
               <div className="product-card-body">
                 <p className="product-card-info">
-                  <strong>Qtde Pedidos:</strong> 0
+                  <strong>Estoque:</strong> {product.estoque || 0}
                 </p>
                 <p className="product-card-info">
-                  <strong>Qtde Clientes:</strong> 0
+                  <strong>Qtde Pedidos:</strong> {product.quantidade_pedidos || 0}
+                </p>
+                <p className="product-card-info">
+                  <strong>Qtde Clientes:</strong> {product.quantidade_clientes || 0}
                 </p>
                 <p className="product-card-info">
                   <strong>Categoria:</strong> {product.categoria?.nome || '-'}

@@ -36,7 +36,7 @@ export default function ClientLayout() {
       <header className="client-header">
         <div className="client-header-content">
           <Link to="/cliente" className="client-logo">
-            Artea Joias
+            Grupo AA
           </Link>
 
           <nav className={`client-nav ${menuOpen ? 'open' : ''}`}>
@@ -80,7 +80,7 @@ export default function ClientLayout() {
 
       {/* Footer */}
       <footer className="client-footer">
-        <p>© 2024 Artea Joias - Todos os direitos reservados</p>
+        <p>© 2026 Grupo AA de Semijoias - Todos os direitos reservados</p>
       </footer>
 
       {/* Mobile Overlay */}
