@@ -34,6 +34,7 @@ import {
 } from 'lucide-react'
 import ImageUpload from '../../../components/common/ImageUpload'
 import { supabase } from '../../../lib/supabase'
+import { disponibilidadeLoteParaExibicao } from '../../../utils/lotAvailability'
 import { notifyCatalogClosed, sendRomaneiosAutomaticamente } from '../../../services/whatsapp'
 import PortalDropdown from '../../../components/ui/PortalDropdown'
 import './LotDetail.css'
@@ -129,36 +130,63 @@ export default function LotDetail({ defaultTab }) {
       if (lpError) throw lpError
       setProducts(lotProducts || [])
 
-      // Buscar reservas agrupadas por cliente
-      const { data: reservasData, error: resError } = await supabase
-        .from('reservas')
+      // Buscar romaneios (pedidos) do lote agrupados por cliente
+      const { data: romaneiosData, error: romError } = await supabase
+        .from('romaneios')
         .select(`
-          *,
-          client:clients(id, nome, telefone, email),
-          product:products(id, nome, preco, imagem1)
+          id,
+          client_id,
+          created_at,
+          status_pagamento,
+          valor_produtos,
+          client:clients(id, nome, telefone, email)
         `)
         .eq('lot_id', id)
-        .eq('status', 'confirmada')
         .order('created_at', { ascending: false })
 
-      if (!resError) {
-        // Agrupar reservas por cliente
-        const grouped = (reservasData || []).reduce((acc, res) => {
-          const clientId = res.client_id
-          if (!acc[clientId]) {
-            acc[clientId] = {
-              client: res.client,
+      if (!romError && romaneiosData && romaneiosData.length > 0) {
+        const romaneioIds = romaneiosData.map(r => r.id)
+        
+        // Buscar itens dos romaneios
+        const { data: itemsData } = await supabase
+          .from('romaneio_items')
+          .select(`
+            *,
+            product:products(id, nome, preco, imagem1)
+          `)
+          .in('romaneio_id', romaneioIds)
+
+        // Agrupar por cliente
+        const grouped = {}
+        romaneiosData.forEach(rom => {
+          const clientId = rom.client_id
+          if (!grouped[clientId]) {
+            grouped[clientId] = {
+              client: rom.client,
               items: [],
               total: 0,
               quantidade: 0
             }
           }
-          acc[clientId].items.push(res)
-          acc[clientId].total += res.valor_total
-          acc[clientId].quantidade += res.quantidade
-          return acc
-        }, {})
+          
+          // Adicionar itens deste romaneio
+          const romItems = (itemsData || []).filter(item => item.romaneio_id === rom.id)
+          romItems.forEach(item => {
+            grouped[clientId].items.push({
+              id: item.id,
+              product: item.product,
+              quantidade: item.quantidade,
+              valor_total: item.valor_total || (item.quantidade * item.preco_unitario),
+              created_at: item.created_at
+            })
+            grouped[clientId].total += (item.valor_total || (item.quantidade * item.preco_unitario))
+            grouped[clientId].quantidade += item.quantidade
+          })
+        })
+        
         setReservas(Object.values(grouped))
+      } else {
+        setReservas([])
       }
 
       // Buscar categorias
@@ -1084,7 +1112,7 @@ export default function LotDetail({ defaultTab }) {
                     {/* Product Info Section */}
                     <div className="card-info-section">
                       <ul className="info-list">
-                        <li><b>Estoque:</b> {product.estoque || 0}</li>
+                        <li><b>Disponibilidade (lote):</b> {disponibilidadeLoteParaExibicao(product.qtd_minima_fornecedor, lp.quantidade_pedidos) ?? '—'}</li>
                         <li><b>Qtde Pedidos:</b> {qtdReservada}</li>
                         <li><b>Qtde Clientes:</b> {lp.quantidade_clientes || 0}</li>
                         <li><b>Categoria:</b> {product.category?.nome || '—'}</li>
@@ -1200,7 +1228,21 @@ export default function LotDetail({ defaultTab }) {
                     ))}
                   </div>
                   <div className="reserva-actions">
-                    <button className="btn btn-sm btn-outline">
+                    <button 
+                      className="btn-whatsapp"
+                      onClick={() => {
+                        const telefone = clientReserva.client?.telefone?.replace(/\D/g, '')
+                        if (telefone) {
+                          const mensagem = encodeURIComponent(
+                            `Olá ${clientReserva.client?.nome}! Sobre seu pedido no ${lot?.nome}:\n\n` +
+                            `${clientReserva.quantidade} ${clientReserva.quantidade > 1 ? 'itens' : 'item'} - Total: R$ ${clientReserva.total.toFixed(2)}`
+                          )
+                          window.open(`https://wa.me/55${telefone}?text=${mensagem}`, '_blank')
+                        } else {
+                          alert('Telefone não encontrado para este cliente')
+                        }
+                      }}
+                    >
                       <MessageCircle size={14} /> WhatsApp
                     </button>
                     {isClosed && (

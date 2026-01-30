@@ -13,6 +13,7 @@ import {
 import { supabase } from '../../../lib/supabase'
 import './RomaneioDetail.css'
 import { useAuth } from '../../../contexts/AuthContext'
+import { useToast } from '../../../components/common/Toast'
 
 const STATUS_OPTIONS = [
   { value: 'aguardando_pagamento', label: 'Aguardando Pagamento', color: 'warning' },
@@ -28,6 +29,7 @@ export default function RomaneioDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
   const printRef = useRef()
+  const toast = useToast()
   const [romaneio, setRomaneio] = useState(null)
   const [lot, setLot] = useState(null)
   const [client, setClient] = useState(null)
@@ -138,13 +140,23 @@ export default function RomaneioDetail() {
 
         if (error) throw error
 
-        alert('Status atualizado com sucesso!')
+        // Mensagem personalizada baseada no status
+        const statusMessages = {
+          'cancelado': '❌ Pedido cancelado com sucesso!',
+          'pago': '✅ Pagamento confirmado!',
+          'em_separacao': '📦 Pedido em separação!',
+          'enviado': '🚚 Pedido marcado como enviado!',
+          'concluido': '🎉 Pedido concluído!',
+          'aguardando_pagamento': '⏳ Status alterado para aguardando pagamento'
+        }
+        
+        toast.success(statusMessages[targetStatus] || 'Status atualizado com sucesso!')
         setShowStatusModal(false)
         setStatusReason('')
         fetchData() // Reload
     } catch (error) {
         console.error('Erro ao atualizar status:', error)
-        alert('Erro ao atualizar status: ' + error.message)
+        toast.error('Erro ao atualizar status: ' + error.message)
     } finally {
         setUpdating(false)
     }

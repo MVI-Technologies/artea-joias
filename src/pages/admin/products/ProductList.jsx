@@ -10,11 +10,14 @@ import {
   Eye
 } from 'lucide-react'
 import { supabase } from '../../../lib/supabase'
+import { disponibilidadeLoteParaExibicao } from '../../../utils/lotAvailability'
 import './ProductList.css'
 
 export default function ProductList() {
   const [products, setProducts] = useState([])
   const [categories, setCategories] = useState([])
+  /** productId -> [quantidade_pedidos] por lote ativo (para cálculo de disponibilidade) */
+  const [productLotQuantities, setProductLotQuantities] = useState({})
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('')
@@ -38,6 +41,27 @@ export default function ProductList() {
 
       if (error) throw error
       setProducts(data || [])
+
+      // Produtos em lotes ativos: buscar quantidade_pedidos para exibir disponibilidade (read-only)
+      const { data: activeLots } = await supabase
+        .from('lots')
+        .select('id')
+        .eq('status', 'aberto')
+      const activeLotIds = (activeLots || []).map(l => l.id)
+      if (activeLotIds.length > 0) {
+        const { data: lpData } = await supabase
+          .from('lot_products')
+          .select('product_id, quantidade_pedidos')
+          .in('lot_id', activeLotIds)
+        const byProduct = {}
+        ;(lpData || []).forEach(lp => {
+          if (!byProduct[lp.product_id]) byProduct[lp.product_id] = []
+          byProduct[lp.product_id].push(lp.quantidade_pedidos ?? 0)
+        })
+        setProductLotQuantities(byProduct)
+      } else {
+        setProductLotQuantities({})
+      }
     } catch (error) {
       console.error('Erro ao carregar produtos:', error)
     } finally {
@@ -166,9 +190,26 @@ export default function ProductList() {
                 <span className="product-card-id">ID {product.id?.slice(-4)}</span>
               </div>
               <div className="product-card-body">
-                <p className="product-card-info">
-                  <strong>Estoque:</strong> {product.estoque || 0}
-                </p>
+                {productLotQuantities[product.id] != null ? (
+                  <p className="product-card-info">
+                    <strong>Disponibilidade (lote):</strong>{' '}
+                    {(() => {
+                      const limite = product.qtd_minima_fornecedor ?? 0
+                      const quantidades = productLotQuantities[product.id]
+                      const minDisp = Math.min(
+                        ...quantidades.map(qty => {
+                          const d = disponibilidadeLoteParaExibicao(limite, qty)
+                          return d === null ? Infinity : d
+                        })
+                      )
+                      return minDisp === Infinity ? '—' : minDisp
+                    })()}
+                  </p>
+                ) : (
+                  <p className="product-card-info">
+                    <strong>Estoque:</strong> {product.estoque || 0}
+                  </p>
+                )}
                 <p className="product-card-info">
                   <strong>Qtde Pedidos:</strong> {product.quantidade_pedidos || 0}
                 </p>

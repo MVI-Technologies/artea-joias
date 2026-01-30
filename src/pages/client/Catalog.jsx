@@ -6,6 +6,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../components/common/Toast'
 import LotTermsBlock from '../../components/client/LotTermsBlock'
 import { calcPrecoNoLote, formatPrice } from '../../utils/pricing'
+import { esgotadoNoLote, disponibilidadeLoteParaExibicao } from '../../utils/lotAvailability'
 import './Catalog.css'
 
 // LOG IMEDIATO AO CARREGAR O ARQUIVO
@@ -37,18 +38,16 @@ export default function Catalog() {
 
   const { client } = useAuth()
 
-  // Função para calcular quantidade faltando
+  // Disponibilidade no lote (calculada: limite_maximo - unidades confirmadas). Sem uso de estoque manual.
+  const getEsgotadoNoLote = (product) =>
+    esgotadoNoLote(product.qtd_minima_fornecedor, product.quantidade_pedidos)
+
+  // Função para calcular quantidade faltando (mínimo para fechar compra coletiva)
   const getMissingQuantity = (product) => {
-    const estoque = product.estoque || 0
-    const quantidadeMinima = product.quantidade_minima || 0
-
-    // Se não tem quantidade mínima definida ou estoque suficiente, não mostra
-    if (quantidadeMinima === 0 || estoque >= quantidadeMinima) {
-      return 0
-    }
-
-    const faltando = quantidadeMinima - estoque
-    return faltando > 0 ? faltando : 0
+    const minimoLote = product.quantidade_minima_lote || 0
+    const totalComprado = product.quantidade_pedidos || 0
+    if (minimoLote === 0 || totalComprado >= minimoLote) return 0
+    return Math.max(minimoLote - totalComprado, 0)
   }
 
   window.console.log('🔍 Estado atual:', { id, loading, lot: lot?.id, client: client?.id })
@@ -417,16 +416,18 @@ export default function Catalog() {
         return
       }
 
-      // Buscar romaneios do lote atual
+      // Buscar romaneios do lote atual (apenas não cancelados)
       const { data: romaneios, error: romError } = await supabase
         .from('romaneios')
         .select(`
           id,
           client_id,
           created_at,
+          status_pagamento,
           client:clients(nome)
         `)
         .eq('lot_id', lot.id)
+        .not('status_pagamento', 'in', '(cancelado,rejeitado)')
 
       if (romError) {
         console.error('Erro ao buscar romaneios:', romError)
@@ -517,12 +518,10 @@ export default function Catalog() {
 
   const canAddToCart = (product) => {
     if (!lot) return false
-    // Verificar se o link está fechado
     if (lot.status === 'fechado' || lot.status === 'fechado_e_bloqueado') {
       return false
     }
-    // Verificar se o produto está esgotado
-    if ((product.estoque || 0) === 0) {
+    if (getEsgotadoNoLote(product)) {
       return false
     }
     return true
@@ -533,7 +532,7 @@ export default function Catalog() {
     if (lot.status === 'fechado' || lot.status === 'fechado_e_bloqueado') {
       return 'Link fechado para compras!'
     }
-    if ((product.estoque || 0) === 0) {
+    if (getEsgotadoNoLote(product)) {
       return 'Produto esgotado!'
     }
     return null
@@ -616,10 +615,10 @@ export default function Catalog() {
           {products.map(product => (
             <div
               key={product.id}
-              className={`product-card ${addingToCart === product.id ? 'adding' : ''} ${(product.estoque || 0) === 0 ? 'out-of-stock' : ''}`}
+              className={`product-card ${addingToCart === product.id ? 'adding' : ''} ${getEsgotadoNoLote(product) ? 'out-of-stock' : ''}`}
               onClick={() => handleProductClick(product)}
             >
-              <div className={`product-image-area ${(product.estoque || 0) === 0 ? 'out-of-stock-image' : ''}`}>
+              <div className={`product-image-area ${getEsgotadoNoLote(product) ? 'out-of-stock-image' : ''}`}>
                 {product.imagem1 ? (
                   <img src={product.imagem1} alt={product.nome} className="product-img" />
                 ) : (
@@ -628,8 +627,8 @@ export default function Catalog() {
                   </div>
                 )}
 
-                {/* Overlay ESGOTADO quando estoque = 0 */}
-                {(product.estoque || 0) === 0 && (
+                {/* Overlay ESGOTADO quando disponibilidade no lote = 0 */}
+                {getEsgotadoNoLote(product) && (
                   <div className="out-of-stock-overlay">
                     <div className="out-of-stock-text">ESGOTADO</div>
                   </div>
@@ -735,7 +734,8 @@ export default function Catalog() {
                         <span className="label">Qtd peças compradas:</span> {selectedProduct.quantidade_pedidos || 0} ({selectedProduct.quantidade_clientes || 0} pessoas)
                       </div>
                       <div className="info-row">
-                        <span className="label">Estoque:</span> {selectedProduct.estoque || 0}
+                        <span className="label">Disponibilidade (lote):</span>{' '}
+                        {disponibilidadeLoteParaExibicao(selectedProduct.qtd_minima_fornecedor, selectedProduct.quantidade_pedidos) ?? '—'}
                       </div>
                     </div>
 

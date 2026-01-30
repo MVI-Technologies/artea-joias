@@ -1,5 +1,5 @@
 import { useState, useEffect, createContext, useContext, useCallback } from 'react'
-import { CheckCircle, XCircle, X } from 'lucide-react'
+import { CheckCircle, XCircle, X, AlertCircle, Info } from 'lucide-react'
 import './Toast.css'
 
 const ToastContext = createContext(null)
@@ -11,19 +11,31 @@ export function ToastProvider({ children }) {
     const id = Date.now()
     setToasts(prev => [...prev, { id, message, type }])
 
-    // Auto remove after 4 seconds
+    // Auto remove after 5 seconds
     setTimeout(() => {
       setToasts(prev => prev.filter(toast => toast.id !== id))
-    }, 4000)
+    }, 5000)
   }, [])
 
   const removeToast = useCallback((id) => {
     setToasts(prev => prev.filter(toast => toast.id !== id))
   }, [])
 
+  const getIcon = (type) => {
+    switch(type) {
+      case 'success': return <CheckCircle size={22} />
+      case 'error': return <XCircle size={22} />
+      case 'warning': return <AlertCircle size={22} />
+      case 'info': return <Info size={22} />
+      default: return <CheckCircle size={22} />
+    }
+  }
+
   const toast = {
     success: (message) => addToast(message, 'success'),
-    error: (message) => addToast(message, 'error')
+    error: (message) => addToast(message, 'error'),
+    warning: (message) => addToast(message, 'warning'),
+    info: (message) => addToast(message, 'info')
   }
 
   return (
@@ -33,11 +45,7 @@ export function ToastProvider({ children }) {
         {toasts.map(t => (
           <div key={t.id} className={`toast toast-${t.type}`}>
             <div className="toast-icon">
-              {t.type === 'success' ? (
-                <CheckCircle size={20} />
-              ) : (
-                <XCircle size={20} />
-              )}
+              {getIcon(t.type)}
             </div>
             <span className="toast-message">{t.message}</span>
             <button className="toast-close" onClick={() => removeToast(t.id)}>
