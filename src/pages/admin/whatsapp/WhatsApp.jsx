@@ -34,6 +34,7 @@ export default function WhatsApp() {
   const [showClientList, setShowClientList] = useState(false)
   const [notification, setNotification] = useState(null)
   const [confirmModal, setConfirmModal] = useState(null)
+  const [detailsModal, setDetailsModal] = useState(null) // Para mostrar detalhes do envio
 
   useEffect(() => {
     fetchClients()
@@ -213,37 +214,40 @@ export default function WhatsApp() {
 
     let successCount = 0
     let errorCount = 0
-    let errors = []
+    let recipients = [] // Lista completa de destinatários com status
 
     // Processar envio um por um no frontend para evitar timeout e controlar delay
     for (let i = 0; i < targetClients.length; i++) {
       const client = targetClients[i]
 
       try {
-        // Personalizar mensagem (simples substituição no frontend também)
-        // A Edge Function também faz isso, mas se usarmos o envio single, mandamos a mensagem crua
-        // e deixamos a edge function (ou fazemos aqui). 
-        // A função sendWhatsAppMessage manda para 'single' que chama 'addInvisibleVariation' e manda.
-        // A substituição de %Nome% no 'bulk' era feita na Edge Function. No 'single', não tem substituição automática.
-        // Precisamos fazer a substituição AQUI antes de enviar.
-
+        // Personalizar mensagem
         const personalizedMessage = message.trim().replace(/%Nome%/gi, client.nome || 'Cliente')
 
         const result = await sendWhatsAppMessage(client.telefone, personalizedMessage)
 
         if (result.success) {
           successCount++
+          recipients.push({
+            nome: client.nome,
+            telefone: client.telefone,
+            success: true
+          })
         } else {
           errorCount++
-          errors.push({
-            client: client.nome,
+          recipients.push({
+            nome: client.nome,
+            telefone: client.telefone,
+            success: false,
             error: result.error
           })
         }
       } catch (err) {
         errorCount++
-        errors.push({
-          client: client.nome,
+        recipients.push({
+          nome: client.nome,
+          telefone: client.telefone,
+          success: false,
           error: err.message
         })
       }
@@ -267,7 +271,8 @@ export default function WhatsApp() {
           status: errorCount === 0 ? 'enviado' : errorCount === targetClients.length ? 'erro' : 'parcial',
           success_count: successCount,
           error_count: errorCount,
-          errors: errors.length > 0 ? errors : null
+          recipients: recipients, // Lista completa de todos os destinatários
+          errors: recipients.filter(r => !r.success) // Mantém compatibilidade
         })
         .eq('id', messageRecord.id)
     }
@@ -370,6 +375,91 @@ export default function WhatsApp() {
           {notification.type === 'warning' && <AlertCircle size={20} />}
           <span>{notification.message}</span>
           <button className="toast-close" onClick={() => setNotification(null)}>×</button>
+        </div>
+      )}
+
+      {/* Modal de Detalhes do Envio */}
+      {detailsModal && (
+        <div className="confirm-overlay" onClick={() => setDetailsModal(null)}>
+          <div className="details-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="details-modal-header">
+              <h3>
+                {getStatusIcon(detailsModal.status)}
+                Detalhes do Envio
+              </h3>
+              <button className="modal-close" onClick={() => setDetailsModal(null)}>×</button>
+            </div>
+            
+            <div className="details-modal-info">
+              <p><strong>Data:</strong> {formatDate(detailsModal.created_at)}</p>
+              <p><strong>Status:</strong> {getStatusLabel(detailsModal.status)}</p>
+              <p><strong>Total:</strong> {detailsModal.total_recipients} destinatário(s)</p>
+              <p><strong>Sucesso:</strong> <span className="text-success">{detailsModal.success_count || 0}</span></p>
+              <p><strong>Erros:</strong> <span className="text-error">{detailsModal.error_count || 0}</span></p>
+            </div>
+
+            <div className="details-modal-message">
+              <strong>Mensagem enviada:</strong>
+              <p className="message-preview">{detailsModal.message}</p>
+            </div>
+
+            <div className="details-modal-recipients">
+              <h4>Lista de Destinatários</h4>
+              
+              {detailsModal.recipients && detailsModal.recipients.length > 0 ? (
+                <div className="recipients-list">
+                  {detailsModal.recipients.map((recipient, idx) => (
+                    <div key={idx} className={`recipient-item ${recipient.success ? 'success' : 'error'}`}>
+                      <div className="recipient-status">
+                        {recipient.success ? (
+                          <CheckCircle2 size={16} className="icon-success" />
+                        ) : (
+                          <XCircle size={16} className="icon-error" />
+                        )}
+                      </div>
+                      <div className="recipient-info">
+                        <span className="recipient-name">{recipient.nome}</span>
+                        <span className="recipient-phone">{formatPhone(recipient.telefone)}</span>
+                      </div>
+                      <div className="recipient-result">
+                        {recipient.success ? (
+                          <span className="badge-success">Enviado</span>
+                        ) : (
+                          <span className="badge-error" title={recipient.error}>Erro</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : detailsModal.errors && detailsModal.errors.length > 0 ? (
+                <div className="recipients-list">
+                  <p className="info-text">Exibindo apenas os erros (envios antigos):</p>
+                  {detailsModal.errors.map((err, idx) => (
+                    <div key={idx} className="recipient-item error">
+                      <div className="recipient-status">
+                        <XCircle size={16} className="icon-error" />
+                      </div>
+                      <div className="recipient-info">
+                        <span className="recipient-name">{err.client || err.nome}</span>
+                        <span className="recipient-error">{err.error}</span>
+                      </div>
+                      <div className="recipient-result">
+                        <span className="badge-error">Erro</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="no-details">Detalhes dos destinatários não disponíveis para este envio.</p>
+              )}
+            </div>
+
+            <div className="details-modal-footer">
+              <button className="btn btn-secondary" onClick={() => setDetailsModal(null)}>
+                Fechar
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -563,7 +653,11 @@ export default function WhatsApp() {
           ) : (
             <div className="history-list">
               {history.map((item) => (
-                <div key={item.id} className="history-item">
+                <div 
+                  key={item.id} 
+                  className="history-item clickable"
+                  onClick={() => setDetailsModal(item)}
+                >
                   <div className="history-item-header">
                     <div className="history-status">
                       {getStatusIcon(item.status)}
@@ -578,7 +672,10 @@ export default function WhatsApp() {
                       </span>
                       <button
                         className="btn-delete"
-                        onClick={() => deleteHistoryItem(item.id)}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          deleteHistoryItem(item.id)
+                        }}
                         title="Apagar"
                       >
                         <Trash2 size={14} />
@@ -603,6 +700,9 @@ export default function WhatsApp() {
                         {item.error_count} erro(s)
                       </span>
                     )}
+                  </div>
+                  <div className="history-item-hint">
+                    <Eye size={12} /> Clique para ver detalhes
                   </div>
                 </div>
               ))}
