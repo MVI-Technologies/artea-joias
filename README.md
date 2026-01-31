@@ -6,7 +6,7 @@ Sistema B2C de vendas de semijoias operando no modelo de compras coletivas por g
 
 O sistema Artea Joias é uma plataforma B2C de vendas de semijoias, operando principalmente no modelo de compras coletivas por grupo (link). Existe apenas uma empresa vendedora, não há marketplace nem múltiplos lojistas. Todos os produtos, preços e regras são definidos exclusivamente pela administradora do sistema.
 
-Os produtos são cadastrados com custo interno oculto e uma margem percentual configurável, que gera automaticamente o preço final exibido ao cliente. O cliente nunca visualiza custo, margem ou lucro, apenas o valor final do produto. Os produtos podem ser vendidos de forma unitária (1–1) ou em pacotes de quantidade mínima (ex.: 12, 24 unidades do mesmo modelo).
+Os produtos são cadastrados com custo interno oculto e uma margem percentual configurável, que gera automaticamente o preço final exibido ao cliente. O cliente nunca visualiza custo, margem ou lucro, apenas o valor final do produto. Os produtos podem ser vendidos de frma unitária (1–1) ou em pacotes de quantidade mínima (ex.: 12, 24 unidades do mesmo modelo).
 
 ## 🚀 Funcionalidades Principais
 
