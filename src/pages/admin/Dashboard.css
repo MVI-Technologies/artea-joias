@@ -151,3 +151,61 @@
     grid-template-columns: repeat(4, 1fr);
   }
 }
+
+/* Mobile Responsive Table (< 768px) */
+@media (max-width: 768px) {
+  .dashboard-grid .table thead {
+    display: none; /* Hide headers on mobile */
+  }
+
+  .dashboard-grid .table, 
+  .dashboard-grid .table tbody, 
+  .dashboard-grid .table tr, 
+  .dashboard-grid .table td {
+    display: block;
+    width: 100%;
+    min-width: 0; /* Override global table min-width */
+  }
+
+  .dashboard-grid .table tr {
+    margin-bottom: var(--spacing-md);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    background: var(--bg-card);
+    padding: var(--spacing-md);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .dashboard-grid .table td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--spacing-xs) 0;
+    text-align: right;
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .dashboard-grid .table td:last-child {
+    border-bottom: none;
+  }
+
+  .dashboard-grid .table td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-align: left;
+    margin-right: var(--spacing-md);
+  }
+  
+  /* Specific styling for Product to wrap nicely */
+  .dashboard-grid .table td[data-label="Produto"] {
+    flex-direction: column;
+    align-items: flex-start;
+    text-align: left;
+    gap: 4px;
+  }
+  
+  .dashboard-grid .table td[data-label="Produto"]::before {
+    margin-bottom: 2px;
+  }
+}

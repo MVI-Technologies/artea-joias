@@ -51,6 +51,40 @@ export default function UserList() {
 
 
 
+  const ensureUserAuth = async (user) => {
+    if (user.auth_id) return user.auth_id
+
+    // Se não tem auth_id, criar usuário no Auth
+    console.log('Usuário sem auth_id, criando...')
+    const { data, error } = await supabase.functions.invoke('create-user', {
+        body: {
+            email: user.email,
+            password: 'tempPassword123!', // Senha temporária, será alterada logo em seguida ou o usuário resetará
+            nome: user.nome,
+            telefone: user.telefone,
+            role: user.role
+        }
+    })
+
+    if (error) throw error
+    if (data.error) throw new Error(data.error)
+
+    // Atualizar o cliente localmente e no banco com o novo auth_id
+    // Nota: A função create-user já deve atualizar o auth_id na tabela clients, mas vamos garantir
+    // Recarregar o usuário para pegar o auth_id novo
+    const { data: updatedUser, error: fetchError } = await supabase
+        .from('clients')
+        .select('auth_id')
+        .eq('id', user.id)
+        .single()
+    
+    if (fetchError || !updatedUser?.auth_id) {
+        throw new Error('Erro ao recuperar auth_id após criação')
+    }
+
+    return updatedUser.auth_id
+  }
+
   const handleSave = async () => {
     if (!formData.nome || !formData.email) {
       alert('Nome e Email são obrigatórios')
@@ -65,6 +99,14 @@ export default function UserList() {
     setSaving(true)
     try {
       if (modalMode === 'edit') {
+        // Antes de atualizar, verificar se tem auth_id (caso esteja tentando mudar algo crítico ou apenas para garantir consistência)
+        // Se a edição envolver coisas que dependem do Auth (como role syncing), seria bom ter o auth_id.
+        // Mas o requisito principal é na alteração de senha. Vamos adicionar a verificação aqui também se desejado,
+        // mas para edição simples de dados (nome, telefone), talvez não seja estritamente necessário bloquear.
+        // O usuário pediu "o mesmo para o caso de edição". Então vamos garantir auth_id na edição.
+        
+        await ensureUserAuth({ ...selectedUser, ...formData })
+
         const { error } = await supabase
           .from('clients')
           .update(formData)
@@ -87,7 +129,8 @@ export default function UserList() {
       setModalMode('')
       fetchUsers()
     } catch (error) {
-      alert('Erro ao salvar usuário')
+      console.error('Erro ao salvar:', error)
+      alert('Erro ao salvar usuário: ' + (error.message || 'Erro desconhecido'))
     } finally {
       setSaving(false)
     }
@@ -126,9 +169,12 @@ export default function UserList() {
 
     setResettingPassword(true);
     try {
+        // Garantir que o usuário tenha auth_id antes de tentar trocar a senha
+        const authId = await ensureUserAuth(selectedUser)
+
         const { data, error } = await supabase.functions.invoke('admin-update-password', {
             body: {
-                userId: selectedUser.auth_id, // Assuming auth_id links to auth.users
+                userId: authId,
                 newPassword: resetPasswordData.newPassword
             }
         });
@@ -144,6 +190,9 @@ export default function UserList() {
         alert('Senha atualizada com sucesso!');
         setPasswordResetModalOpen(false);
         setResetPasswordData({ newPassword: '', confirmPassword: '' });
+        
+        // Atualizar lista para garantir que auth_id esteja sincronizado localmente se foi criado agora
+        fetchUsers()
     } catch (error) {
         console.error('Erro ao atualizar senha:', error);
         alert('Erro ao atualizar senha: ' + error.message);

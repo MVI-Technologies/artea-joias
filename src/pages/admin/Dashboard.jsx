@@ -216,8 +216,8 @@ export default function Dashboard() {
                   <tbody>
                     {recentOrders.map((order) => (
                       <tr key={order.id}>
-                        <td>{new Date(order.created_at).toLocaleDateString('pt-BR')}</td>
-                        <td>
+                        <td data-label="Data">{new Date(order.created_at).toLocaleDateString('pt-BR')}</td>
+                        <td data-label="Cliente">
                           {order.romaneio_id ? (
                             <Link to={`/admin/romaneios/${order.romaneio_id}`} className="text-primary hover-underline">
                               {order.client?.nome || '-'}
@@ -226,11 +226,11 @@ export default function Dashboard() {
                             order.client?.nome || '-'
                           )}
                         </td>
-                        <td>{order.product?.nome || '-'}</td>
-                        <td>R$ {order.valor_total?.toFixed(2) || '0.00'}</td>
-                        <td>
+                        <td data-label="Produto">{order.product?.nome || '-'}</td>
+                        <td data-label="Valor">R$ {order.valor_total?.toFixed(2) || '0.00'}</td>
+                        <td data-label="Status">
                           <span className={`badge badge-${getStatusColor(order.status)}`}>
-                            {order.status}
+                            {getStatusLabel(order.status)}
                           </span>
                         </td>
                       </tr>
@@ -279,4 +279,21 @@ function getStatusColor(status) {
     admin_purchase: 'success'
   }
   return colors[status] || 'secondary'
+}
+
+function getStatusLabel(status) {
+  const labels = {
+    pendente: 'Pendente',
+    aguardando_pagamento: 'Aguardando Pagamento',
+    aguardando: 'Aguardando',
+    pago: 'Pago',
+    em_separacao: 'Em Separação',
+    em_preparacao: 'Em Preparação',
+    enviado: 'Enviado',
+    entregue: 'Entregue',
+    concluido: 'Concluído',
+    cancelado: 'Cancelado',
+    admin_purchase: 'Compra Admin'
+  }
+  return labels[status] || status
 }

@@ -28,21 +28,33 @@ Deno.serve(async (req: Request) => {
     }
 
     // 0. Validation: Check if email or phone already exists in clients
-    // ... existing validation code ...
     const { data: existingClients, error: checkError } = await supabase
       .from('clients')
-      .select('id, email, telefone')
+      .select('id, email, telefone, auth_id')
       .or(`email.eq.${email},telefone.eq.${telefone}`);
 
+    let clientToUpdateId = null;
+
     if (existingClients && existingClients.length > 0) {
-        return new Response(
-            JSON.stringify({ error: 'Usuário (email ou telefone) já cadastrado no sistema.' }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+        // Check if any has auth_id
+        const registered = existingClients.find(c => c.auth_id);
+        if (registered) {
+            return new Response(
+                JSON.stringify({ error: 'Usuário (email ou telefone) já cadastrado no sistema.' }),
+                { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+        }
+        
+        // No auth_id found. We can backfill.
+        // Prioritize matching by email, otherwise take the first one (phone match)
+        const match = existingClients.find(c => c.email === email) || existingClients[0];
+        clientToUpdateId = match.id;
+        console.log(`Backfilling auth for existing client: ${clientToUpdateId}`);
     }
 
     // 1. Create user in Supabase Auth
-    // ... existing auth creation code ...
+    // Use phone as email identifier pattern if strictly needed or just use the provided email?
+    // The original code used phoneDigits@artea.local. Checking if we should preserve that.
     const phoneDigits = telefone.replace(/\D/g, '');
     const authEmail = `${phoneDigits}@artea.local`;
     
@@ -66,31 +78,57 @@ Deno.serve(async (req: Request) => {
 
     const userId = authData.user.id;
 
-    // 2. Create record in clients table
-    // We set both id and auth_id to userId for consistency
-    const { error: clientError } = await supabase
-      .from('clients')
-      .insert({
-        id: userId,
-        auth_id: userId,
-        email, // Store the REAL email here
-        nome,
-        telefone,
-        role: role || 'cliente',
-        instagram: instagram || null,
-        cpf: cpf || null,
-        aniversario: aniversario || null,
-        grupo: grupo || 'Grupo Compras',
-        cadastro_status: cadastro_status || 'completo', 
-        approved: approved !== undefined ? approved : true,
-        enderecos: enderecos || []
-      });
+    // 2. Create or Update record in clients table
+    let clientError;
+
+    if (clientToUpdateId) {
+        // Update existing client
+        const { error } = await supabase
+          .from('clients')
+          .update({
+            auth_id: userId,
+            // Ensure essential fields are synced/updated if provided
+            email: email, 
+            role: role || 'cliente',
+            // Only update these if they are provided to avoid overwriting with null
+            ...(instagram ? { instagram } : {}),
+            ...(cpf ? { cpf } : {}),
+            ...(aniversario ? { aniversario } : {}),
+            ...(grupo ? { grupo } : {}),
+            ...(enderecos ? { enderecos } : {})
+          })
+          .eq('id', clientToUpdateId);
+          
+        clientError = error;
+    } else {
+        // Insert new client
+        // We set both id and auth_id to userId for consistency (legacy behavior preference)
+        const { error } = await supabase
+          .from('clients')
+          .insert({
+            id: userId,
+            auth_id: userId,
+            email, // Store the REAL email here
+            nome,
+            telefone,
+            role: role || 'cliente',
+            instagram: instagram || null,
+            cpf: cpf || null,
+            aniversario: aniversario || null,
+            grupo: grupo || 'Grupo Compras',
+            cadastro_status: cadastro_status || 'completo', 
+            approved: approved !== undefined ? approved : true,
+            enderecos: enderecos || []
+          });
+          
+        clientError = error;
+    }
 
     if (clientError) {
-      console.error('Client text insert error:', clientError);
+      console.error('Client text insert/update error:', clientError);
       // Rollback: delete the auth user if client record creation fails
       await supabase.auth.admin.deleteUser(userId);
-      throw new Error(`Erro ao criar cliente: ${clientError.message}`);
+      throw new Error(`Erro ao criar/atualizar cliente: ${clientError.message}`);
     }
 
     return new Response(
