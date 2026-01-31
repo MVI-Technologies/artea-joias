@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { 
-  ShoppingBag, 
-  Search, 
+import {
+  ShoppingBag,
+  Search,
   Filter,
   Eye,
   Truck,
@@ -16,11 +16,9 @@ import { supabase } from '../../../lib/supabase'
 import './OrderList.css'
 
 /**
- * ⚠️ DEPRECATED: This page references the 'orders' table which has been removed.
- * Orders are now managed through Romaneios.
- * Consider removing this page or redirecting to /admin/romaneios
- * See migration 030_remove_orders_table.sql
+ * This page displays individual items from romaneios as "orders".
  */
+import { Clock } from 'lucide-react'
 
 const statusOptions = [
   { value: '', label: 'Todos os Status' },
@@ -49,17 +47,42 @@ export default function OrderList() {
   const fetchOrders = async () => {
     try {
       const { data, error } = await supabase
-        .from('orders')
+        .from('romaneio_items')
         .select(`
-          *,
-          client:clients(id, nome, telefone),
+          id,
+          quantidade,
+          preco_unitario,
+          valor_total,
+          created_at,
           product:products(id, nome, preco),
-          lot:lots(id, nome)
+          romaneio:romaneios(
+            id,
+            status_pagamento,
+            codigo_rastreio,
+            client:clients(id, nome, telefone),
+            lot:lots(id, nome)
+          )
         `)
         .order('created_at', { ascending: false })
 
       if (error) throw error
-      setOrders(data || [])
+
+      const mappedOrders = (data || []).map(item => ({
+        id: item.id,
+        quantidade: item.quantidade,
+        valor_unitario: item.preco_unitario,
+        valor_total: item.valor_total,
+        created_at: item.created_at,
+        status: item.romaneio?.status_pagamento || 'pendente',
+        codigo_rastreio: item.romaneio?.codigo_rastreio,
+        client: item.romaneio?.client,
+        product: item.product,
+        lot: item.romaneio?.lot,
+        lot_id: item.romaneio?.lot?.id,
+        romaneio_id: item.romaneio?.id
+      }))
+
+      setOrders(mappedOrders)
     } catch (error) {
       console.error('Erro ao carregar pedidos:', error)
     } finally {
@@ -80,12 +103,17 @@ export default function OrderList() {
     }
   }
 
-  const updateOrderStatus = async (orderId, newStatus) => {
+  const updateOrderStatus = async (order, newStatus) => {
     try {
+      if (!order.romaneio_id) {
+        alert('Este pedido não está vinculado a um romaneio')
+        return
+      }
+
       const { error } = await supabase
-        .from('orders')
-        .update({ status: newStatus })
-        .eq('id', orderId)
+        .from('romaneios')
+        .update({ status_pagamento: newStatus })
+        .eq('id', order.romaneio_id)
 
       if (error) throw error
       fetchOrders()
@@ -101,10 +129,20 @@ export default function OrderList() {
     }
 
     try {
+      // Get unique romaneio_ids from selected orders
+      const romaneioIds = [...new Set(
+        orders
+          .filter(o => selectedOrders.includes(o.id))
+          .map(o => o.romaneio_id)
+          .filter(Boolean)
+      )]
+
+      if (romaneioIds.length === 0) return
+
       const { error } = await supabase
-        .from('orders')
-        .update({ status: newStatus })
-        .in('id', selectedOrders)
+        .from('romaneios')
+        .update({ status_pagamento: newStatus })
+        .in('id', romaneioIds)
 
       if (error) throw error
       setSelectedOrders([])
@@ -115,8 +153,8 @@ export default function OrderList() {
   }
 
   const toggleSelectOrder = (orderId) => {
-    setSelectedOrders(prev => 
-      prev.includes(orderId) 
+    setSelectedOrders(prev =>
+      prev.includes(orderId)
         ? prev.filter(id => id !== orderId)
         : [...prev, orderId]
     )
@@ -132,25 +170,29 @@ export default function OrderList() {
 
   const getStatusBadge = (status) => {
     const badges = {
-      pendente: { class: 'badge-warning', icon: CreditCard },
-      pago: { class: 'badge-success', icon: CheckCircle },
-      em_preparacao: { class: 'badge-info', icon: Package },
-      enviado: { class: 'badge-primary', icon: Truck },
-      entregue: { class: 'badge-success', icon: CheckCircle },
-      cancelado: { class: 'badge-danger', icon: XCircle }
+      pendente: { label: 'Pendente', class: 'badge-warning', icon: Clock },
+      aguardando: { label: 'Aguardando', class: 'badge-warning', icon: Clock },
+      aguardando_pagamento: { label: 'Aguardando Pagto', class: 'badge-warning', icon: Clock },
+      pago: { label: 'Pago', class: 'badge-success', icon: CheckCircle },
+      em_separacao: { label: 'Em Separação', class: 'badge-info', icon: Package },
+      em_preparacao: { label: 'Em Preparação', class: 'badge-info', icon: Package },
+      enviado: { label: 'Enviado', class: 'badge-primary', icon: Truck },
+      entregue: { label: 'Entregue', class: 'badge-success', icon: CheckCircle },
+      concluido: { label: 'Concluído', class: 'badge-success', icon: CheckCircle },
+      cancelado: { label: 'Cancelado', class: 'badge-danger', icon: XCircle }
     }
-    const badge = badges[status] || { class: 'badge-secondary', icon: Package }
+    const badge = badges[status] || { label: status, class: 'badge-secondary', icon: Package }
     const Icon = badge.icon
     return (
       <span className={`badge ${badge.class}`}>
         <Icon size={12} style={{ marginRight: 4 }} />
-        {status}
+        {badge.label}
       </span>
     )
   }
 
   const filteredOrders = orders.filter(order => {
-    const matchesSearch = 
+    const matchesSearch =
       order.client?.nome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       order.product?.nome?.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesStatus = !filterStatus || order.status === filterStatus
@@ -178,15 +220,15 @@ export default function OrderList() {
         </div>
         <div className="order-stat">
           <span className="order-stat-value">
-            {orders.filter(o => o.status === 'pendente').length}
+            {orders.filter(o => ['pendente', 'aguardando', 'aguardando_pagamento'].includes(o.status)).length}
           </span>
           <span className="order-stat-label">Pendentes</span>
         </div>
         <div className="order-stat">
           <span className="order-stat-value">
-            {orders.filter(o => o.status === 'pago').length}
+            {orders.filter(o => ['pago', 'enviado', 'concluido', 'em_separacao', 'admin_purchase'].includes(o.status)).length}
           </span>
-          <span className="order-stat-label">Pagos</span>
+          <span className="order-stat-label">Pagos/Processados</span>
         </div>
       </div>
 
@@ -212,7 +254,7 @@ export default function OrderList() {
               </button>
             </div>
           </div>
-          
+
           {selectedOrders.length > 0 && (
             <span className="text-muted">{selectedOrders.length} selecionado(s)</span>
           )}
@@ -261,8 +303,8 @@ export default function OrderList() {
             <thead>
               <tr>
                 <th>
-                  <input 
-                    type="checkbox" 
+                  <input
+                    type="checkbox"
                     checked={selectedOrders.length === filteredOrders.length && filteredOrders.length > 0}
                     onChange={toggleSelectAll}
                   />
@@ -296,7 +338,7 @@ export default function OrderList() {
                 filteredOrders.map(order => (
                   <tr key={order.id}>
                     <td>
-                      <input 
+                      <input
                         type="checkbox"
                         checked={selectedOrders.includes(order.id)}
                         onChange={() => toggleSelectOrder(order.id)}
@@ -317,23 +359,31 @@ export default function OrderList() {
                     <td>{getStatusBadge(order.status)}</td>
                     <td>
                       {order.codigo_rastreio || (
-                        <button className="btn btn-outline btn-sm">
-                          + Adicionar
-                        </button>
+                        <span className="text-muted" style={{ fontSize: 11 }}>Sem rastreio</span>
                       )}
                     </td>
-                    <td>{new Date(order.created_at).toLocaleDateString('pt-BR')}</td>
+                    <td>{order.created_at ? new Date(order.created_at).toLocaleDateString('pt-BR') : '-'}</td>
                     <td>
                       <div className="order-actions">
+                        <Link
+                          to={`/admin/romaneios/${order.romaneio_id}`}
+                          className="btn btn-sm btn-outline"
+                          title="Ver Romaneio Completo"
+                        >
+                          <Eye size={14} />
+                        </Link>
                         <select
                           className="form-select"
                           value={order.status}
-                          onChange={(e) => updateOrderStatus(order.id, e.target.value)}
+                          onChange={(e) => updateOrderStatus(order, e.target.value)}
                           style={{ width: 130 }}
                         >
-                          {statusOptions.slice(1).map(opt => (
-                            <option key={opt.value} value={opt.value}>{opt.label}</option>
-                          ))}
+                          <option value="aguardando_pagamento">Aguardando Pagto</option>
+                          <option value="pago">Pago</option>
+                          <option value="em_separacao">Em Separação</option>
+                          <option value="enviado">Enviado</option>
+                          <option value="concluido">Concluído</option>
+                          <option value="cancelado">Cancelado</option>
                         </select>
                       </div>
                     </td>

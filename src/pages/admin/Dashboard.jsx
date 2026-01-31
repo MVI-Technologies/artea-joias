@@ -13,73 +13,92 @@ import { supabase } from '../../lib/supabase'
 import './Dashboard.css'
 
 export default function Dashboard() {
+  const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().substring(0, 7)) // YYYY-MM
   const [stats, setStats] = useState({
     totalClients: 0,
     pendingClients: 0,
     totalProducts: 0,
     openLots: 0,
     totalOrders: 0,
-    monthRevenue: 0
+    totalRevenue: 0
   })
   const [recentOrders, setRecentOrders] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     fetchDashboardData()
-  }, [])
+  }, [selectedMonth])
 
   const fetchDashboardData = async () => {
     try {
-      // Total de clientes
-      const { count: totalClients } = await supabase
-        .from('clients')
-        .select('*', { count: 'exact', head: true })
-        .eq('role', 'cliente')
+      setLoading(true)
 
-      // Clientes pendentes
-      const { count: pendingClients } = await supabase
-        .from('clients')
-        .select('*', { count: 'exact', head: true })
-        .eq('approved', false)
+      let queryItems = supabase.from('romaneio_items').select(`
+        id,
+        valor_total,
+        created_at,
+        product:products(nome),
+        romaneio:romaneios(
+          status_pagamento,
+          client:clients(nome)
+        )
+      `)
 
-      // Total de produtos
-      const { count: totalProducts } = await supabase
-        .from('products')
-        .select('*', { count: 'exact', head: true })
-        .eq('ativo', true)
+      let queryTotalOrders = supabase.from('romaneio_items').select('*', { count: 'exact', head: true })
 
-      // Lotes (Todos) - Contagem explícita sem head:true para evitar cache issues
-      const { data: allLots, error: lotsError } = await supabase
-        .from('lots')
-        .select('id')
+      let queryRevenue = supabase.from('romaneios').select('valor_total')
+        .in('status_pagamento', ['pago', 'enviado', 'concluido', 'em_separacao', 'admin_purchase'])
+
+      if (selectedMonth !== 'all') {
+        const startDate = `${selectedMonth}-01T00:00:00Z`
+        const endDate = new Date(new Date(startDate).setMonth(new Date(startDate).getMonth() + 1)).toISOString()
+
+        queryItems = queryItems.gte('created_at', startDate).lt('created_at', endDate)
+        queryTotalOrders = queryTotalOrders.gte('created_at', startDate).lt('created_at', endDate)
+        queryRevenue = queryRevenue.gte('created_at', startDate).lt('created_at', endDate)
+      }
+
+      // Execute Queries
+      const [
+        { count: totalClients },
+        { count: pendingClients },
+        { count: totalProducts },
+        { data: allLots },
+        { count: totalOrdersCount },
+        { data: revenueData },
+        { data: items }
+      ] = await Promise.all([
+        supabase.from('clients').select('*', { count: 'exact', head: true }).eq('role', 'cliente'),
+        supabase.from('clients').select('*', { count: 'exact', head: true }).eq('approved', false),
+        supabase.from('products').select('*', { count: 'exact', head: true }).eq('ativo', true),
+        supabase.from('lots').select('id'),
+        queryTotalOrders,
+        queryRevenue,
+        queryItems.order('created_at', { ascending: false }).limit(50)
+      ])
 
       const realTotalLots = allLots ? allLots.length : 0
+      const totalRevenue = revenueData?.reduce((sum, r) => sum + (r.valor_total || 0), 0) || 0
 
-      // Total de pedidos
-      const { count: totalOrders } = await supabase
-        .from('orders')
-        .select('*', { count: 'exact', head: true })
-
-      // Pedidos recentes
-      const { data: orders } = await supabase
-        .from('orders')
-        .select(`
-          *,
-          client:clients(nome, telefone),
-          product:products(nome)
-        `)
-        .order('created_at', { ascending: false })
-        .limit(5)
+      const formattedOrders = (items || []).map(item => ({
+        id: item.id,
+        client: item.romaneio?.client,
+        product: item.product,
+        valor_total: item.valor_total,
+        status: item.romaneio?.status_pagamento || 'pendente',
+        romaneio_id: item.romaneio?.id,
+        created_at: item.created_at
+      }))
 
       setStats({
         totalClients: totalClients || 0,
         pendingClients: pendingClients || 0,
         totalProducts: totalProducts || 0,
-        openLots: realTotalLots || 0, // Usando a variável correta
-        totalOrders: totalOrders || 0,
-        monthRevenue: 0
+        openLots: realTotalLots || 0,
+        totalOrders: totalOrdersCount || 0,
+        totalRevenue: totalRevenue
       })
-      setRecentOrders(orders || [])
+      setRecentOrders(formattedOrders)
     } catch (error) {
       console.error('Erro ao carregar dashboard:', error)
     } finally {
@@ -101,7 +120,6 @@ export default function Dashboard() {
       value: stats.totalProducts,
       icon: Package,
       color: 'success',
-      // Sem link para produtos
     },
     {
       title: 'Total Lotes',
@@ -115,7 +133,6 @@ export default function Dashboard() {
       value: stats.totalOrders,
       icon: ShoppingBag,
       color: 'info',
-      link: '/admin/pedidos'
     }
   ]
 
@@ -123,6 +140,28 @@ export default function Dashboard() {
     <div className="dashboard">
       <div className="page-header">
         <h1>Dashboard</h1>
+        <div className="header-actions" style={{ display: 'flex', gap: '10px' }}>
+          <select
+            className="form-select"
+            value={selectedMonth === 'all' ? 'all' : 'monthly'}
+            onChange={(e) => {
+              if (e.target.value === 'all') setSelectedMonth('all')
+              else setSelectedMonth(new Date().toISOString().substring(0, 7))
+            }}
+          >
+            <option value="monthly">Filtrar por Mês</option>
+            <option value="all">Ver Tudo (Total)</option>
+          </select>
+
+          {selectedMonth !== 'all' && (
+            <input
+              type="month"
+              className="form-select"
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+            />
+          )}
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -157,19 +196,17 @@ export default function Dashboard() {
       <div className="dashboard-grid">
         <div className="card">
           <div className="card-header">
-            <h3>Pedidos Recentes</h3>
-            <Link to="/admin/pedidos" className="btn btn-sm btn-outline">
-              Ver todos
-            </Link>
+            <h3>{selectedMonth === 'all' ? 'Todos os Pedidos' : 'Pedidos do Mês'}</h3>
           </div>
           <div className="card-body">
             {recentOrders.length === 0 ? (
-              <p className="text-muted text-center">Nenhum pedido encontrado</p>
+              <p className="text-muted text-center">Nenhum pedido encontrado no período</p>
             ) : (
-              <div className="table-container">
+              <div className="table-container scrollable-table" style={{ maxHeight: '400px', overflowY: 'auto' }}>
                 <table className="table">
                   <thead>
                     <tr>
+                      <th>Data</th>
                       <th>Cliente</th>
                       <th>Produto</th>
                       <th>Valor</th>
@@ -179,7 +216,16 @@ export default function Dashboard() {
                   <tbody>
                     {recentOrders.map((order) => (
                       <tr key={order.id}>
-                        <td>{order.client?.nome || '-'}</td>
+                        <td>{new Date(order.created_at).toLocaleDateString('pt-BR')}</td>
+                        <td>
+                          {order.romaneio_id ? (
+                            <Link to={`/admin/romaneios/${order.romaneio_id}`} className="text-primary hover-underline">
+                              {order.client?.nome || '-'}
+                            </Link>
+                          ) : (
+                            order.client?.nome || '-'
+                          )}
+                        </td>
                         <td>{order.product?.nome || '-'}</td>
                         <td>R$ {order.valor_total?.toFixed(2) || '0.00'}</td>
                         <td>
@@ -221,11 +267,16 @@ export default function Dashboard() {
 function getStatusColor(status) {
   const colors = {
     pendente: 'warning',
+    aguardando_pagamento: 'warning',
+    aguardando: 'warning',
     pago: 'success',
+    em_separacao: 'info',
     em_preparacao: 'info',
     enviado: 'primary',
     entregue: 'success',
-    cancelado: 'danger'
+    concluido: 'success',
+    cancelado: 'danger',
+    admin_purchase: 'success'
   }
   return colors[status] || 'secondary'
 }
