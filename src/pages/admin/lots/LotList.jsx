@@ -334,10 +334,6 @@ export default function LotList() {
     return matchSearch && matchStatus
   })
 
-  // Separar "Minha Loja - Pronta Entrega" no topo
-  const prontaEntrega = filteredLots.find(l => l.nome?.includes('Pronta Entrega'))
-  const regularLots = filteredLots.filter(l => !l.nome?.includes('Pronta Entrega'))
-
   if (loading) {
     return <div className="page-container"><div className="loading-spinner" style={{ margin: '40px auto' }} /></div>
   }
@@ -413,48 +409,8 @@ export default function LotList() {
             </tr>
           </thead>
           <tbody>
-            {/* Linha destaque - Pronta Entrega */}
-            {prontaEntrega && (
-              <tr className="row-highlight">
-                <td className="col-nome">
-                  <span className="nome-text">{prontaEntrega.nome}</span>
-                </td>
-                <td className="col-status">
-                  <span className="status-badge badge-green">Aberto</span>
-                </td>
-                <td className="col-data"></td>
-                <td className="col-data"></td>
-                <td className="col-acoes">
-                  <div className="acoes-buttons">
-                    <Link to={`/admin/lotes/${prontaEntrega.id}`} className="btn-action btn-produtos">
-                      Produtos
-                    </Link>
-                    <Link to={`/admin/romaneios?lot=${prontaEntrega.id}`} className="btn-action btn-romaneios">Romaneios</Link>
-                    <Link to={`/admin/separacao?lot=${prontaEntrega.id}`} className="btn-action btn-separacao">Separação</Link>
-                    <div className="dropdown-container">
-                      <button
-                        type="button"
-                        className="btn-action btn-acoes"
-                        onClick={(e) => {
-                          if (openDropdown === prontaEntrega.id) {
-                            setOpenDropdown(null)
-                          } else {
-                            const rect = e.currentTarget.getBoundingClientRect()
-                            setDropdownPos(calculateDropdownPosition(rect))
-                            setOpenDropdown(prontaEntrega.id)
-                          }
-                        }}
-                      >
-                        Ações <ChevronDown size={12} />
-                      </button>
-                    </div>
-                  </div>
-                </td>
-              </tr>
-            )}
-
             {/* Lotes regulares */}
-            {regularLots.map((lot) => {
+            {filteredLots.map((lot) => {
               const badgeInfo = getStatusBadge(lot.status)
               return (
                 <tr key={lot.id} className="row-regular">
@@ -511,29 +467,8 @@ export default function LotList() {
 
       {/* Mobile: Cards */}
       <div className="show-mobile mobile-lots-container">
-        {/* Pronta Entrega Card */}
-        {prontaEntrega && (
-          <div className="mobile-card lot-card-highlight">
-            <div className="mobile-card-header">
-              <span className="mobile-card-title">{prontaEntrega.nome}</span>
-              <span className="status-badge badge-green">Aberto</span>
-            </div>
-            <div className="mobile-card-actions">
-              <Link to={`/admin/lotes/${prontaEntrega.id}`} className="btn btn-sm btn-primary">
-                <Package size={14} /> Produtos
-              </Link>
-              <Link to={`/admin/romaneios?lot=${prontaEntrega.id}`} className="btn btn-sm btn-secondary">
-                <FileText size={14} /> Romaneios
-              </Link>
-              <Link to={`/admin/separacao?lot=${prontaEntrega.id}`} className="btn btn-sm btn-secondary">
-                <Scissors size={14} /> Separação
-              </Link>
-            </div>
-          </div>
-        )}
-
         {/* Regular Lots Cards */}
-        {regularLots.map((lot) => {
+        {filteredLots.map((lot) => {
           const badgeInfo = getStatusBadge(lot.status)
           return (
             <div key={lot.id} className="mobile-card">
@@ -653,7 +588,7 @@ export default function LotList() {
 
       {/* Modal de Configurações */}
       {showConfigModal && (
-        <div className="modal-overlay" onClick={() => !processing && setShowConfigModal(null)}>
+        <div className="modal-overlay-config" onClick={() => !processing && setShowConfigModal(null)}>
           <div className="modal-config-light" onClick={(e) => e.stopPropagation()}>
             <div className="modal-config-header-light">
               <h3><Settings size={20} /> Configurações do Link</h3>
@@ -684,7 +619,7 @@ export default function LotList() {
                   <textarea
                     value={configData.descricao}
                     onChange={(e) => setConfigData({ ...configData, descricao: e.target.value })}
-                    rows={2}
+                    rows={6}
                     placeholder="Descrição para os clientes..."
                   />
                 </div>
@@ -696,15 +631,18 @@ export default function LotList() {
                   <Clock size={16} /> REGRAS E PRAZOS
                 </h4>
 
+                <div className="form-group-light">
+                  <label>Data/Hora de Encerramento</label>
+                  <input
+                    type="datetime-local"
+                    value={configData.data_fim ? new Date(configData.data_fim).toISOString().slice(0, 16) : ''}
+                    onChange={(e) => setConfigData({ ...configData, data_fim: e.target.value })}
+                    onClick={(e) => e.target.showPicker()}
+                    onKeyDown={(e) => e.preventDefault()}
+                  />
+                </div>
+
                 <div className="form-row-light">
-                  <div className="form-group-light">
-                    <label>Data/Hora de Encerramento</label>
-                    <input
-                      type="datetime-local"
-                      value={configData.data_fim ? new Date(configData.data_fim).toISOString().slice(0, 16) : ''}
-                      onChange={(e) => setConfigData({ ...configData, data_fim: e.target.value })}
-                    />
-                  </div>
                   <div className="form-group-light">
                     <label>Taxa de Separação (R$)</label>
                     <input

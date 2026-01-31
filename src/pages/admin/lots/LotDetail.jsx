@@ -1444,7 +1444,7 @@ export default function LotDetail({ defaultTab }) {
                   <textarea
                     value={lotSettings.descricao || ''}
                     onChange={(e) => setLotSettings({ ...lotSettings, descricao: e.target.value })}
-                    rows={2}
+                    rows={5}
                     placeholder="Descrição para os clientes..."
                   />
                 </div>
@@ -1463,6 +1463,8 @@ export default function LotDetail({ defaultTab }) {
                       type="datetime-local"
                       value={lotSettings.data_fim ? new Date(lotSettings.data_fim).toISOString().slice(0, 16) : ''}
                       onChange={(e) => setLotSettings({ ...lotSettings, data_fim: e.target.value })}
+                      onClick={(e) => e.target.showPicker()}
+                      onKeyDown={(e) => e.preventDefault()}
                     />
                   </div>
                   <div className="form-group">
