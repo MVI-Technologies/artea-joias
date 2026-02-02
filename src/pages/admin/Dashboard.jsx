@@ -36,9 +36,11 @@ export default function Dashboard() {
       let queryItems = supabase.from('romaneio_items').select(`
         id,
         valor_total,
+        quantidade,
         created_at,
         product:products(nome),
         romaneio:romaneios(
+          id,
           status_pagamento,
           client:clients(nome)
         )
@@ -84,6 +86,7 @@ export default function Dashboard() {
         id: item.id,
         client: item.romaneio?.client,
         product: item.product,
+        quantidade: item.quantidade,
         valor_total: item.valor_total,
         status: item.romaneio?.status_pagamento || 'pendente',
         romaneio_id: item.romaneio?.id,
@@ -209,6 +212,7 @@ export default function Dashboard() {
                       <th>Data</th>
                       <th>Cliente</th>
                       <th>Produto</th>
+                      <th>Qtd</th>
                       <th>Valor</th>
                       <th>Status</th>
                     </tr>
@@ -227,6 +231,7 @@ export default function Dashboard() {
                           )}
                         </td>
                         <td data-label="Produto">{order.product?.nome || '-'}</td>
+                        <td data-label="Qtd">{order.quantidade || 0}</td>
                         <td data-label="Valor">R$ {order.valor_total?.toFixed(2) || '0.00'}</td>
                         <td data-label="Status">
                           <span className={`badge badge-${getStatusColor(order.status)}`}>
