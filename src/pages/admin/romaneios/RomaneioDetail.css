@@ -516,9 +516,62 @@
   margin-top: 4px;
 }
 
-.status-em_separacao { background-color: #3b82f6; color: white; }
-.status-enviado { background-color: #2563eb; color: white; }
-.status-concluido { background-color: #059669; color: white; }
-.status-cancelado { background-color: #ef4444; color: white; }
-.status-admin_purchase { background-color: #7c3aed; color: white; }
-.status-fechado_insuficiente { background-color: #64748b; color: white; }
+.status-em_separacao {
+  background-color: #3b82f6;
+  color: white;
+}
+
+.status-enviado {
+  background-color: #2563eb;
+  color: white;
+}
+
+.status-concluido {
+  background-color: #059669;
+  color: white;
+}
+
+.status-cancelado {
+  background-color: #ef4444;
+  color: white;
+}
+
+.status-admin_purchase {
+  background-color: #7c3aed;
+  color: white;
+}
+
+.status-fechado_insuficiente {
+  background-color: #64748b;
+  color: white;
+}
+
+/* Edit Mode Styles */
+.col-qty input[type="number"] {
+  font-family: inherit;
+  font-size: 13px;
+  transition: all 0.2s;
+}
+
+.col-qty input[type="number"]:focus {
+  outline: none;
+  border-color: #D4AF37 !important;
+  box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.1);
+}
+
+.col-qty input[type="number"]:hover {
+  border-color: #C5A028;
+}
+
+/* Remove spinner arrows from number input */
+.col-qty input[type="number"]::-webkit-inner-spin-button,
+.col-qty input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  appearance: none;
+  margin: 0;
+}
+
+.col-qty input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}

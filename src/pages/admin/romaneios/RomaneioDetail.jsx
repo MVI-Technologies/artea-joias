@@ -1,19 +1,23 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { 
-  ArrowLeft, 
-  Printer, 
-  Download, 
+import {
+  ArrowLeft,
+  Printer,
+  Download,
   MessageCircle,
   FileText,
   CheckCircle,
   Clock,
-  DollarSign
+  DollarSign,
+  Edit,
+  Save,
+  X
 } from 'lucide-react'
 import { supabase } from '../../../lib/supabase'
 import './RomaneioDetail.css'
 import { useAuth } from '../../../contexts/AuthContext'
 import { useToast } from '../../../components/common/Toast'
+import { generateRomaneioPDF } from '../../../utils/pdfGenerator'
 
 const STATUS_OPTIONS = [
   { value: 'aguardando_pagamento', label: 'Aguardando Pagamento', color: 'warning' },
@@ -38,12 +42,18 @@ export default function RomaneioDetail() {
   const { user } = useAuth()
   const [pixConfig, setPixConfig] = useState(null) // Centralized payment config
   const [loading, setLoading] = useState(true)
-  
+
   // Status Modal Controls
   const [showStatusModal, setShowStatusModal] = useState(false)
   const [targetStatus, setTargetStatus] = useState('')
   const [statusReason, setStatusReason] = useState('')
   const [updating, setUpdating] = useState(false)
+
+  // Edit Mode Controls
+  const [editMode, setEditMode] = useState(false)
+  const [editedItems, setEditedItems] = useState([])
+  const [saving, setSaving] = useState(false)
+  const [sendingWhatsApp, setSendingWhatsApp] = useState(false)
 
   useEffect(() => {
     fetchData()
@@ -57,7 +67,7 @@ export default function RomaneioDetail() {
         .select('config')
         .eq('type', 'pix')
         .single()
-      
+
       if (pixIntegration?.config) {
         setPixConfig(pixIntegration.config)
       }
@@ -113,58 +123,249 @@ export default function RomaneioDetail() {
     }
   }
 
-  const handlePrint = () => {
-    window.print()
+  const enableEditMode = () => {
+    setEditedItems(items.map(item => ({ ...item })))
+    setEditMode(true)
+  }
+
+  const cancelEditMode = () => {
+    setEditMode(false)
+    setEditedItems([])
+  }
+
+  const updateItemQuantity = (itemId, newQuantity) => {
+    setEditedItems(prev => prev.map(item => {
+      if (item.id === itemId) {
+        const quantidade = Math.max(0, parseInt(newQuantity) || 0)
+        const precoUnitario = item.valor_unitario || item.preco_unitario || item.product?.preco || 0
+        const valor_total = quantidade * precoUnitario
+        return { ...item, quantidade, valor_total }
+      }
+      return item
+    }))
+  }
+
+  const saveChanges = async () => {
+    try {
+      setSaving(true)
+
+      // Update each item in database
+      for (const item of editedItems) {
+        // Update quantidade and valor_recalculado (manual override)
+        const { error } = await supabase
+          .from('romaneio_items')
+          .update({
+            quantidade: item.quantidade,
+            valor_recalculado: item.valor_total
+          })
+          .eq('id', item.id)
+
+        if (error) throw error
+      }
+
+      // Fetch updated items to get final totals
+      const { data: updatedItems, error: fetchError } = await supabase
+        .from('romaneio_items')
+        .select('quantidade, valor_total, valor_recalculado')
+        .eq('romaneio_id', id)
+
+      if (fetchError) throw fetchError
+
+      // Recalculate romaneio totals using valor_recalculado if set, otherwise valor_total
+      const totalProdutos = updatedItems.reduce((sum, item) => {
+        const valorEfetivo = item.valor_recalculado ?? item.valor_total
+        return sum + (valorEfetivo || 0)
+      }, 0)
+      const quantidadeTotal = updatedItems.reduce((sum, item) => sum + (item.quantidade || 0), 0)
+
+      const valorTotal = totalProdutos + (romaneio.taxa_separacao || 0) + (romaneio.valor_frete || 0)
+
+      const { error: romaneioError } = await supabase
+        .from('romaneios')
+        .update({
+          valor_produtos: totalProdutos,
+          quantidade_itens: quantidadeTotal,
+          valor_total: valorTotal
+        })
+        .eq('id', id)
+
+      if (romaneioError) throw romaneioError
+
+      toast.success('Romaneio atualizado com sucesso!')
+      setEditMode(false)
+      await fetchData() // Reload data
+
+    } catch (error) {
+      console.error('Erro ao salvar alterações:', error)
+      toast.error('Erro ao salvar alterações: ' + error.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const sendWhatsAppWithPDF = async () => {
+    if (!client?.telefone) {
+      toast.error('Cliente não possui telefone cadastrado')
+      return
+    }
+
+    try {
+      setSendingWhatsApp(true)
+
+      // Generate PDF
+      const pdfBase64 = await generateRomaneioPDF({
+        romaneio,
+        lot,
+        client,
+        items,
+        company,
+        pixConfig
+      })
+
+      if (!pdfBase64) throw new Error('Falha ao gerar PDF')
+
+      // Prepare message about availability
+      const unavailableItems = items.filter(item => item.quantidade === 0)
+      const availableItems = items.filter(item => item.quantidade > 0)
+
+      let message = `Olá ${client.nome}! 🌟\n\n`
+      message += `Seu romaneio do *${lot?.nome}* foi atualizado!\n\n`
+
+      if (unavailableItems.length > 0) {
+        message += `⚠️ *Atenção - Disponibilidade de Produtos:*\n\n`
+        message += `Infelizmente, alguns itens não estão disponíveis na quantidade solicitada:\n\n`
+
+        unavailableItems.forEach(item => {
+          message += `❌ ${item.product?.nome || 'Produto'} - Indisponível\n`
+        })
+
+        message += `\n✅ *Itens Disponíveis:*\n\n`
+        availableItems.forEach(item => {
+          message += `• ${item.product?.nome || 'Produto'} - Qtd: ${item.quantidade}\n`
+        })
+
+        message += `\n💰 *Valor Total Atualizado:* R$ ${romaneio.valor_total?.toFixed(2)}\n\n`
+      } else {
+        message += `📋 Pedido: ${romaneio.numero_romaneio || romaneio.numero_pedido}\n`
+        message += `💰 Valor Total: R$ ${romaneio.valor_total?.toFixed(2)}\n\n`
+      }
+
+      message += `Por favor, realize o pagamento conforme os dados do romaneio em anexo.\n\n`
+      message += `Qualquer dúvida, estamos à disposição! 💎`
+
+      // Send via WhatsApp Edge Function
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+
+      const response = await fetch(`${supabaseUrl}/functions/v1/send-whatsapp?action=file`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabaseKey}`
+        },
+        body: JSON.stringify({
+          to: client.telefone,
+          fileBase64: pdfBase64,
+          fileName: `Romaneio-${romaneio.numero_romaneio || romaneio.id.slice(-6)}.pdf`,
+          caption: message,
+          mimeType: 'application/pdf'
+        })
+      })
+
+      const result = await response.json()
+
+      if (!result.success) {
+        throw new Error(result.error || 'Erro ao enviar WhatsApp')
+      }
+
+      toast.success('Romaneio enviado via WhatsApp com sucesso!')
+
+    } catch (error) {
+      console.error('Erro ao enviar WhatsApp:', error)
+      toast.error('Erro ao enviar WhatsApp: ' + error.message)
+    } finally {
+      setSendingWhatsApp(false)
+    }
+  }
+
+  const handleDownloadPDF = async () => {
+    try {
+      toast.info('Gerando PDF...')
+
+      const pdfBase64 = await generateRomaneioPDF({
+        romaneio,
+        lot,
+        client,
+        items,
+        company,
+        pixConfig
+      })
+
+      if (!pdfBase64) throw new Error('Falha ao gerar PDF')
+
+      // Create download link
+      const link = document.createElement('a')
+      link.href = `data:application/pdf;base64,${pdfBase64}`
+      link.download = `Romaneio-${romaneio.numero_romaneio || romaneio.id.slice(-6)}.pdf`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+
+      toast.success('PDF baixado com sucesso!')
+    } catch (error) {
+      console.error('Erro ao gerar PDF:', error)
+      toast.error('Erro ao gerar PDF: ' + error.message)
+    }
   }
 
   const handleStatusUpdate = async () => {
     if (!targetStatus) return
     setUpdating(true)
-    
+
     try {
-        // Encontrar admin ID (client_id do usuario logado)
-        const { data: adminClient } = await supabase
-            .from('clients')
-            .select('id')
-            .eq('auth_id', user.id)
-            .single()
+      // Encontrar admin ID (client_id do usuario logado)
+      const { data: adminClient } = await supabase
+        .from('clients')
+        .select('id')
+        .eq('auth_id', user.id)
+        .single()
 
-        if (!adminClient) throw new Error('Perfil de administrador não encontrado')
+      if (!adminClient) throw new Error('Perfil de administrador não encontrado')
 
-        const { error } = await supabase.rpc('update_romaneio_status', {
-            p_romaneio_id: id,
-            p_novo_status: targetStatus,
-            p_admin_id: adminClient.id,
-            p_observacao: statusReason || null
-        })
+      const { error } = await supabase.rpc('update_romaneio_status', {
+        p_romaneio_id: id,
+        p_novo_status: targetStatus,
+        p_admin_id: adminClient.id,
+        p_observacao: statusReason || null
+      })
 
-        if (error) throw error
+      if (error) throw error
 
-        // Mensagem personalizada baseada no status
-        const statusMessages = {
-          'cancelado': '❌ Pedido cancelado com sucesso!',
-          'pago': '✅ Pagamento confirmado!',
-          'em_separacao': '📦 Pedido em separação!',
-          'enviado': '🚚 Pedido marcado como enviado!',
-          'concluido': '🎉 Pedido concluído!',
-          'aguardando_pagamento': '⏳ Status alterado para aguardando pagamento'
-        }
-        
-        toast.success(statusMessages[targetStatus] || 'Status atualizado com sucesso!')
-        setShowStatusModal(false)
-        setStatusReason('')
-        fetchData() // Reload
+      // Mensagem personalizada baseada no status
+      const statusMessages = {
+        'cancelado': '❌ Pedido cancelado com sucesso!',
+        'pago': '✅ Pagamento confirmado!',
+        'em_separacao': '📦 Pedido em separação!',
+        'enviado': '🚚 Pedido marcado como enviado!',
+        'concluido': '🎉 Pedido concluído!',
+        'aguardando_pagamento': '⏳ Status alterado para aguardando pagamento'
+      }
+
+      toast.success(statusMessages[targetStatus] || 'Status atualizado com sucesso!')
+      setShowStatusModal(false)
+      setStatusReason('')
+      fetchData() // Reload
     } catch (error) {
-        console.error('Erro ao atualizar status:', error)
-        toast.error('Erro ao atualizar status: ' + error.message)
+      console.error('Erro ao atualizar status:', error)
+      toast.error('Erro ao atualizar status: ' + error.message)
     } finally {
-        setUpdating(false)
+      setUpdating(false)
     }
   }
 
   const openWhatsApp = () => {
     if (!client?.telefone) return
-    
+
     const phone = client.telefone.replace(/\D/g, '')
     const message = encodeURIComponent(
       `Olá ${client.nome}! 🌟\n\n` +
@@ -212,14 +413,61 @@ export default function RomaneioDetail() {
           <ArrowLeft size={16} /> Voltar
         </button>
         <div className="toolbar-actions">
-          <button className="btn btn-outline" onClick={openWhatsApp}>
-            <MessageCircle size={16} /> Enviar WhatsApp
-          </button>
-          <button className="btn btn-primary" onClick={handlePrint}>
-            <Printer size={16} /> Imprimir
-          </button>
+          {!editMode ? (
+            <>
+              <button className="btn btn-outline" onClick={enableEditMode}>
+                <Edit size={16} /> Editar Quantidades
+              </button>
+              <button
+                className="btn btn-success"
+                onClick={sendWhatsAppWithPDF}
+                disabled={sendingWhatsApp}
+              >
+                <MessageCircle size={16} /> {sendingWhatsApp ? 'Enviando...' : 'Enviar WhatsApp + PDF'}
+              </button>
+              <button className="btn btn-primary" onClick={handleDownloadPDF}>
+                <Download size={16} /> Salvar PDF
+              </button>
+            </>
+          ) : (
+            <>
+              <button className="btn btn-outline" onClick={cancelEditMode}>
+                <X size={16} /> Cancelar
+              </button>
+              <button
+                className="btn btn-success"
+                onClick={saveChanges}
+                disabled={saving}
+              >
+                <Save size={16} /> {saving ? 'Salvando...' : 'Salvar Alterações'}
+              </button>
+            </>
+          )}
         </div>
       </div>
+
+
+      {/* Edit Mode Banner */}
+      {editMode && (
+        <div className="no-print" style={{
+          backgroundColor: '#fff3cd',
+          border: '1px solid #ffc107',
+          borderRadius: '8px',
+          padding: '12px 20px',
+          margin: '0 20px 16px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px'
+        }}>
+          <Edit size={20} color="#856404" />
+          <div style={{ flex: 1 }}>
+            <strong style={{ color: '#856404' }}>Modo de Edição Ativo</strong>
+            <p style={{ margin: '4px 0 0', fontSize: '14px', color: '#856404' }}>
+              Ajuste as quantidades dos produtos conforme disponibilidade. Clique em "Salvar Alterações" para confirmar.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Status do Pagamento (não imprime) */}
       <div className="payment-status-bar no-print">
@@ -232,10 +480,10 @@ export default function RomaneioDetail() {
             <><DollarSign size={18} /> Pendente</>
           )}
         </div>
-        
+
         {romaneio.status_pagamento !== 'pago' && (
           <div className="payment-actions">
-             <button 
+            <button
               className="btn btn-outline btn-sm"
               onClick={() => {
                 // Usar configuração centralizada de PIX
@@ -250,7 +498,7 @@ export default function RomaneioDetail() {
             >
               <DollarSign size={14} /> Copiar PIX
             </button>
-            <button 
+            <button
               className="btn btn-primary btn-sm"
               onClick={() => setShowStatusModal(true)}
             >
@@ -262,50 +510,50 @@ export default function RomaneioDetail() {
 
       {showStatusModal && (
         <div className="modal-overlay">
-            <div className="modal-content">
-                <h3>Alterar Status do Romaneio</h3>
-                <div className="form-group">
-                    <label>Novo Status:</label>
-                    <select 
-                        value={targetStatus}
-                        onChange={(e) => setTargetStatus(e.target.value)}
-                        className="form-control"
-                    >
-                        <option value="">Selecione...</option>
-                        {STATUS_OPTIONS.map(opt => (
-                            <option key={opt.value} value={opt.value}>
-                                {opt.label}
-                            </option>
-                        ))}
-                    </select>
-                </div>
-                <div className="form-group">
-                    <label>Justificativa / Observação (Opcional):</label>
-                    <textarea
-                        value={statusReason}
-                        onChange={(e) => setStatusReason(e.target.value)}
-                        placeholder="Ex: Pagamento confirmado via comprovante..."
-                        className="form-control"
-                        rows={3}
-                    />
-                </div>
-                <div className="modal-actions">
-                    <button 
-                        className="btn btn-outline" 
-                        onClick={() => setShowStatusModal(false)}
-                        disabled={updating}
-                    >
-                        Cancelar
-                    </button>
-                    <button 
-                        className="btn btn-primary"
-                        onClick={handleStatusUpdate}
-                        disabled={!targetStatus || updating}
-                    >
-                        {updating ? 'Salvando...' : 'Confirmar Alteração'}
-                    </button>
-                </div>
+          <div className="modal-content">
+            <h3>Alterar Status do Romaneio</h3>
+            <div className="form-group">
+              <label>Novo Status:</label>
+              <select
+                value={targetStatus}
+                onChange={(e) => setTargetStatus(e.target.value)}
+                className="form-control"
+              >
+                <option value="">Selecione...</option>
+                {STATUS_OPTIONS.map(opt => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
             </div>
+            <div className="form-group">
+              <label>Justificativa / Observação (Opcional):</label>
+              <textarea
+                value={statusReason}
+                onChange={(e) => setStatusReason(e.target.value)}
+                placeholder="Ex: Pagamento confirmado via comprovante..."
+                className="form-control"
+                rows={3}
+              />
+            </div>
+            <div className="modal-actions">
+              <button
+                className="btn btn-outline"
+                onClick={() => setShowStatusModal(false)}
+                disabled={updating}
+              >
+                Cancelar
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={handleStatusUpdate}
+                disabled={!targetStatus || updating}
+              >
+                {updating ? 'Salvando...' : 'Confirmar Alteração'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -327,7 +575,7 @@ export default function RomaneioDetail() {
             <h1>{company?.nome_empresa || 'ARTEA JOIAS'}</h1>
             <span>{company?.whatsapp || ''}</span>
             {romaneio.is_admin_purchase && (
-                <div className="badge-admin">COMPRA ADMINISTRATIVA</div>
+              <div className="badge-admin">COMPRA ADMINISTRATIVA</div>
             )}
           </div>
         </header>
@@ -362,7 +610,7 @@ export default function RomaneioDetail() {
             </tr>
           </thead>
           <tbody>
-            {items.map((item, index) => (
+            {(editMode ? editedItems : items).map((item, index) => (
               <tr key={index}>
                 <td className="col-img">
                   {item.product?.imagem1 ? (
@@ -373,9 +621,27 @@ export default function RomaneioDetail() {
                 </td>
                 <td className="col-cat">{item.product?.category?.nome || '-'}</td>
                 <td className="col-desc">{item.product?.descricao || item.product?.nome}</td>
-                <td className="col-val">R$ {item.valor_unitario?.toFixed(2)}</td>
-                <td className="col-qty">{item.quantidade}</td>
-                <td className="col-total">R$ {item.valor_total?.toFixed(2)}</td>
+                <td className="col-val">R$ {(item.valor_unitario || item.preco_unitario || item.product?.preco || 0).toFixed(2)}</td>
+                <td className="col-qty">
+                  {editMode ? (
+                    <input
+                      type="number"
+                      min="0"
+                      value={item.quantidade}
+                      onChange={(e) => updateItemQuantity(item.id, e.target.value)}
+                      style={{
+                        width: '80px',
+                        padding: '4px 8px',
+                        border: '1px solid #ddd',
+                        borderRadius: '4px',
+                        textAlign: 'center'
+                      }}
+                    />
+                  ) : (
+                    item.quantidade
+                  )}
+                </td>
+                <td className="col-total">R$ {((item.valor_recalculado ?? item.valor_total) || 0).toFixed(2)}</td>
               </tr>
             ))}
           </tbody>
@@ -390,7 +656,7 @@ export default function RomaneioDetail() {
               <li>• Total Bruto: R$ {romaneio.total_bruto?.toFixed(2)}</li>
             )}
             {romaneio.taxa_link > 0 && (
-               <li>• Taxa Link/Plataforma: R$ {romaneio.taxa_link?.toFixed(2)}</li>
+              <li>• Taxa Link/Plataforma: R$ {romaneio.taxa_link?.toFixed(2)}</li>
             )}
             {romaneio.desconto_credito > 0 && (
               <li style={{ marginLeft: 16 }}>○ Desconto (crédito anterior): R$ {romaneio.desconto_credito?.toFixed(2)}</li>
@@ -403,7 +669,7 @@ export default function RomaneioDetail() {
             )}
             <li>• Quantidade Total de Produtos: {romaneio.quantidade_itens}</li>
             {romaneio.total_liquido > 0 && (
-               <li style={{ marginTop: 8, fontWeight: 'bold' }}>• Recebido Líquido: R$ {romaneio.total_liquido?.toFixed(2)}</li>
+              <li style={{ marginTop: 8, fontWeight: 'bold' }}>• Recebido Líquido: R$ {romaneio.total_liquido?.toFixed(2)}</li>
             )}
           </ul>
         </div>
@@ -428,7 +694,7 @@ export default function RomaneioDetail() {
             <strong>IMPORTANTE:</strong> Atenção ao pagamento, deve ser realizado assim que receber o romaneio.
           </p>
           <p className="aviso">
-            Caso o pagamento não seja realizado em até 24hs será removido do grupo e terá seu cadastro bloqueado 
+            Caso o pagamento não seja realizado em até 24hs será removido do grupo e terá seu cadastro bloqueado
             permanentemente, ficando impossibilitado de realizar novas compras.
           </p>
         </div>
