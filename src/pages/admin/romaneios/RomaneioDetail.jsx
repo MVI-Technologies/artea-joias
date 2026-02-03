@@ -11,7 +11,8 @@ import {
   DollarSign,
   Edit,
   Save,
-  X
+  X,
+  Plus
 } from 'lucide-react'
 import { supabase } from '../../../lib/supabase'
 import './RomaneioDetail.css'
@@ -54,6 +55,11 @@ export default function RomaneioDetail() {
   const [editedItems, setEditedItems] = useState([])
   const [saving, setSaving] = useState(false)
   const [sendingWhatsApp, setSendingWhatsApp] = useState(false)
+
+  // Product Addition Controls
+  const [availableProducts, setAvailableProducts] = useState([])
+  const [showAddProductModal, setShowAddProductModal] = useState(false)
+  const [loadingProducts, setLoadingProducts] = useState(false)
 
   useEffect(() => {
     fetchData()
@@ -148,14 +154,54 @@ export default function RomaneioDetail() {
     }
   }
 
-  const enableEditMode = () => {
+  const enableEditMode = async () => {
     setEditedItems(items.map(item => ({ ...item })))
     setEditMode(true)
+
+    // Fetch available products from the lot
+    if (romaneio?.lot_id) {
+      setLoadingProducts(true)
+      try {
+        const { data: lotProducts, error } = await supabase
+          .from('lot_products')
+          .select(`
+            product_id,
+            product:products(
+              id,
+              nome,
+              descricao,
+              preco,
+              imagem1,
+              categoria_id,
+              category:categories(nome)
+            )
+          `)
+          .eq('lot_id', romaneio.lot_id)
+
+        if (error) throw error
+
+        // Filter out products that are already in the romaneio
+        const existingProductIds = items.map(item => item.product_id)
+        const available = lotProducts
+          .filter(lp => !existingProductIds.includes(lp.product_id))
+          .map(lp => lp.product)
+          .filter(p => p !== null)
+
+        setAvailableProducts(available)
+      } catch (error) {
+        console.error('Erro ao buscar produtos disponíveis:', error)
+        toast.error('Erro ao carregar produtos disponíveis')
+      } finally {
+        setLoadingProducts(false)
+      }
+    }
   }
 
   const cancelEditMode = () => {
     setEditMode(false)
     setEditedItems([])
+    setAvailableProducts([])
+    setShowAddProductModal(false)
   }
 
   const updateItemQuantity = (itemId, newQuantity) => {
@@ -170,12 +216,57 @@ export default function RomaneioDetail() {
     }))
   }
 
+  const addProductToRomaneio = (product, quantity = 1) => {
+    // Create a temporary item (will be saved to DB when user clicks Save)
+    const newItem = {
+      id: `temp-${Date.now()}`, // Temporary ID
+      romaneio_id: id,
+      product_id: product.id,
+      product: product,
+      quantidade: quantity,
+      valor_unitario: product.preco,
+      preco_unitario: product.preco,
+      valor_total: product.preco * quantity,
+      valor_recalculado: null,
+      isNew: true // Flag to identify new items
+    }
+
+    setEditedItems(prev => [...prev, newItem])
+
+    // Remove from available products
+    setAvailableProducts(prev => prev.filter(p => p.id !== product.id))
+
+    toast.success(`${product.nome} adicionado ao romaneio`)
+    setShowAddProductModal(false)
+  }
+
   const saveChanges = async () => {
     try {
       setSaving(true)
 
-      // Update each item in database
-      for (const item of editedItems) {
+      // Separate new items from existing items
+      const newItems = editedItems.filter(item => item.isNew)
+      const existingItems = editedItems.filter(item => !item.isNew)
+
+      // Insert new items into database
+      for (const item of newItems) {
+        const { error } = await supabase
+          .from('romaneio_items')
+          .insert({
+            romaneio_id: id,
+            product_id: item.product_id,
+            quantidade: item.quantidade,
+            valor_unitario: item.valor_unitario,
+            preco_unitario: item.preco_unitario,
+            valor_total: item.valor_total,
+            valor_recalculado: item.valor_recalculado
+          })
+
+        if (error) throw error
+      }
+
+      // Update existing items in database
+      for (const item of existingItems) {
         // Update quantidade and valor_recalculado (manual override)
         const { error } = await supabase
           .from('romaneio_items')
@@ -502,6 +593,13 @@ export default function RomaneioDetail() {
                 <X size={16} /> Cancelar
               </button>
               <button
+                className="btn btn-primary"
+                onClick={() => setShowAddProductModal(true)}
+                disabled={loadingProducts || availableProducts.length === 0}
+              >
+                <Plus size={16} /> Adicionar Produto
+              </button>
+              <button
                 className="btn btn-success"
                 onClick={saveChanges}
                 disabled={saving}
@@ -530,7 +628,7 @@ export default function RomaneioDetail() {
           <div style={{ flex: 1 }}>
             <strong style={{ color: '#856404' }}>Modo de Edição Ativo</strong>
             <p style={{ margin: '4px 0 0', fontSize: '14px', color: '#856404' }}>
-              Ajuste as quantidades dos produtos conforme disponibilidade. Clique em "Salvar Alterações" para confirmar.
+              Ajuste as quantidades dos produtos ou adicione novos produtos do catálogo. Clique em "Salvar Alterações" para confirmar.
             </p>
           </div>
         </div>
@@ -624,6 +722,72 @@ export default function RomaneioDetail() {
         </div>
       )}
 
+      {/* Add Product Modal */}
+      {showAddProductModal && (
+        <div className="modal-overlay" onClick={() => setShowAddProductModal(false)}>
+          <div className="modal-content modal-large" onClick={(e) => e.stopPropagation()}>
+            <h3>Adicionar Produto ao Romaneio</h3>
+
+            {loadingProducts ? (
+              <div className="loading-container">
+                <div className="loading-spinner" />
+                <p>Carregando produtos...</p>
+              </div>
+            ) : availableProducts.length === 0 ? (
+              <div className="empty-state">
+                <p>Todos os produtos do catálogo já estão no romaneio.</p>
+              </div>
+            ) : (
+              <div className="product-grid">
+                {availableProducts.map(product => (
+                  <div key={product.id} className="product-card">
+                    {product.imagem1 ? (
+                      <img
+                        src={product.imagem1}
+                        alt={product.nome}
+                        className="product-image"
+                      />
+                    ) : (
+                      <div className="product-image-placeholder">
+                        Sem imagem
+                      </div>
+                    )}
+                    <div className="product-info">
+                      <h4 className="product-name">
+                        {product.nome}
+                      </h4>
+                      {product.category?.nome && (
+                        <p className="product-category">
+                          {product.category.nome}
+                        </p>
+                      )}
+                      <p className="product-price">
+                        R$ {product.preco?.toFixed(2)}
+                      </p>
+                    </div>
+                    <button
+                      className="btn btn-primary btn-sm"
+                      onClick={() => addProductToRomaneio(product, 1)}
+                      style={{ width: '100%' }}
+                    >
+                      <Plus size={14} /> Adicionar
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="modal-actions">
+              <button
+                className="btn btn-outline"
+                onClick={() => setShowAddProductModal(false)}
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Documento do Romaneio (imprimível) */}
       <div className="romaneio-document" ref={printRef}>
