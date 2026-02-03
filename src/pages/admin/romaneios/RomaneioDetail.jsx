@@ -83,6 +83,7 @@ export default function RomaneioDetail() {
       setRomaneio(romaneioData)
 
       // 3. Buscar lote
+      console.log('🔍 Buscando lote com ID:', romaneioData.lot_id)
       const { data: lotData } = await supabase
         .from('lots')
         .select('id, nome, updated_at, requer_pacote_fechado, prazo_pagamento_horas')
@@ -91,6 +92,28 @@ export default function RomaneioDetail() {
 
       console.log('📦 Lote carregado:', lotData)
       setLot(lotData)
+
+      if (!lotData && romaneioData.lot_id) {
+        console.log('⚠️ Lote não encontrado na primeira tentativa. Tentando via RPC (bypass RLS)...')
+        const { data: rpcName } = await supabase
+          .rpc('get_lot_name_by_id', { p_lot_id: romaneioData.lot_id })
+
+        console.log('📦 Nome do lote via RPC:', rpcName)
+
+        if (rpcName) {
+          setLot({ id: romaneioData.lot_id, nome: rpcName })
+        } else {
+          // Tenta buscar normal novamente só para garantir logs
+          const { data: retryLot } = await supabase
+            .from('lots')
+            .select('*')
+            .eq('id', romaneioData.lot_id)
+            .single()
+          if (retryLot) setLot(retryLot)
+        }
+      } else if (!romaneioData.lot_id) {
+        console.error('❌ ERRO CRÍTICO: Romaneio não tem lot_id!')
+      }
 
       // 4. Buscar cliente
       const { data: clientData } = await supabase
@@ -180,13 +203,25 @@ export default function RomaneioDetail() {
       }, 0)
       const quantidadeTotal = updatedItems.reduce((sum, item) => sum + (item.quantidade || 0), 0)
 
-      const valorTotal = totalProdutos + (romaneio.taxa_separacao || 0) + (romaneio.valor_frete || 0)
+      // Automatic Fee Calculation
+      let taxaSeparacao = 0
+      if (totalProdutos >= 1 && totalProdutos <= 80) {
+        taxaSeparacao = 15.00
+      } else if (totalProdutos > 80) {
+        taxaSeparacao = 25.00
+      }
+
+      // Preserve existing manual freight if any, or usage manual logic if implemented later
+      // For now, we update taxa_separacao automatically based on rules
+
+      const valorTotal = totalProdutos + taxaSeparacao + (romaneio.valor_frete || 0)
 
       const { error: romaneioError } = await supabase
         .from('romaneios')
         .update({
           valor_produtos: totalProdutos,
           quantidade_itens: quantidadeTotal,
+          taxa_separacao: taxaSeparacao,
           valor_total: valorTotal
         })
         .eq('id', id)
@@ -615,7 +650,7 @@ export default function RomaneioDetail() {
         {/* Título do Romaneio */}
         <div className="romaneio-title">
           <h2>
-            Romaneio do Link <strong>{lot?.nome}</strong> {requerPacote}
+            Romaneio do <strong>{lot?.nome || `Link ${romaneio?.lot_id || ''}`}</strong>
           </h2>
           <span className="pedido-numero">Romaneio nº {romaneio.numero_romaneio || romaneio.numero_pedido}</span>
         </div>
