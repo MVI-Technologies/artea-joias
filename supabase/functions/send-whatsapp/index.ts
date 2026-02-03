@@ -150,6 +150,9 @@ async function sendFileMessage(
 
   console.log(`📎 Enviando arquivo para: ${formattedNumber}`);
   console.log(`📄 Arquivo: ${fileName}`);
+  console.log(`📊 Tamanho do base64: ${fileBase64?.length} caracteres`);
+  console.log(`📋 Caption length: ${caption?.length || 0}`);
+  console.log(`🔤 Primeiros 100 chars do base64: ${fileBase64?.substring(0, 100)}`);
 
   // Determinar mediaType baseado no mimeType
   let mediaType = 'document';
@@ -161,24 +164,40 @@ async function sendFileMessage(
     mediaType = 'audio';
   }
 
+  // Remover prefixo data:... se existir
+  let cleanBase64 = fileBase64;
+  if (fileBase64.includes('base64,')) {
+    cleanBase64 = fileBase64.split('base64,')[1];
+    console.log('🧹 Removido prefixo data:... do base64');
+  }
+
+  const payload = {
+    number: formattedNumber,
+    mediatype: mediaType,  // Evolution API requires this at root level
+    fileName: fileName,
+    caption: caption || '',
+    media: cleanBase64
+  };
+
+  console.log('📤 Payload para Evolution API:', {
+    number: payload.number,
+    mediatype: payload.mediatype,
+    fileName: payload.fileName,
+    captionLength: payload.caption.length,
+    mediaLength: payload.media.length
+  });
+
   const response = await fetch(`${EVOLUTION_API_URL}/message/sendMedia/${EVOLUTION_INSTANCE}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'apikey': EVOLUTION_API_TOKEN || ''
     },
-    body: JSON.stringify({
-      number: formattedNumber,
-      mediaMessage: {
-        mediaType: mediaType,
-        fileName: fileName,
-        caption: caption || '',
-        media: fileBase64
-      }
-    })
+    body: JSON.stringify(payload)
   });
 
   const responseText = await response.text();
+  console.log(`📥 Resposta da Evolution API (status ${response.status}):`, responseText.substring(0, 500));
 
   let data;
   try {
@@ -188,6 +207,7 @@ async function sendFileMessage(
   }
 
   if (!response.ok) {
+    console.error('❌ Erro da Evolution API:', data);
     throw new Error(data?.message || `Erro ${response.status}`);
   }
 

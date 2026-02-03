@@ -108,26 +108,34 @@ export const generateRomaneioPDF = async ({ romaneio, lot, client, items, compan
     doc.setFont('helvetica')
 
     // --- Header ---
-    // Title
+    // Company Name (centered at top)
     doc.setFontSize(14)
     doc.setFont('helvetica', 'bold')
-    const companyName = company?.nome_empresa || 'Grupo AA de Semijoias'
-
-    // Centered Company Name
+    const companyName = company?.nome_empresa || 'Grupo AA de Importação e Compras Coletivas'
     const companyWidth = doc.getTextWidth(companyName)
-    doc.text(companyName, (doc.internal.pageSize.width - companyWidth) / 2, 20)
+    doc.text(companyName, (doc.internal.pageSize.width - companyWidth) / 2, 12)
 
-    // Romaneio Title
+    // Order Number (Below company name, right aligned)
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'bold')
+    const rawOrderNum = romaneio.numero_romaneio || romaneio.numero_pedido || romaneio.id.slice(-6)
+    const orderNum = rawOrderNum.startsWith('ROM-') ? rawOrderNum : `ROM-${rawOrderNum}`
+    doc.text(orderNum, doc.internal.pageSize.width - 15, 20, { align: 'right' })
+
+    // Romaneio Title (Centered, same line as order number or just below)
     doc.setFontSize(12)
-    const title = `Romaneio do Link ${lot?.nome || ''}`
+    doc.setFont('helvetica', 'bold')
+
+    console.log('🔍 PDF Generator - Lot recebido:', lot)
+    console.log('🔍 PDF Generator - lot?.nome:', lot?.nome)
+    console.log('🔍 PDF Generator - romaneio.lote_nome:', romaneio.lote_nome)
+
+    const lotName = lot?.nome || romaneio.lote_nome || 'Link'
+    console.log('✅ PDF Generator - Nome final usado:', lotName)
+
+    const title = `Romaneio do ${lotName}`
     const titleWidth = doc.getTextWidth(title)
     doc.text(title, (doc.internal.pageSize.width - titleWidth) / 2, 28)
-
-    // Order Number (Right aligned)
-    doc.setFontSize(10)
-    doc.setFont('helvetica', 'normal')
-    const orderNum = `${romaneio.numero_romaneio || romaneio.numero_pedido || romaneio.id.slice(-6)}`
-    doc.text(orderNum, doc.internal.pageSize.width - 20, 20, { align: 'right' })
 
     // --- Client Info Box ---
     const startY = 35

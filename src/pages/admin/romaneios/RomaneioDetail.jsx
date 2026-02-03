@@ -88,6 +88,8 @@ export default function RomaneioDetail() {
         .select('id, nome, updated_at, requer_pacote_fechado, prazo_pagamento_horas')
         .eq('id', romaneioData.lot_id)
         .single()
+
+      console.log('📦 Lote carregado:', lotData)
       setLot(lotData)
 
       // 4. Buscar cliente
@@ -212,6 +214,8 @@ export default function RomaneioDetail() {
     try {
       setSendingWhatsApp(true)
 
+      console.log('📄 Gerando PDF do romaneio...')
+
       // Generate PDF
       const pdfBase64 = await generateRomaneioPDF({
         romaneio,
@@ -222,14 +226,20 @@ export default function RomaneioDetail() {
         pixConfig
       })
 
+      console.log('✅ PDF gerado:', pdfBase64 ? `${pdfBase64.length} caracteres` : 'VAZIO')
+
       if (!pdfBase64) throw new Error('Falha ao gerar PDF')
 
       // Prepare message about availability
       const unavailableItems = items.filter(item => item.quantidade === 0)
       const availableItems = items.filter(item => item.quantidade > 0)
 
+      console.log('🔍 Dados do lote:', lot)
+      const lotName = lot?.nome || 'Link'
+      console.log('📝 Nome do lote usado:', lotName)
+
       let message = `Olá ${client.nome}! 🌟\n\n`
-      message += `Seu romaneio do *${lot?.nome}* foi atualizado!\n\n`
+      message += `Seu romaneio do *${lotName}* foi atualizado!\n\n`
 
       if (unavailableItems.length > 0) {
         message += `⚠️ *Atenção - Disponibilidade de Produtos:*\n\n`
@@ -257,25 +267,44 @@ export default function RomaneioDetail() {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
       const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
+      const payload = {
+        to: client.telefone,
+        fileBase64: pdfBase64,
+        fileName: `Romaneio-${romaneio.numero_romaneio || romaneio.id.slice(-6)}.pdf`,
+        caption: message,
+        mimeType: 'application/pdf'
+      }
+
+      console.log('📤 Enviando para WhatsApp:', {
+        to: payload.to,
+        fileName: payload.fileName,
+        pdfSize: payload.fileBase64?.length,
+        captionLength: payload.caption?.length
+      })
+
       const response = await fetch(`${supabaseUrl}/functions/v1/send-whatsapp?action=file`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${supabaseKey}`
         },
-        body: JSON.stringify({
-          to: client.telefone,
-          fileBase64: pdfBase64,
-          fileName: `Romaneio-${romaneio.numero_romaneio || romaneio.id.slice(-6)}.pdf`,
-          caption: message,
-          mimeType: 'application/pdf'
-        })
+        body: JSON.stringify(payload)
       })
 
-      const result = await response.json()
+      let result
+      try {
+        result = await response.json()
+      } catch (parseError) {
+        console.error('Erro ao parsear resposta:', parseError)
+        throw new Error(`Erro ${response.status}: Resposta inválida do servidor`)
+      }
 
-      if (!result.success) {
-        throw new Error(result.error || 'Erro ao enviar WhatsApp')
+      console.log('Resposta da Edge Function:', result)
+
+      if (!response.ok || !result.success) {
+        const errorMsg = result.error || result.message || `Erro ${response.status}`
+        console.error('Erro detalhado:', errorMsg)
+        throw new Error(errorMsg)
       }
 
       toast.success('Romaneio enviado via WhatsApp com sucesso!')
@@ -291,6 +320,9 @@ export default function RomaneioDetail() {
   const handleDownloadPDF = async () => {
     try {
       toast.info('Gerando PDF...')
+
+      console.log('📦 Lote no momento do PDF:', lot)
+      console.log('📝 Nome do lote:', lot?.nome)
 
       const pdfBase64 = await generateRomaneioPDF({
         romaneio,
