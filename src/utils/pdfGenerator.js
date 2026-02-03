@@ -107,24 +107,56 @@ export const generateRomaneioPDF = async ({ romaneio, lot, client, items, compan
     // Set font
     doc.setFont('helvetica')
 
-    // --- Header ---
-    // Company Name (centered at top)
+    // --- Header with Logo ---
+    let logoBase64 = null
+    if (company?.logo_url) {
+        logoBase64 = await getBase64ImageFromURL(company.logo_url)
+    }
+
+    // Logo on the left
+    if (logoBase64) {
+        try {
+            doc.addImage(logoBase64, 'JPEG', 15, 8, 20, 20)
+        } catch (err) {
+            console.warn('Failed to add logo to PDF:', err)
+        }
+    }
+
+    // Company Name and Phone (centered)
+    const companyName = company?.nome_empresa || 'Grupo AA de Importação e Compras Coletivas'
+    const companyPhone = company?.whatsapp || company?.telefone || ''
+
     doc.setFontSize(14)
     doc.setFont('helvetica', 'bold')
-    const companyName = company?.nome_empresa || 'Grupo AA de Importação e Compras Coletivas'
     const companyWidth = doc.getTextWidth(companyName)
-    doc.text(companyName, (doc.internal.pageSize.width - companyWidth) / 2, 12)
+    const centerX = doc.internal.pageSize.width / 2
+    doc.text(companyName, centerX, 15, { align: 'center' })
 
-    // Order Number (Below company name, right aligned)
-    doc.setFontSize(10)
-    doc.setFont('helvetica', 'bold')
-    const rawOrderNum = romaneio.numero_romaneio || romaneio.numero_pedido || romaneio.id.slice(-6)
-    const orderNum = rawOrderNum.startsWith('ROM-') ? rawOrderNum : `ROM-${rawOrderNum}`
-    doc.text(orderNum, doc.internal.pageSize.width - 15, 20, { align: 'right' })
+    if (companyPhone) {
+        // Format phone number
+        const formatPhone = (phone) => {
+            const cleaned = phone.replace(/\D/g, '')
+            if (cleaned.length === 11) {
+                return `(${cleaned.slice(0, 2)}) ${cleaned.slice(2, 7)}-${cleaned.slice(7)}`
+            } else if (cleaned.length === 10) {
+                return `(${cleaned.slice(0, 2)}) ${cleaned.slice(2, 6)}-${cleaned.slice(6)}`
+            }
+            return phone
+        }
 
-    // Romaneio Title (Centered, same line as order number or just below)
-    doc.setFontSize(12)
-    doc.setFont('helvetica', 'bold')
+        const formattedPhone = formatPhone(companyPhone)
+        doc.setFontSize(9)
+        doc.setFont('helvetica', 'normal')
+        doc.text(`WhatsApp: ${formattedPhone}`, centerX, 21, { align: 'center' })
+    }
+
+    // Horizontal line below header
+    doc.setLineWidth(0.5)
+    doc.line(15, 30, doc.internal.pageSize.width - 15, 30)
+
+    // Romaneio Title
+    doc.setFontSize(11)
+    doc.setFont('helvetica', 'normal')
 
     console.log('🔍 PDF Generator - Lot recebido:', lot)
     console.log('🔍 PDF Generator - lot?.nome:', lot?.nome)
@@ -133,18 +165,39 @@ export const generateRomaneioPDF = async ({ romaneio, lot, client, items, compan
     const lotName = lot?.nome || romaneio.lote_nome || 'Link'
     console.log('✅ PDF Generator - Nome final usado:', lotName)
 
-    const title = `Romaneio do ${lotName}`
+    // Prepare order number
+    const rawOrderNum = romaneio.numero_romaneio || romaneio.numero_pedido || romaneio.id.slice(-6)
+    const orderNum = rawOrderNum.startsWith('ROM-') ? rawOrderNum : `ROM-${rawOrderNum}`
+
+    const title = `Romaneio do `
+    const titleBold = lotName
     const titleWidth = doc.getTextWidth(title)
-    doc.text(title, (doc.internal.pageSize.width - titleWidth) / 2, 28)
+    const titleBoldWidth = doc.getTextWidth(titleBold)
+    const totalWidth = titleWidth + titleBoldWidth
+    const startX = 15
+
+    doc.text(title, startX, 38)
+    doc.setFont('helvetica', 'bold')
+    doc.text(titleBold, startX + titleWidth, 38)
+
+    // Order number on the right of the same line
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(10)
+    doc.text(`Romaneio nº ${orderNum}`, doc.internal.pageSize.width - 15, 38, { align: 'right' })
 
     // --- Client Info Box ---
-    const startY = 35
-    const boxHeight = 35
-    doc.rect(14, startY, 182, boxHeight)
+    const startY = 45
+    const boxHeight = 30
 
-    doc.setFontSize(10)
-    const leftPadding = 16
-    const lineHeight = 6
+    // Draw box with light gray background
+    doc.setFillColor(249, 249, 249)
+    doc.setDrawColor(221, 221, 221)
+    doc.rect(15, startY, doc.internal.pageSize.width - 30, boxHeight, 'FD')
+
+    doc.setFontSize(9)
+    doc.setTextColor(0, 0, 0)
+    const leftPadding = 18
+    const lineHeight = 5.5
     let currentY = startY + 6
 
     // Bold Labels
@@ -153,24 +206,18 @@ export const generateRomaneioPDF = async ({ romaneio, lot, client, items, compan
         doc.text(label, leftPadding, y)
         const labelWidth = doc.getTextWidth(label)
         doc.setFont('helvetica', 'normal')
-        doc.text(value || '-', leftPadding + labelWidth + 2, y)
+        doc.text(value || '-', leftPadding + labelWidth + 1, y)
     }
 
-    drawLabelValue('Cliente: ', client?.nome, currentY)
+    drawLabelValue('Cliente:', client?.nome, currentY)
     currentY += lineHeight
-    drawLabelValue('CPF/CNPJ: ', formatCPF(client?.cpf), currentY)
+    drawLabelValue('CPF/CNPJ:', formatCPF(client?.cpf), currentY)
     currentY += lineHeight
-    drawLabelValue('WhatsApp: ', client?.telefone, currentY)
+    drawLabelValue('WhatsApp:', client?.telefone, currentY)
     currentY += lineHeight
-    drawLabelValue('E-mail: ', client?.email, currentY)
-
-    // Closing Date (Bottom line of box)
-    // Draw line separator inside box? The image shows a single line at the bottom.
-    // Actually the image shows a box around everything, and then a line separating "Data Fechamento".
-    // Let's just put it at the bottom of the box.
+    drawLabelValue('E-mail:', client?.email, currentY)
     currentY += lineHeight
-    doc.line(14, currentY - 2, 196, currentY - 2)
-    drawLabelValue('Data Fechamento: ', formatDate(lot?.updated_at), currentY + 4)
+    drawLabelValue('Data Fechamento:', formatDate(lot?.updated_at), currentY)
 
     // --- Products Table ---
     // Group items by product_id to merge duplicates
@@ -229,31 +276,38 @@ export const generateRomaneioPDF = async ({ romaneio, lot, client, items, compan
     }
 
     autoTable(doc, {
-        startY: startY + boxHeight + 10,
-        head: [['', 'Categoria', 'Descrição', 'Valor Unitário', 'Quantidade', 'Valor Total']],
+        startY: startY + boxHeight + 8,
+        head: [['', 'CATEGORIA', 'DESCRIÇÃO', 'VALOR', 'QTD', 'TOTAL']],
         body: tableRows,
         theme: 'grid',
         styles: {
-            fontSize: 9,
-            cellPadding: 3,
+            fontSize: 8,
+            cellPadding: 2.5,
             valign: 'middle',
             halign: 'center',
-            minCellHeight: 24 // Ensure height for image (20px + padding)
+            minCellHeight: 22,
+            lineColor: [221, 221, 221],
+            lineWidth: 0.1
         },
         columnStyles: {
-            0: { cellWidth: 25 }, // Image
-            1: { cellWidth: 25 }, // Category
-            2: { halign: 'left' }, // Description (Auto width)
-            3: { cellWidth: 30 }, // Price
-            4: { cellWidth: 20 }, // Qty
-            5: { cellWidth: 30 }  // Total
+            0: { cellWidth: 22 }, // Image
+            1: { cellWidth: 28 }, // Category
+            2: { halign: 'left', cellPadding: { left: 3 } }, // Description
+            3: { cellWidth: 28 }, // Price
+            4: { cellWidth: 15 }, // Qty
+            5: { cellWidth: 28 }  // Total
         },
         headStyles: {
-            fillColor: [255, 255, 255],
+            fillColor: [245, 245, 245],
             textColor: [0, 0, 0],
             lineWidth: 0.1,
-            lineColor: [0, 0, 0],
-            fontStyle: 'bold'
+            lineColor: [221, 221, 221],
+            fontStyle: 'bold',
+            fontSize: 7,
+            halign: 'center'
+        },
+        bodyStyles: {
+            textColor: [0, 0, 0]
         },
         // Prevent row splitting to protect images
         rowPageBreak: 'avoid',
@@ -283,72 +337,153 @@ export const generateRomaneioPDF = async ({ romaneio, lot, client, items, compan
     })
 
     // --- Totals Section ---
-    let finalY = doc.lastAutoTable.finalY + 10
+    let finalY = doc.lastAutoTable.finalY + 8
 
     // If near end of page, add new page
-    if (finalY > doc.internal.pageSize.height - 60) {
+    if (finalY > doc.internal.pageSize.height - 80) {
         doc.addPage()
         finalY = 20
     }
 
-    doc.setFontSize(12)
-    doc.setFont('helvetica', 'bold')
-    doc.text(`• Valor Total da Compra: ${formatCurrency(romaneio.valor_total)}`, 20, finalY)
-
+    // Horizontal line
+    doc.setLineWidth(0.5)
+    doc.setDrawColor(0, 0, 0)
+    doc.line(15, finalY, doc.internal.pageSize.width - 15, finalY)
     finalY += 8
-    doc.setFontSize(10)
+
+    doc.setFontSize(11)
+    doc.setFont('helvetica', 'bold')
+    doc.text(`• Valor Total da Compra: ${formatCurrency(romaneio.valor_total)}`, 18, finalY)
+
+    finalY += 6
+    doc.setFontSize(9)
     doc.setFont('helvetica', 'normal')
+    doc.setTextColor(212, 175, 55) // Gold color for labels
 
     const addTotalLine = (label, value) => {
-        doc.text(`• ${label}: ${value}`, 20, finalY)
-        finalY += 6
+        doc.text(`• ${label}: ${value}`, 18, finalY)
+        finalY += 5
     }
 
     addTotalLine('Valor Produtos', formatCurrency(romaneio.valor_produtos))
-    if (romaneio.valor_frete > 0) addTotalLine('Custo Frete', formatCurrency(romaneio.valor_frete))
     if (romaneio.taxa_separacao > 0) addTotalLine('Custo Separação', formatCurrency(romaneio.taxa_separacao))
     addTotalLine('Quantidade Total de Produtos', romaneio.quantidade_itens)
 
-    // --- Payment Info ---
+    doc.setTextColor(0, 0, 0) // Reset to black
+
+    // --- Payment Info Box ---
     finalY += 5
+    const paymentBoxY = finalY
+    const paymentBoxHeight = 52
+
+    // Yellow/beige background box
+    doc.setFillColor(255, 248, 230)
+    doc.setDrawColor(212, 175, 55)
+    doc.setLineWidth(2)
+    doc.rect(15, paymentBoxY, doc.internal.pageSize.width - 30, paymentBoxHeight, 'FD')
+
+    finalY += 6
+    doc.setFontSize(9)
     doc.setFont('helvetica', 'bold')
-    doc.text('Dados para o pagamento:', 20, finalY)
+    doc.text('Dados para o pagamento:', 18, finalY)
     finalY += 6
 
-    doc.setFont('helvetica', 'normal')
-    doc.setFontSize(9)
-    const warningText = "Aviso Importante: Após o recebimento do romaneio, não será possível cancelar ou desistir da compra. Prazo máximo para pagamento: 24 horas após o envio do romaneio."
-
-    const splitWarning = doc.splitTextToSize(warningText, 170)
-    doc.text(splitWarning, 20, finalY)
-    finalY += (splitWarning.length * 5) + 2
-
-    doc.text(`Formas de pagamento: PIX`, 20, finalY)
+    doc.setFont('helvetica', 'bold')
+    doc.text('PAGAMENTO VIA PIX OU CARTÃO DE CRÉDITO.', 18, finalY)
     finalY += 5
 
+    doc.setFont('helvetica', 'normal')
     if (pixConfig?.chave) {
-        doc.text(`Chave PIX: ${pixConfig.chave}`, 20, finalY)
+        doc.setFont('helvetica', 'bold')
+        doc.text('Chave Pix CNPJ: ', 18, finalY)
+        const labelWidth = doc.getTextWidth('Chave Pix CNPJ: ')
+        doc.setFont('helvetica', 'normal')
+        doc.text(pixConfig.chave, 18 + labelWidth, finalY)
         finalY += 5
     }
     if (pixConfig?.nome_beneficiario) {
-        doc.text(`Titular: ${pixConfig.nome_beneficiario}`, 20, finalY)
+        doc.setFont('helvetica', 'bold')
+        doc.text('Beneficiário: ', 18, finalY)
+        const labelWidth = doc.getTextWidth('Beneficiário: ')
+        doc.setFont('helvetica', 'normal')
+        doc.text(pixConfig.nome_beneficiario, 18 + labelWidth, finalY)
+        finalY += 5
+    }
+    if (pixConfig?.cidade) {
+        doc.setFont('helvetica', 'bold')
+        doc.text('Cidade: ', 18, finalY)
+        const labelWidth = doc.getTextWidth('Cidade: ')
+        doc.setFont('helvetica', 'normal')
+        doc.text(pixConfig.cidade, 18 + labelWidth, finalY)
         finalY += 5
     }
 
-    const creditText = "Pagamento no cartão: Solicitar link com a administração. Após pagamento, enviar comprovante par ao financeiro."
-    const splitCredit = doc.splitTextToSize(creditText, 170)
-    doc.text(splitCredit, 20, finalY)
+    finalY += 2
+    doc.setFont('helvetica', 'bold')
+    doc.text('IMPORTANTE:', 18, finalY)
+    const importWidth = doc.getTextWidth('IMPORTANTE:')
+    doc.setFont('helvetica', 'normal')
+    const importantText = ' Atenção ao pagamento, deve ser realizado assim que receber o romaneio.'
+    const splitImportant = doc.splitTextToSize(importantText, doc.internal.pageSize.width - 40 - importWidth)
+    doc.text(splitImportant, 18 + importWidth + 1, finalY)
+    finalY += (splitImportant.length * 4) + 3
+
+    doc.setFontSize(8)
+    doc.setFont('helvetica', 'italic')
+    const warningText = 'Caso o pagamento não seja realizado em até 24hs será removido do grupo e terá seu cadastro bloqueado permanentemente, ficando impossibilitado de realizar novas compras.'
+    const splitWarning = doc.splitTextToSize(warningText, doc.internal.pageSize.width - 40)
+    doc.text(splitWarning, 18, finalY)
+    finalY = paymentBoxY + paymentBoxHeight + 5
+
+    // --- Observations Section --- (REMOVED)
+    /*
+    if (romaneio.taxa_separacao > 0) {
+        const obsBoxY = finalY
+        const obsBoxHeight = 28
+    
+        // Yellow/beige background box
+        doc.setFillColor(255, 248, 230)
+        doc.setDrawColor(245, 230, 200)
+        doc.setLineWidth(0.5)
+        doc.rect(15, obsBoxY, doc.internal.pageSize.width - 30, obsBoxHeight, 'FD')
+    
+        finalY += 6
+        doc.setFontSize(9)
+        doc.setFont('helvetica', 'bold')
+        doc.setTextColor(0, 0, 0)
+        doc.text('OBSERVAÇÃO', 18, finalY)
+        finalY += 5
+    
+        doc.setFont('helvetica', 'normal')
+        doc.setFontSize(8)
+        doc.text('- • Pedidos até R$ 30,00: isentos da taxa de serviço.', 18, finalY)
+        finalY += 4
+        doc.text('- • Pedidos entre R$ 30,01 e R$ 100,00: cobrança de R$ 20,00 de taxa de serviço.', 18, finalY)
+        finalY += 4
+        doc.text('- • Pedidos acima de R$ 100,00: cobrança da taxa de serviço no valor integral.', 18, finalY)
+        finalY += 5
+    
+        doc.setFontSize(7)
+        doc.setFont('helvetica', 'italic')
+        const taxNote = 'As taxas visam cobrir custos operacionais, de manutenção das plataforma, e dos serviços prestados.'
+        doc.text(taxNote, 18, finalY)
+        finalY = obsBoxY + obsBoxHeight + 5
+    }
+    */
 
     // --- Footer ---
     const pageHeight = doc.internal.pageSize.height
-    doc.setFontSize(8)
-    doc.text(`Documento gerado em: ${formatDate(new Date())}`, 20, pageHeight - 10)
+    doc.setFontSize(7)
+    doc.setFont('helvetica', 'normal')
+    doc.setTextColor(128, 128, 128)
+    doc.text(`Documento gerado em: ${formatDate(new Date())}`, 18, pageHeight - 10)
 
     // Pagination
     const pageCount = doc.internal.getNumberOfPages()
     for (let i = 1; i <= pageCount; i++) {
         doc.setPage(i)
-        doc.text(`Página ${i}/${pageCount}`, doc.internal.pageSize.width - 20, pageHeight - 10, { align: 'right' })
+        doc.setTextColor(128, 128, 128)
+        doc.text(`Página ${i}/${pageCount}`, doc.internal.pageSize.width - 18, pageHeight - 10, { align: 'right' })
     }
 
     // Generate Data URI

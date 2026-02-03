@@ -933,20 +933,6 @@ export default function RomaneioDetail() {
           </p>
         </div>
 
-        {/* Observações */}
-        {romaneio.taxa_separacao > 0 && (
-          <div className="observacoes">
-            <h4>OBSERVAÇÃO</h4>
-            <ul>
-              <li>- *Pedidos até R$ 30,00*: isentos da taxa de serviço.</li>
-              <li>- *Pedidos entre R$ 30,01 e R$ 100,00*: cobrança de R$ 20,00 de taxa de serviço.</li>
-              <li>- *Pedidos acima de R$ 100,00*: cobrança da taxa de serviço no valor integral.</li>
-            </ul>
-            <p className="nota-taxas">
-              As taxas visam cobrir custos operacionais, de manutenção das plataforma, e dos serviços prestados.
-            </p>
-          </div>
-        )}
 
         {/* Rodapé */}
         <footer className="romaneio-footer">
