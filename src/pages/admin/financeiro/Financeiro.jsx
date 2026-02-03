@@ -1,16 +1,14 @@
 import { useState, useEffect } from 'react'
-import { 
-  Plus, 
-  Search, 
-  Filter, 
-  ArrowUpCircle, 
-  ArrowDownCircle, 
-  DollarSign, 
-  Calendar, 
-  FileText,
-  MoreVertical,
-  Download,
-  Upload,
+import {
+  Plus,
+  Search,
+  Filter,
+  ArrowUpCircle,
+  ArrowDownCircle,
+  DollarSign,
+  Calendar,
+  Edit,
+  Trash2,
   ChevronLeft,
   ChevronRight,
   TrendingUp,
@@ -30,15 +28,21 @@ export default function Financeiro() {
     type: 'all', // all, receita, despesa
     category: 'all'
   })
-  
+
   // Modal State
   const [showModal, setShowModal] = useState(false)
   const [editingItem, setEditingItem] = useState(null)
   const [formData, setFormData] = useState(getEmptyForm())
   const [saving, setSaving] = useState(false)
 
-  // Report Dropdown
-  const [showReportMenu, setShowReportMenu] = useState(false)
+  // Delete Confirmation Modal
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [deleteItemId, setDeleteItemId] = useState(null)
+
+  // Warning Modal
+  const [showWarningModal, setShowWarningModal] = useState(false)
+  const [warningMessage, setWarningMessage] = useState('')
+
 
   const months = [
     'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -46,7 +50,7 @@ export default function Financeiro() {
   ]
 
   const categories = [
-    'Vendas', 'Serviços', 'Marketing', 'Infraestrutura', 
+    'Vendas', 'Serviços', 'Marketing', 'Infraestrutura',
     'Pessoal', 'Impostos', 'Logística', 'Outros'
   ]
 
@@ -99,7 +103,8 @@ export default function Financeiro() {
 
   const handleSave = async () => {
     if (!formData.descricao || !formData.valor) {
-      alert('Preencha os campos obrigatórios')
+      setWarningMessage('Preencha os campos obrigatórios')
+      setShowWarningModal(true)
       return
     }
 
@@ -136,19 +141,22 @@ export default function Financeiro() {
       setShowModal(false)
       fetchTransactions()
     } catch (error) {
-      alert('Erro ao salvar: ' + error.message)
+      setWarningMessage('Erro ao salvar: ' + error.message)
+      setShowWarningModal(true)
     } finally {
       setSaving(false)
     }
   }
 
   const handleDelete = async (id) => {
-    if (!confirm('Excluir este lançamento?')) return
     try {
       await supabase.from('financial_transactions').delete().eq('id', id)
       fetchTransactions()
+      setShowDeleteModal(false)
+      setDeleteItemId(null)
     } catch (error) {
-      alert('Erro ao excluir')
+      setWarningMessage('Erro ao excluir')
+      setShowWarningModal(true)
     }
   }
 
@@ -173,31 +181,31 @@ export default function Financeiro() {
       <div className="financeiro-header">
         <div className="search-box-large">
           <Search size={18} />
-          <input 
-            type="text" 
-            placeholder="Buscar por descrição" 
+          <input
+            type="text"
+            placeholder="Buscar por descrição"
             value={filter.search}
-            onChange={e => setFilter({...filter, search: e.target.value})}
+            onChange={e => setFilter({ ...filter, search: e.target.value })}
           />
         </div>
-        
+
         <div className="date-filters">
-          <button onClick={() => setFilter({...filter, month: filter.month - 1})}>
+          <button onClick={() => setFilter({ ...filter, month: filter.month - 1 })}>
             <ChevronLeft size={16} />
           </button>
-          <select 
-            value={filter.month} 
-            onChange={e => setFilter({...filter, month: parseInt(e.target.value)})}
+          <select
+            value={filter.month}
+            onChange={e => setFilter({ ...filter, month: parseInt(e.target.value) })}
           >
             {months.map((m, i) => <option key={i} value={i}>{m}</option>)}
           </select>
-          <select 
-            value={filter.year} 
-            onChange={e => setFilter({...filter, year: parseInt(e.target.value)})}
+          <select
+            value={filter.year}
+            onChange={e => setFilter({ ...filter, year: parseInt(e.target.value) })}
           >
             {[2024, 2025, 2026].map(y => <option key={y} value={y}>{y}</option>)}
           </select>
-          <button onClick={() => setFilter({...filter, month: filter.month + 1})}>
+          <button onClick={() => setFilter({ ...filter, month: filter.month + 1 })}>
             <ChevronRight size={16} />
           </button>
         </div>
@@ -205,20 +213,20 @@ export default function Financeiro() {
 
       <div className="financeiro-filters-row">
         <div className="type-filter">
-          <select 
-            value={filter.type} 
-            onChange={e => setFilter({...filter, type: e.target.value})}
+          <select
+            value={filter.type}
+            onChange={e => setFilter({ ...filter, type: e.target.value })}
           >
             <option value="all">Receitas e Despesas</option>
             <option value="receita">Apenas Receitas</option>
             <option value="despesa">Apenas Despesas</option>
           </select>
         </div>
-        
+
         <div className="cat-filter">
-          <select 
-            value={filter.category} 
-            onChange={e => setFilter({...filter, category: e.target.value})}
+          <select
+            value={filter.category}
+            onChange={e => setFilter({ ...filter, category: e.target.value })}
           >
             <option value="all">Todas as categorias</option>
             {categories.map(c => <option key={c} value={c}>{c}</option>)}
@@ -253,8 +261,8 @@ export default function Financeiro() {
 
       {/* Actions Bar */}
       <div className="actions-bar">
-        <button 
-          className="btn btn-primary" 
+        <button
+          className="btn btn-primary"
           onClick={() => {
             setEditingItem(null)
             setFormData(getEmptyForm())
@@ -263,28 +271,6 @@ export default function Financeiro() {
         >
           <Plus size={16} /> Registro
         </button>
-
-        <div className="dropdown-container">
-          <button 
-            className="btn btn-dark" 
-            onClick={() => setShowReportMenu(!showReportMenu)}
-          >
-            <FileText size={16} /> Relatórios
-          </button>
-          
-          {showReportMenu && (
-            <div className="dropdown-menu">
-              <button>Relatório Geral</button>
-              <button>A Receber - Atrasados</button>
-              <button>A Pagar - Atrasados</button>
-              <button>DRE - Mensal</button>
-              <button>DRE - Anual</button>
-              <hr />
-              <button><Download size={14} /> Exportar</button>
-              <button><Upload size={14} /> Importar OFX</button>
-            </div>
-          )}
-        </div>
       </div>
 
       {/* Data Table */}
@@ -327,9 +313,25 @@ export default function Financeiro() {
                     </span>
                   </td>
                   <td>
-                    <button className="btn-icon" onClick={() => { setEditingItem(item); setFormData(item); setShowModal(true) }}>
-                      <FileText size={14} />
-                    </button>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button
+                        className="btn-icon"
+                        onClick={() => { setEditingItem(item); setFormData(item); setShowModal(true) }}
+                        title="Editar"
+                      >
+                        <Edit size={14} />
+                      </button>
+                      <button
+                        className="btn-icon btn-icon-danger"
+                        onClick={() => {
+                          setDeleteItemId(item.id)
+                          setShowDeleteModal(true)
+                        }}
+                        title="Excluir"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))
@@ -348,30 +350,30 @@ export default function Financeiro() {
             </div>
             <div className="modal-body">
               <div className="form-group">
-                <label>Descrição</label>
-                <input 
-                  value={formData.descricao} 
-                  onChange={e => setFormData({...formData, descricao: e.target.value})}
+                <label>Descrição <span className="required">*</span></label>
+                <input
+                  value={formData.descricao}
+                  onChange={e => setFormData({ ...formData, descricao: e.target.value })}
                   placeholder="Ex: Pagamento Fornecedor X"
                 />
               </div>
 
               <div className="form-row">
                 <div className="form-group">
-                  <label>Valor (R$)</label>
-                  <input 
+                  <label>Valor (R$) <span className="required">*</span></label>
+                  <input
                     type="number"
                     step="0.01"
                     value={formData.valor}
-                    onChange={e => setFormData({...formData, valor: e.target.value})}
+                    onChange={e => setFormData({ ...formData, valor: e.target.value })}
                   />
                 </div>
                 <div className="form-group">
                   <label>Data Vencimento</label>
-                  <input 
+                  <input
                     type="date"
                     value={formData.data_vencimento}
-                    onChange={e => setFormData({...formData, data_vencimento: e.target.value})}
+                    onChange={e => setFormData({ ...formData, data_vencimento: e.target.value })}
                   />
                 </div>
               </div>
@@ -379,9 +381,9 @@ export default function Financeiro() {
               <div className="form-row">
                 <div className="form-group">
                   <label>Tipo</label>
-                  <select 
+                  <select
                     value={formData.tipo}
-                    onChange={e => setFormData({...formData, tipo: e.target.value})}
+                    onChange={e => setFormData({ ...formData, tipo: e.target.value })}
                   >
                     <option value="receita">Receita</option>
                     <option value="despesa">Despesa</option>
@@ -389,9 +391,9 @@ export default function Financeiro() {
                 </div>
                 <div className="form-group">
                   <label>Status</label>
-                  <select 
+                  <select
                     value={formData.status}
-                    onChange={e => setFormData({...formData, status: e.target.value})}
+                    onChange={e => setFormData({ ...formData, status: e.target.value })}
                   >
                     <option value="pendente">Pendente</option>
                     <option value="pago">Pago</option>
@@ -402,9 +404,9 @@ export default function Financeiro() {
 
               <div className="form-group">
                 <label>Categoria</label>
-                <select 
+                <select
                   value={formData.categoria}
-                  onChange={e => setFormData({...formData, categoria: e.target.value})}
+                  onChange={e => setFormData({ ...formData, categoria: e.target.value })}
                 >
                   {categories.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
@@ -412,23 +414,23 @@ export default function Financeiro() {
 
               <div className="form-group">
                 <label>Forma de Pagamento</label>
-                <input 
+                <input
                   value={formData.forma_pagamento}
-                  onChange={e => setFormData({...formData, forma_pagamento: e.target.value})}
+                  onChange={e => setFormData({ ...formData, forma_pagamento: e.target.value })}
                 />
               </div>
-              
+
               {!editingItem && (
-                 <div className="form-row">
-                    <div className="form-group">
-                      <label>Parcelas</label>
-                      <input 
-                        type="number" 
-                        min="1"
-                        value={formData.parcelas}
-                        onChange={e => setFormData({...formData, parcelas: e.target.value})}
-                      />
-                    </div>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Parcelas</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={formData.parcelas}
+                      onChange={e => setFormData({ ...formData, parcelas: e.target.value })}
+                    />
+                  </div>
                 </div>
               )}
 
@@ -436,6 +438,43 @@ export default function Financeiro() {
             <div className="modal-footer">
               <button className="btn btn-outline" onClick={() => setShowModal(false)}>Cancelar</button>
               <button className="btn btn-primary" onClick={handleSave} disabled={saving}>Salvar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="modal-overlay" onClick={() => setShowDeleteModal(false)}>
+          <div className="modal-content modal-sm delete-modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Confirmar Exclusão</h2>
+              <button className="modal-close" onClick={() => setShowDeleteModal(false)}>×</button>
+            </div>
+            <div className="modal-body">
+              <p>Tem certeza que deseja excluir este lançamento?</p>
+              <p className="warning-text">Esta ação não pode ser desfeita.</p>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-outline" onClick={() => setShowDeleteModal(false)}>Cancelar</button>
+              <button className="btn btn-danger" onClick={() => handleDelete(deleteItemId)}>Excluir</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Warning Modal */}
+      {showWarningModal && (
+        <div className="modal-overlay" onClick={() => setShowWarningModal(false)}>
+          <div className="modal-content modal-sm warning-modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Atenção</h2>
+              <button className="modal-close" onClick={() => setShowWarningModal(false)}>×</button>
+            </div>
+            <div className="modal-body">
+              <p>{warningMessage}</p>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-primary" onClick={() => setShowWarningModal(false)}>OK</button>
             </div>
           </div>
         </div>

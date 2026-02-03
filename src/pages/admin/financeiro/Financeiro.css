@@ -317,3 +317,127 @@
 .font-mono {
   font-family: monospace;
 }
+
+/* Action Buttons */
+.btn-icon {
+  background: transparent;
+  border: none;
+  padding: 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-icon:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.btn-icon-danger {
+  color: #ef4444;
+}
+
+.btn-icon-danger:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
+
+/* Delete Modal */
+.delete-modal .modal-body {
+  text-align: center;
+  padding: 24px;
+}
+
+.delete-modal .modal-body p {
+  margin: 0 0 12px 0;
+  font-size: 15px;
+  color: var(--text-primary);
+}
+
+.delete-modal .warning-text {
+  font-size: 13px;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+  .financeiro-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .search-box-large {
+    min-width: 100%;
+  }
+
+  .date-filters {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .financeiro-filters-row {
+    flex-direction: column;
+  }
+
+  .financeiro-filters-row select {
+    width: 100%;
+  }
+
+  .summary-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .actions-bar {
+    flex-direction: column;
+  }
+
+  .actions-bar button {
+    width: 100%;
+  }
+
+  .table-container {
+    overflow-x: auto;
+  }
+
+  .finance-table {
+    min-width: 800px;
+  }
+
+  .finance-table th,
+  .finance-table td {
+    padding: 12px 8px;
+    font-size: 12px;
+  }
+
+  .type-badge,
+  .status-pill {
+    font-size: 11px;
+    padding: 3px 6px;
+  }
+}
+
+/* Required field indicator */
+.required {
+  color: #ef4444;
+  margin-left: 4px;
+}
+
+/* Warning Modal */
+.warning-modal .modal-body {
+  text-align: center;
+  padding: 24px;
+}
+
+.warning-modal .modal-body p {
+  font-size: 15px;
+  color: var(--text-primary);
+}
+
+.warning-modal .modal-footer {
+  justify-content: center;
+}
