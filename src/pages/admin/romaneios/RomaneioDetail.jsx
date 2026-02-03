@@ -665,54 +665,57 @@ export default function RomaneioDetail() {
         </div>
 
         {/* Tabela de Produtos */}
-        <table className="produtos-table">
-          <thead>
-            <tr>
-              <th className="col-img"></th>
-              <th className="col-cat">Categoria</th>
-              <th className="col-desc">Descrição</th>
-              <th className="col-val">Valor Unitário</th>
-              <th className="col-qty">Quantidade</th>
-              <th className="col-total">Valor Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            {(editMode ? editedItems : items).map((item, index) => (
-              <tr key={index}>
-                <td className="col-img">
-                  {item.product?.imagem1 ? (
-                    <img src={item.product.imagem1} alt="" className="produto-thumb" />
-                  ) : (
-                    <div className="produto-thumb-placeholder" />
-                  )}
-                </td>
-                <td className="col-cat">{item.product?.category?.nome || '-'}</td>
-                <td className="col-desc">{item.product?.descricao || item.product?.nome}</td>
-                <td className="col-val">R$ {(item.valor_unitario || item.preco_unitario || item.product?.preco || 0).toFixed(2)}</td>
-                <td className="col-qty">
-                  {editMode ? (
-                    <input
-                      type="number"
-                      min="0"
-                      value={item.quantidade}
-                      onChange={(e) => updateItemQuantity(item.id, e.target.value)}
-                      style={{
-                        width: '80px',
-                        padding: '4px 8px',
-                        border: '1px solid #ddd',
-                        borderRadius: '4px',
-                        textAlign: 'center'
-                      }}
-                    />
-                  ) : (
-                    item.quantidade
-                  )}
-                </td>
-                <td className="col-total">R$ {((item.valor_recalculado ?? item.valor_total) || 0).toFixed(2)}</td>
+        {/* Tabela de Produtos */}
+        <div className="table-responsive">
+          <table className="produtos-table">
+            <thead>
+              <tr>
+                <th className="col-img"></th>
+                <th className="col-cat">Categoria</th>
+                <th className="col-desc">Descrição</th>
+                <th className="col-val">Valor</th>
+                <th className="col-qty">Qtd</th>
+                <th className="col-total">Total</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {(editMode ? editedItems : items).map((item, index) => (
+                <tr key={index}>
+                  <td className="col-img">
+                    {item.product?.imagem1 ? (
+                      <img src={item.product.imagem1} alt="" className="produto-thumb" />
+                    ) : (
+                      <div className="produto-thumb-placeholder" />
+                    )}
+                  </td>
+                  <td className="col-cat">{item.product?.category?.nome || '-'}</td>
+                  <td className="col-desc">{item.product?.descricao || item.product?.nome}</td>
+                  <td className="col-val">R$ {(item.valor_unitario || item.preco_unitario || item.product?.preco || 0).toFixed(2)}</td>
+                  <td className="col-qty">
+                    {editMode ? (
+                      <input
+                        type="number"
+                        min="0"
+                        value={item.quantidade}
+                        onChange={(e) => updateItemQuantity(item.id, e.target.value)}
+                        style={{
+                          width: '60px',
+                          padding: '4px',
+                          border: '1px solid #ddd',
+                          borderRadius: '4px',
+                          textAlign: 'center'
+                        }}
+                      />
+                    ) : (
+                      item.quantidade
+                    )}
+                  </td>
+                  <td className="col-total">R$ {((item.valor_recalculado ?? item.valor_total) || 0).toFixed(2)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
 
         {/* Resumo Financeiro */}
         <div className="resumo-financeiro">

@@ -407,38 +407,106 @@
 /* Responsive */
 @media (max-width: 768px) {
   .romaneio-detail-page {
-    padding: 16px;
+    padding: 10px;
   }
 
   .romaneio-document {
-    padding: 20px;
+    padding: 15px;
   }
 
+  /* Toolbar adjustments */
+  .romaneio-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .toolbar-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .toolbar-actions .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Header adjustments */
   .romaneio-header {
     flex-direction: column;
     text-align: center;
+    gap: 10px;
   }
 
   .header-info {
     text-align: center;
   }
 
+  .header-info h1 {
+    font-size: 20px;
+  }
+
+  /* Title adjustments */
+  .romaneio-title h2 {
+    font-size: 14px;
+    line-height: 1.4;
+  }
+
+  .pedido-numero {
+    text-align: center;
+    margin-top: 5px;
+  }
+
+  /* Table adjustments */
+  .table-responsive {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin-bottom: 20px;
+    border: 1px solid #eee;
+    /* Add border to see boundaries */
+  }
+
   .produtos-table {
+    display: table;
+    /* Ensure table display */
+    width: 100%;
+    min-width: 600px;
+    /* Ensure wide enough to not collapse */
     font-size: 11px;
   }
 
   .produtos-table th,
   .produtos-table td {
-    padding: 6px 8px;
+    padding: 8px 6px;
+    white-space: normal;
+    vertical-align: middle;
+  }
+
+  .col-desc {
+    min-width: 140px;
   }
 
   .produto-thumb {
-    width: 40px;
-    height: 40px;
+    width: 35px;
+    height: 35px;
   }
 
   .col-img {
-    width: 50px;
+    width: 45px;
+  }
+
+  /* Payment info responsive */
+  .payment-status-bar {
+    flex-direction: column;
+    gap: 10px;
+    text-align: center;
+  }
+
+  .payment-actions {
+    width: 100%;
+    justify-content: center;
+    flex-wrap: wrap;
   }
 }
 
