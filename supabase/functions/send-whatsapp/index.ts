@@ -288,7 +288,7 @@ Deno.serve(async (req: Request) => {
         );
       }
 
-      const result = await sendFileMessage(to, fileBase64, fileName, caption, mimeType);
+      const result = await sendFileMessage(to, fileBase64, fileName, caption ?? '', mimeType);
 
       console.log('✅ Arquivo enviado com sucesso');
 
