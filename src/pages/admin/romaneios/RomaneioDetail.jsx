@@ -365,7 +365,7 @@ export default function RomaneioDetail() {
       console.log('📝 Nome do lote usado:', lotName)
 
       let message = `Olá ${client.nome}! 🌟\n\n`
-      message += `Seu romaneio do *${lotName}* foi atualizado!\n\n`
+      message += `Seu romaneio do **${lotName}** foi atualizado!\n\n`
 
       if (unavailableItems.length > 0) {
         message += `⚠️ *Atenção - Disponibilidade de Produtos:*\n\n`
@@ -386,7 +386,7 @@ export default function RomaneioDetail() {
         message += `💰 Valor Total: R$ ${romaneio.valor_total?.toFixed(2)}\n\n`
       }
 
-      message += `Por favor, realize o pagamento conforme os dados do romaneio em anexo.\n\n`
+      message += `Pedimos a gentileza de conferir as peças relacionadas neste romaneio e, em seguida, realizar o pagamento de acordo com os dados anexos.\n\n`
       message += `Qualquer dúvida, estamos à disposição! 💎`
 
       // Send via WhatsApp Edge Function
@@ -527,10 +527,10 @@ export default function RomaneioDetail() {
     const phone = client.telefone.replace(/\D/g, '')
     const message = encodeURIComponent(
       `Olá ${client.nome}! 🌟\n\n` +
-      `Seu romaneio do *${lot?.nome}* está pronto!\n\n` +
+      `Seu romaneio do **${lot?.nome}** está pronto!\n\n` +
       `📋 Pedido: ${romaneio?.numero_romaneio || romaneio?.numero_pedido}\n` +
       `💰 Valor Total: R$ ${romaneio?.valor_total?.toFixed(2)}\n\n` +
-      `Por favor, realize o pagamento conforme os dados do romaneio.\n\n` +
+      `Pedimos a gentileza de conferir as peças relacionadas neste romaneio e, em seguida, realizar o pagamento de acordo com os dados anexos.\n\n` +
       `Qualquer dúvida, estamos à disposição! 💎`
     )
     window.open(`https://wa.me/55${phone}?text=${message}`, '_blank')

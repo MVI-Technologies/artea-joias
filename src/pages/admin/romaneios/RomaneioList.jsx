@@ -125,10 +125,10 @@ export default function RomaneioList() {
     const phone = romaneio.client.telefone.replace(/\D/g, '')
     const message = encodeURIComponent(
       `Olá ${romaneio.client.nome}! 🌟\n\n` +
-      `Seu romaneio do *${selectedLot?.nome}* está pronto!\n\n` +
+      `Seu romaneio do **${selectedLot?.nome}** está pronto!\n\n` +
       `📋 Pedido: ${romaneio.numero_pedido}\n` +
       `💰 Valor Total: R$ ${romaneio.valor_total?.toFixed(2)}\n\n` +
-      `Por favor, realize o pagamento conforme os dados do romaneio.\n\n` +
+      `Pedimos a gentileza de conferir as peças relacionadas neste romaneio e, em seguida, realizar o pagamento de acordo com os dados anexos.\n\n` +
       `Qualquer dúvida, estamos à disposição! 💎`
     )
     window.open(`https://wa.me/55${phone}?text=${message}`, '_blank')
