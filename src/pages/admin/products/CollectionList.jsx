@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react'
 import { Plus, Edit, Trash2, Calendar } from 'lucide-react'
 import { supabase } from '../../../lib/supabase'
+import { useToast } from '../../../components/common/Toast'
 
 export default function CollectionList() {
+  const toast = useToast()
   const [colecoes, setColecoes] = useState([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
@@ -53,7 +55,7 @@ export default function CollectionList() {
       setFormData({ nome: '', descricao: '', data_lancamento: '', ativo: true })
       fetchColecoes()
     } catch (error) {
-      alert('Erro: ' + error.message)
+      toast.error('Erro: ' + error.message)
     }
   }
 
@@ -75,7 +77,7 @@ export default function CollectionList() {
       if (error) throw error
       fetchColecoes()
     } catch (error) {
-      alert('Erro ao excluir')
+      toast.error('Erro ao excluir')
     }
   }
 

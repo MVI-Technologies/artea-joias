@@ -655,9 +655,9 @@ export default function RomaneioDetail() {
                 const pixKey = pixConfig?.chave
                 if (pixKey) {
                   navigator.clipboard.writeText(pixKey)
-                  alert('Chave PIX copiada!')
+                  toast.success('Chave PIX copiada!')
                 } else {
-                  alert('Chave PIX não configurada. Configure em Configurações > Integrações.')
+                  toast.warning('Chave PIX não configurada. Configure em Configurações > Integrações.')
                 }
               }}
             >

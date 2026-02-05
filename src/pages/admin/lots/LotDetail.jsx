@@ -36,12 +36,14 @@ import ImageUpload from '../../../components/common/ImageUpload'
 import { supabase } from '../../../lib/supabase'
 import { disponibilidadeLoteParaExibicao } from '../../../utils/lotAvailability'
 import { notifyCatalogClosed, sendRomaneiosAutomaticamente } from '../../../services/whatsapp'
+import { useToast } from '../../../components/common/Toast'
 import PortalDropdown from '../../../components/ui/PortalDropdown'
 import './LotDetail.css'
 
 export default function LotDetail({ defaultTab }) {
   const { id } = useParams()
   const navigate = useNavigate()
+  const toast = useToast()
   const [searchParams] = useSearchParams()
   const [lot, setLot] = useState(null)
   const [products, setProducts] = useState([])
@@ -299,7 +301,7 @@ export default function LotDetail({ defaultTab }) {
       fetchData()
     } catch (error) {
       console.error('Erro ao adicionar produtos:', error)
-      alert('Erro ao adicionar produtos')
+      toast.error('Erro ao adicionar produtos')
     }
   }
 
@@ -328,7 +330,7 @@ export default function LotDetail({ defaultTab }) {
       fetchData()
     } catch (error) {
       console.error('Erro ao atualizar:', error)
-      alert('Erro ao atualizar configurações')
+      toast.error('Erro ao atualizar configurações')
     }
   }
 
@@ -643,11 +645,11 @@ export default function LotDetail({ defaultTab }) {
   const saveProduct = async (keepOpen = false) => {
     // Validate description instead of name
     if (!productForm.descricao || !productForm.descricao.trim()) {
-      alert('Descrição é obrigatória')
+      toast.warning('Descrição é obrigatória')
       return
     }
     if (!productForm.preco || parseFloat(productForm.preco) < 0) { // Allow 0
-      alert('Preço é obrigatório')
+      toast.warning('Preço é obrigatório')
       return
     }
 
@@ -737,7 +739,7 @@ export default function LotDetail({ defaultTab }) {
       fetchData()
     } catch (error) {
       console.error('Erro ao salvar produto:', error)
-      alert('Erro ao salvar produto')
+      toast.error('Erro ao salvar produto')
     } finally {
       setSavingProduct(false)
     }
@@ -1239,7 +1241,7 @@ export default function LotDetail({ defaultTab }) {
                           )
                           window.open(`https://wa.me/55${telefone}?text=${mensagem}`, '_blank')
                         } else {
-                          alert('Telefone não encontrado para este cliente')
+                          toast.warning('Telefone não encontrado para este cliente')
                         }
                       }}
                     >

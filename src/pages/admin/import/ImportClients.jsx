@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import { Upload, Download, FileSpreadsheet, AlertCircle, CheckCircle } from 'lucide-react'
 import { supabase } from '../../../lib/supabase'
+import { useToast } from '../../../components/common/Toast'
 import { importClientsFromExcel, generateImportTemplate } from '../../../utils/excelImport'
 import './ImportClients.css'
 
 export default function ImportClients() {
+  const toast = useToast()
   const [file, setFile] = useState(null)
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState(null)
@@ -19,7 +21,7 @@ export default function ImportClients() {
 
   const handleImport = async () => {
     if (!file) {
-      alert('Selecione um arquivo')
+      toast.warning('Selecione um arquivo')
       return
     }
 

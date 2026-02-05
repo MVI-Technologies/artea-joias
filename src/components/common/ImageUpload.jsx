@@ -1,11 +1,13 @@
 import { useState, useRef } from 'react'
 import { Upload, X, Loader2 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import { useToast } from './Toast'
 
 export default function ImageUpload({ value, onChange, onUploadStart, onUploadEnd, className = '', bucketName = 'products', label, height, width, rounded }) {
   const [uploading, setUploading] = useState(false)
   const [dragActive, setDragActive] = useState(false)
   const inputRef = useRef(null)
+  const toast = useToast()
 
   // ... (drag handlers unchanged)
 
@@ -44,12 +46,12 @@ export default function ImageUpload({ value, onChange, onUploadStart, onUploadEn
 
   const handleFiles = async (file) => {
     if (!file.type.startsWith('image/')) {
-      alert('Por favor, selecione apenas arquivos de imagem.')
+      toast.warning('Por favor, selecione apenas arquivos de imagem.')
       return
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      alert('A imagem deve ter no máximo 5MB.')
+      toast.warning('A imagem deve ter no máximo 5MB.')
       return
     }
 
@@ -76,7 +78,7 @@ export default function ImageUpload({ value, onChange, onUploadStart, onUploadEn
 
     } catch (error) {
       console.error('Erro no upload:', error)
-      alert('Erro ao fazer upload da imagem: ' + (error.message || 'Erro desconhecido'))
+      toast.error('Erro ao fazer upload da imagem: ' + (error.message || 'Erro desconhecido'))
     } finally {
       setUploading(false)
       if (onUploadEnd) onUploadEnd()

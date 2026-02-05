@@ -2,10 +2,12 @@ import { useState, useEffect } from 'react'
 import { ShoppingBag, Package, Truck, CheckCircle, Clock, QrCode, X, Copy } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
+import { useToast } from '../../components/common/Toast'
 import './ClientOrders.css'
 
 export default function ClientOrders() {
   const { client } = useAuth()
+  const toast = useToast()
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('todos')
@@ -66,7 +68,7 @@ export default function ClientOrders() {
   const copyPix = () => {
     if (selectedOrder?.lot?.chave_pix) {
       navigator.clipboard.writeText(selectedOrder.lot.chave_pix)
-      alert('Chave PIX copiada!')
+      toast.success('Chave PIX copiada!')
     }
   }
 

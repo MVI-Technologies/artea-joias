@@ -3,12 +3,14 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Save, Info, Bell, Loader2, Lock, X, Search } from 'lucide-react'
 import { supabase } from '../../../lib/supabase'
 import { notifyNewCatalog, notifyCatalogClosed } from '../../../services/whatsapp'
+import { useToast } from '../../../components/common/Toast'
 import ImageUpload from '../../../components/common/ImageUpload'
 import './LotForm.css'
 
 export default function LotForm() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const toast = useToast()
   const isEditing = !!id
 
   const [loading, setLoading] = useState(isEditing)
@@ -108,7 +110,7 @@ export default function LotForm() {
     e.preventDefault()
 
     if (!formData.nome.trim()) {
-      alert('Nome é obrigatório')
+      toast.warning('Nome é obrigatório')
       return
     }
 
@@ -233,7 +235,7 @@ export default function LotForm() {
       }
     } catch (error) {
       console.error('Erro ao salvar:', error)
-      alert(`Erro ao salvar grupo de compras: ${error.message || error}`)
+      toast.error(`Erro ao salvar grupo de compras: ${error.message || error}`)
       setSaving(false)
       setSendingNotification(false)
     }

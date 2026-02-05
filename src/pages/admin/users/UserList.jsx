@@ -3,10 +3,13 @@ import { useNavigate } from 'react-router-dom'
 import { Plus, Search, Edit, Trash2, Shield, User, Mail, CheckCircle, XCircle, Lock } from 'lucide-react'
 import WhatsAppIcon from '../../../components/icons/WhatsAppIcon'
 import { supabase } from '../../../lib/supabase'
+import { useToast } from '../../../components/common/Toast'
 import PasswordInput from '../../../components/ui/PasswordInput'
 import './UserList.css'
 
 export default function UserList() {
+  const navigate = useNavigate()
+  const toast = useToast()
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -87,12 +90,12 @@ export default function UserList() {
 
   const handleSave = async () => {
     if (!formData.nome || !formData.email) {
-      alert('Nome e Email são obrigatórios')
+      toast.warning('Nome e Email são obrigatórios')
       return
     }
 
     if (modalMode === 'create' && !formData.password) {
-      alert('Senha é obrigatória para novos usuários')
+      toast.warning('Senha é obrigatória para novos usuários')
       return
     }
 
@@ -130,7 +133,7 @@ export default function UserList() {
       fetchUsers()
     } catch (error) {
       console.error('Erro ao salvar:', error)
-      alert('Erro ao salvar usuário: ' + (error.message || 'Erro desconhecido'))
+      toast.error('Erro ao salvar usuário: ' + (error.message || 'Erro desconhecido'))
     } finally {
       setSaving(false)
     }
@@ -158,12 +161,12 @@ export default function UserList() {
     if (!selectedUser) return;
     
     if (resetPasswordData.newPassword !== resetPasswordData.confirmPassword) {
-        alert('As senhas não coincidem.');
-        return;
+      toast.warning('As senhas não coincidem.')
+      return
     }
 
     if (resetPasswordData.newPassword.length < 6) {
-        alert('A senha deve ter no mínimo 6 caracteres.');
+      toast.warning('A senha deve ter no mínimo 6 caracteres.');
         return;
     }
 
@@ -187,15 +190,15 @@ export default function UserList() {
             throw new Error(data.error);
         }
 
-        alert('Senha atualizada com sucesso!');
-        setPasswordResetModalOpen(false);
-        setResetPasswordData({ newPassword: '', confirmPassword: '' });
+        toast.success('Senha atualizada com sucesso!')
+      setPasswordResetModalOpen(false)
+      setResetPasswordData({ newPassword: '', confirmPassword: '' })
         
         // Atualizar lista para garantir que auth_id esteja sincronizado localmente se foi criado agora
         fetchUsers()
     } catch (error) {
-        console.error('Erro ao atualizar senha:', error);
-        alert('Erro ao atualizar senha: ' + error.message);
+        console.error('Erro ao atualizar senha:', error)
+        toast.error('Erro ao atualizar senha: ' + error.message);
     } finally {
         setResettingPassword(false);
     }

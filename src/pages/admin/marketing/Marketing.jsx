@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react'
 import { Plus, Search, X, Edit, Trash2 } from 'lucide-react'
 import { supabase } from '../../../lib/supabase'
+import { useToast } from '../../../components/common/Toast'
 import './Marketing.css'
 
 export default function Marketing() {
+  const toast = useToast()
   const [activeTab, setActiveTab] = useState('campanhas')
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(false)
@@ -167,7 +169,7 @@ export default function Marketing() {
       fetchData()
     } catch (error) {
       console.error('Erro ao salvar:', error)
-      alert('Erro ao salvar: ' + error.message)
+      toast.error('Erro ao salvar: ' + error.message)
     } finally {
       setSaving(false)
     }
@@ -185,7 +187,7 @@ export default function Marketing() {
       fetchData()
     } catch (error) {
       console.error('Erro ao excluir:', error)
-      alert('Erro ao excluir')
+      toast.error('Erro ao excluir')
     }
   }
 

@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react'
 import { Plus, Search } from 'lucide-react'
 import { supabase } from '../../../lib/supabase'
+import { useToast } from '../../../components/common/Toast'
 import './CategoryList.css'
 
 export default function CategoryList() {
+  const toast = useToast()
   const [categories, setCategories] = useState([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
@@ -74,7 +76,7 @@ export default function CategoryList() {
       setFormData({ nome: '', descricao: '', codigo: '', comissao_pct: 0, desconto_pct: 0, ativo: true })
       fetchCategories()
     } catch (error) {
-      alert('Erro: ' + error.message)
+      toast.error('Erro: ' + error.message)
     }
   }
 

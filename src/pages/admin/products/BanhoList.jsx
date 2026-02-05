@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react'
 import { Plus, Edit, Trash2, Palette } from 'lucide-react'
 import { supabase } from '../../../lib/supabase'
+import { useToast } from '../../../components/common/Toast'
 
 export default function BanhoList() {
+  const toast = useToast()
   const [banhos, setBanhos] = useState([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
@@ -29,7 +31,7 @@ export default function BanhoList() {
       setBanhos(data || [])
     } catch (error) {
       console.error('Erro:', error)
-      alert('Erro ao carregar banhos')
+      toast.error('Erro ao carregar banhos')
     } finally {
       setLoading(false)
     }
@@ -58,7 +60,7 @@ export default function BanhoList() {
       fetchBanhos()
     } catch (error) {
       console.error('Erro:', error)
-      alert('Erro ao salvar: ' + error.message)
+      toast.error('Erro ao salvar: ' + error.message)
     }
   }
 
@@ -80,7 +82,7 @@ export default function BanhoList() {
       if (error) throw error
       fetchBanhos()
     } catch (error) {
-      alert('Erro: Verifique se não há produtos vinculados')
+      toast.error('Erro: Verifique se não há produtos vinculados')
     }
   }
 

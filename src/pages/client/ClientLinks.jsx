@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom' 
-import { ShoppingBag, ChevronRight, Clock } from 'lucide-react'
+import { ShoppingBag, ChevronRight, Clock, Lock } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import { useToast } from '../../components/common/Toast'
 import './ClientLinks.css' // Importando CSS customizado
 
 export default function ClientLinks() {
+  const toast = useToast()
   const [links, setLinks] = useState([])
   const [loading, setLoading] = useState(true)
   const [showAllLinks, setShowAllLinks] = useState(false)
@@ -84,10 +86,16 @@ export default function ClientLinks() {
               <div 
                 className="link-card-cover"
                 style={{
-                  backgroundImage: link.cover_image_url ? `url(${link.cover_image_url})` : 'none',
+                  backgroundImage: (link.status === 'fechado' || link.status === 'fechado_e_bloqueado') 
+                    ? 'url(/images/closed-lot.png)' 
+                    : (link.cover_image_url ? `url(${link.cover_image_url})` : 'none'),
+                  backgroundSize: (link.status === 'fechado' || link.status === 'fechado_e_bloqueado') ? 'contain' : 'cover',
+                  backgroundRepeat: (link.status === 'fechado' || link.status === 'fechado_e_bloqueado') ? 'no-repeat' : 'initial',
+                  backgroundColor: (link.status === 'fechado' || link.status === 'fechado_e_bloqueado') ? '#ffffff' : 'transparent',
                 }}
               >
-                {!link.cover_image_url && (
+                {/* Placeholder apenas se NÃO for fechado E não tiver cover_image_url */}
+                {!(link.status === 'fechado' || link.status === 'fechado_e_bloqueado') && !link.cover_image_url && (
                   <div className="cover-placeholder-gradient">
                     <ShoppingBag size={32} className="opacity-20 text-white" />
                   </div>
@@ -108,12 +116,24 @@ export default function ClientLinks() {
                   </div>
                 </div>
                 
-                <Link 
-                  to={`/app/catalogo/${link.id}`} 
-                  className="btn-access-products"
-                >
-                  Acessar Produtos
-                </Link>
+                {/* Botão de acesso - desabilitar se lote fechado */}
+                {(link.status === 'fechado' || link.status === 'fechado_e_bloqueado') ? (
+                  <button 
+                    className="btn-access-products btn-disabled"
+                    onClick={() => toast.warning('Este link está fechado!')}
+                    disabled
+                  >
+                    <Lock size={16} />
+                    Link Fechado
+                  </button>
+                ) : (
+                  <Link 
+                    to={`/app/catalogo/${link.id}`} 
+                    className="btn-access-products"
+                  >
+                    Acessar Produtos
+                  </Link>
+                )}
               </div>
             </div>
           ))

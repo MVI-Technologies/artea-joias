@@ -13,6 +13,7 @@ import {
   ChevronDown
 } from 'lucide-react'
 import { supabase } from '../../../lib/supabase'
+import { useToast } from '../../../components/common/Toast'
 import './OrderList.css'
 
 /**
@@ -31,6 +32,7 @@ const statusOptions = [
 ]
 
 export default function OrderList() {
+  const toast = useToast()
   const [orders, setOrders] = useState([])
   const [lots, setLots] = useState([])
   const [loading, setLoading] = useState(true)
@@ -106,7 +108,7 @@ export default function OrderList() {
   const updateOrderStatus = async (order, newStatus) => {
     try {
       if (!order.romaneio_id) {
-        alert('Este pedido não está vinculado a um romaneio')
+        toast.warning('Este pedido não está vinculado a um romaneio')
         return
       }
 
@@ -124,7 +126,7 @@ export default function OrderList() {
 
   const updateMultipleStatus = async (newStatus) => {
     if (selectedOrders.length === 0) {
-      alert('Selecione pelo menos um pedido')
+      toast.warning('Selecione pelo menos um pedido')
       return
     }
 

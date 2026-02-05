@@ -2,10 +2,12 @@ import { useState } from 'react'
 import { User, Save, Plus, Trash2 } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
+import { useToast } from '../../components/common/Toast'
 import './ClientProfile.css'
 
 export default function ClientProfile() {
   const { client, refreshProfile } = useAuth()
+  const toast = useToast()
   const [loading, setSaving] = useState(false)
   const [formData, setFormData] = useState({
     nome: client?.nome || '',
@@ -41,10 +43,10 @@ export default function ClientProfile() {
       if (error) throw error
 
       await refreshProfile()
-      alert('Perfil atualizado com sucesso!')
+      toast.success('Perfil atualizado com sucesso!')
     } catch (error) {
       console.error('Erro ao salvar:', error)
-      alert('Erro ao salvar perfil')
+      toast.error('Erro ao salvar perfil')
     } finally {
       setSaving(false)
     }
@@ -52,7 +54,7 @@ export default function ClientProfile() {
 
   const addAddress = () => {
     if (!newAddress.logradouro || !newAddress.cidade) {
-      alert('Preencha pelo menos o endereço e cidade')
+      toast.warning('Preencha pelo menos o endereço e cidade')
       return
     }
     setAddresses([...addresses, newAddress])

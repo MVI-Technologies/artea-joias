@@ -2,12 +2,14 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { ArrowLeft, Save, Users } from 'lucide-react'
 import { supabase } from '../../../lib/supabase'
+import { useToast } from '../../../components/common/Toast'
 import PasswordInput from '../../../components/ui/PasswordInput'
 import './ClientForm.css'
 
 export default function ClientForm() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const toast = useToast()
   const isEditing = Boolean(id)
 
   const [formData, setFormData] = useState({
@@ -146,9 +148,9 @@ export default function ClientForm() {
       } else {
         // Validation for new user
         if (!formData.password || formData.password.length < 6) {
-            alert('Senha é obrigatória e deve ter no mínimo 6 caracteres');
-            setSaving(false);
-            return;
+            toast.warning('Senha é obrigatória e deve ter no mínimo 6 caracteres')
+            setSaving(false)
+            return
         }
 
         // Call Edge Function to create Auth User + Client Record
@@ -166,7 +168,7 @@ export default function ClientForm() {
       navigate('/admin/clientes')
     } catch (error) {
       console.error('Erro ao salvar cliente:', error)
-      alert('Erro ao salvar cliente')
+      toast.error('Erro ao salvar cliente')
     } finally {
       setSaving(false)
     }

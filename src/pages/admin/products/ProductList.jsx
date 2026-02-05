@@ -11,9 +11,11 @@ import {
 } from 'lucide-react'
 import { supabase } from '../../../lib/supabase'
 import { disponibilidadeLoteParaExibicao } from '../../../utils/lotAvailability'
+import { useToast } from '../../../components/common/Toast'
 import './ProductList.css'
 
 export default function ProductList() {
+  const toast = useToast()
   const [products, setProducts] = useState([])
   const [categories, setCategories] = useState([])
   /** productId -> [quantidade_pedidos] por lote ativo (para cálculo de disponibilidade) */
@@ -95,7 +97,7 @@ export default function ProductList() {
       setProducts(products.filter(p => p.id !== id))
     } catch (error) {
       console.error('Erro ao excluir produto:', error)
-      alert('Erro ao excluir produto')
+      toast.error('Erro ao excluir produto')
     }
   }
 
@@ -300,7 +302,7 @@ function ProductModal({ product, categories, onClose, onSave }) {
       onSave()
     } catch (error) {
       console.error('Erro ao salvar produto:', error)
-      alert('Erro ao salvar produto')
+      toast.error('Erro ao salvar produto')
     } finally {
       setLoading(false)
     }

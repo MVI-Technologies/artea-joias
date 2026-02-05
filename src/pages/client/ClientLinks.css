@@ -152,6 +152,31 @@
   background-color: #166534;
 }
 
+/* Botão desabilitado para lotes fechados */
+.btn-access-products.btn-disabled {
+  background-color: #e5e7eb;
+  color: #9ca3af;
+  cursor: not-allowed;
+  opacity: 0.6;
+  gap: 8px;
+}
+
+.btn-access-products.btn-disabled:hover {
+  background-color: #e5e7eb;
+}
+
+/* Link card com lote fechado */
+.link-card.link-closed {
+  opacity: 0.8;
+}
+
+/* Status badges para lotes fechados */
+.status-badge-card.status-fechado,
+.status-badge-card.status-fechado_e_bloqueado {
+  background-color: #ef4444;
+  color: white;
+}
+
 /* Empty State */
 .empty-state {
   text-align: center;

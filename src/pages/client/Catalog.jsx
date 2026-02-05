@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../components/common/Toast'
 import LotTermsBlock from '../../components/client/LotTermsBlock'
+import ClosedLotScreen from '../../components/client/ClosedLotScreen'
 import { calcPrecoNoLote, formatPrice } from '../../utils/pricing'
 import { esgotadoNoLote, disponibilidadeLoteParaExibicao } from '../../utils/lotAvailability'
 import './Catalog.css'
@@ -35,6 +36,9 @@ export default function Catalog() {
   const [loadingPurchases, setLoadingPurchases] = useState(false)
   // Usar uma key baseada no ID para garantir que cada acesso ao catálogo seja único
   const clickTracked = useRef(new Map()) // Map<lotId, boolean> para rastrear por catálogo
+  // Estados para bloqueio de lote fechado
+  const [isBlocked, setIsBlocked] = useState(false)
+  const [blockedLotName, setBlockedLotName] = useState(null)
 
   const { client } = useAuth()
 
@@ -311,6 +315,15 @@ export default function Catalog() {
         throw lotError || new Error('Catálogo não encontrado')
       }
 
+      // VALIDAÇÃO: Verificar se o lote está fechado E o usuário é um cliente
+      if ((lotData.status === 'fechado' || lotData.status === 'fechado_e_bloqueado') && client?.role === 'cliente') {
+        console.log('🚫 Lote fechado para clientes - exibindo tela de bloqueio')
+        setIsBlocked(true)
+        setBlockedLotName(lotData.nome)
+        setLoading(false)
+        return // Não carregar produtos nem setar o lote
+      }
+
       // IMPORTANTE: Setar o lot ANTES de carregar produtos para que o tracking funcione
       window.console.log('%c🟡 SETANDO LOT NO ESTADO', 'background: yellow; color: black; padding: 5px;')
       window.console.log('Lot ID:', lotData.id)
@@ -544,6 +557,11 @@ export default function Catalog() {
         <div className="text-slate-500">Carregando catálogo...</div>
       </div>
     )
+  }
+
+  // Se o lote está bloqueado para clientes, exibir tela de bloqueio
+  if (isBlocked) {
+    return <ClosedLotScreen lotName={blockedLotName} />
   }
 
   if (!lot) {

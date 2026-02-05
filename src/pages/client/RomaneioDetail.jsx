@@ -15,12 +15,14 @@ import { QRCodeSVG } from 'qrcode.react'
 import { generateRomaneioPDF } from '../../utils/pdfGenerator'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
+import { useToast } from '../../components/common/Toast'
 import './RomaneioDetail.css'
 
 export default function RomaneioDetail() {
   const { romaneioId } = useParams()
   const navigate = useNavigate()
   const { user } = useAuth()
+  const toast = useToast()
 
   const [romaneio, setRomaneio] = useState(null)
   const [products, setProducts] = useState([])
@@ -84,7 +86,7 @@ export default function RomaneioDetail() {
 
     } catch (error) {
       console.error('Erro ao carregar romaneio:', error)
-      alert('Erro ao carregar romaneio. Tente novamente.')
+      toast.error('Erro ao carregar romaneio. Tente novamente.')
     } finally {
       setLoading(false)
     }
@@ -179,11 +181,11 @@ export default function RomaneioDetail() {
 
       if (updateError) throw updateError
 
-      alert('Comprovante enviado com sucesso! Aguarde a confirmação.')
+      toast.success('Comprovante enviado com sucesso! Aguarde a confirmação.')
       loadRomaneio()
     } catch (error) {
       console.error('Erro ao enviar comprovante:', error)
-      alert('Erro ao enviar comprovante. Tente novamente.')
+      toast.error('Erro ao enviar comprovante. Tente novamente.')
     } finally {
       setUploadingProof(false)
     }
@@ -210,7 +212,7 @@ export default function RomaneioDetail() {
       document.body.removeChild(link)
     } catch (error) {
       console.error('Erro ao baixar PDF:', error)
-      alert('Erro ao baixar PDF. Tente novamente.')
+      toast.error('Erro ao baixar PDF. Tente novamente.')
     }
   }
 

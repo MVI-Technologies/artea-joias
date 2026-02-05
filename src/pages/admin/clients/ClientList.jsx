@@ -19,10 +19,12 @@ import {
 } from 'lucide-react'
 import WhatsAppIcon from '../../../components/icons/WhatsAppIcon'
 import { supabase } from '../../../lib/supabase'
+import { useToast } from '../../../components/common/Toast'
 import './ClientList.css'
 
 export default function ClientList() {
   const navigate = useNavigate()
+  const toast = useToast()
   const [clients, setClients] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -74,7 +76,7 @@ export default function ClientList() {
       // fetchClients() // Optional: refetch to be sure
     } catch (error) {
       console.error('Erro ao excluir cliente:', error)
-      alert('Erro ao excluir cliente: ' + error.message)
+      toast.error('Erro ao excluir cliente: ' + error.message)
     }
   }
 
@@ -161,7 +163,7 @@ export default function ClientList() {
       setIsModalOpen(false)
     } catch (error) {
       console.error('Erro ao salvar:', error)
-      alert('Erro ao salvar alterações.')
+      toast.error('Erro ao salvar alterações.')
     } finally {
       setSaving(false)
     }
