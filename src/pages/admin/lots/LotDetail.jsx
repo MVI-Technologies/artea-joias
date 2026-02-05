@@ -1463,8 +1463,20 @@ export default function LotDetail({ defaultTab }) {
                     <label>Data/Hora de Encerramento</label>
                     <input
                       type="datetime-local"
-                      value={lotSettings.data_fim ? new Date(lotSettings.data_fim).toISOString().slice(0, 16) : ''}
-                      onChange={(e) => setLotSettings({ ...lotSettings, data_fim: e.target.value })}
+                      value={lotSettings.data_fim ? (() => {
+                        const d = new Date(lotSettings.data_fim);
+                        const year = d.getFullYear();
+                        const month = String(d.getMonth() + 1).padStart(2, '0');
+                        const day = String(d.getDate()).padStart(2, '0');
+                        const hours = String(d.getHours()).padStart(2, '0');
+                        const minutes = String(d.getMinutes()).padStart(2, '0');
+                        return `${year}-${month}-${day}T${hours}:${minutes}`;
+                      })() : ''}
+                      onChange={(e) => {
+                        // Salvar como string datetime mas adicionar segundos e manter local
+                        // Ex: "2026-02-06T00:00" -> "2026-02-06T00:00:00"
+                        setLotSettings({ ...lotSettings, data_fim: e.target.value ? e.target.value + ':00' : null });
+                      }}
                       onClick={(e) => e.target.showPicker()}
                       onKeyDown={(e) => e.preventDefault()}
                     />
