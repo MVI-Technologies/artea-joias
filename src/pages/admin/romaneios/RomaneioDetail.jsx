@@ -365,7 +365,7 @@ export default function RomaneioDetail() {
       console.log('📝 Nome do lote usado:', lotName)
 
       let message = `Olá ${client.nome}! 🌟\n\n`
-      message += `Seu romaneio do **${lotName}** foi atualizado!\n\n`
+      message += `Seu romaneio do *${lotName}* foi atualizado!\n\n`
 
       if (unavailableItems.length > 0) {
         message += `⚠️ *Atenção - Disponibilidade de Produtos:*\n\n`
@@ -527,7 +527,7 @@ export default function RomaneioDetail() {
     const phone = client.telefone.replace(/\D/g, '')
     const message = encodeURIComponent(
       `Olá ${client.nome}! 🌟\n\n` +
-      `Seu romaneio do **${(lot?.nome || 'Link').trim()}** está pronto!\n\n` +
+      `Seu romaneio do *${(lot?.nome || 'Link').trim()}* está pronto!\n\n` +
       `📋 Pedido: ${romaneio?.numero_romaneio || romaneio?.numero_pedido}\n` +
       `💰 Valor Total: R$ ${romaneio?.valor_total?.toFixed(2)}\n\n` +
       `Pedimos a gentileza de conferir as peças relacionadas neste romaneio e, em seguida, realizar o pagamento de acordo com os dados anexos.\n\n` +
