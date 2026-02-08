@@ -358,7 +358,7 @@ export const generateRomaneioPDF = async ({ romaneio, lot, client, items, compan
     finalY += 6
     doc.setFontSize(9)
     doc.setFont('helvetica', 'normal')
-    doc.setTextColor(212, 175, 55) // Gold color for labels
+    doc.setTextColor(0, 0, 0)
 
     const addTotalLine = (label, value) => {
         doc.text(`• ${label}: ${value}`, 18, finalY)
@@ -371,18 +371,8 @@ export const generateRomaneioPDF = async ({ romaneio, lot, client, items, compan
 
     doc.setTextColor(0, 0, 0) // Reset to black
 
-    // --- Payment Info Box ---
-    finalY += 5
-    const paymentBoxY = finalY
-    const paymentBoxHeight = 52
-
-    // Yellow/beige background box
-    doc.setFillColor(255, 248, 230)
-    doc.setDrawColor(212, 175, 55)
-    doc.setLineWidth(2)
-    doc.rect(15, paymentBoxY, doc.internal.pageSize.width - 30, paymentBoxHeight, 'FD')
-
-    finalY += 6
+    // --- Payment Info (text only, no box) ---
+    finalY += 8
     doc.setFontSize(9)
     doc.setFont('helvetica', 'bold')
     doc.text('Dados para o pagamento:', 18, finalY)
@@ -433,7 +423,7 @@ export const generateRomaneioPDF = async ({ romaneio, lot, client, items, compan
     const warningText = 'Caso o pagamento não seja realizado em até 24hs será removido do grupo e terá seu cadastro bloqueado permanentemente, ficando impossibilitado de realizar novas compras.'
     const splitWarning = doc.splitTextToSize(warningText, doc.internal.pageSize.width - 40)
     doc.text(splitWarning, 18, finalY)
-    finalY = paymentBoxY + paymentBoxHeight + 5
+    finalY += 8
 
     // --- Observations Section --- (REMOVED)
     /*
