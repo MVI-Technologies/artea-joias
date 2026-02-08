@@ -88,8 +88,9 @@ export default function RomaneioList() {
       'pendente': { label: 'Pendente', class: 'status-pendente', icon: Clock },
       'aguardando': { label: 'Aguardando', class: 'status-aguardando', icon: Clock },
       'aguardando_pagamento': { label: 'Aguardando Pagamento', class: 'status-aguardando', icon: Clock },
-      'pago': { label: 'Pago', class: 'status-pago', icon: CheckCircle },
-      'em_separacao': { label: 'Em Separação', class: 'status-em_separacao', icon: Package }, // status-em_separacao uses new dynamic CSS or we map to badge-primary
+      'pago': { label: 'Pago sem frete', class: 'status-pago-sem-frete', icon: CheckCircle },
+      'pago_frete_incluso': { label: 'Pago com frete', class: 'status-pago-com-frete', icon: CheckCircle },
+      'em_separacao': { label: 'Em Separação', class: 'status-em_separacao', icon: Package },
       'enviado': { label: 'Enviado', class: 'status-enviado', icon: Truck },
       'concluido': { label: 'Concluído', class: 'status-concluido', icon: Check },
       'cancelado': { label: 'Cancelado', class: 'status-cancelado', icon: DollarSign },
@@ -143,10 +144,10 @@ export default function RomaneioList() {
   // Calcular estatísticas
   const stats = {
     total: romaneios.length,
-    pagos: romaneios.filter(r => ['pago', 'enviado', 'concluido', 'em_separacao', 'admin_purchase'].includes(r.status_pagamento)).length,
+    pagos: romaneios.filter(r => ['pago', 'pago_frete_incluso', 'enviado', 'concluido', 'em_separacao', 'admin_purchase'].includes(r.status_pagamento)).length,
     aguardando: romaneios.filter(r => ['aguardando', 'aguardando_pagamento'].includes(r.status_pagamento)).length,
     valorTotal: romaneios.reduce((sum, r) => sum + (r.valor_total || 0), 0),
-    valorPago: romaneios.filter(r => ['pago', 'enviado', 'concluido', 'em_separacao', 'admin_purchase'].includes(r.status_pagamento)).reduce((sum, r) => sum + (r.valor_total || 0), 0)
+    valorPago: romaneios.filter(r => ['pago', 'pago_frete_incluso', 'enviado', 'concluido', 'em_separacao', 'admin_purchase'].includes(r.status_pagamento)).reduce((sum, r) => sum + (r.valor_total || 0), 0)
   }
 
   return (
@@ -241,7 +242,8 @@ export default function RomaneioList() {
                 >
                   <option value="todos">Todos os status</option>
                   <option value="aguardando_pagamento">⏳ Aguardando Pagamento</option>
-                  <option value="pago">✅ Pago</option>
+                  <option value="pago">🟠 Pago sem frete</option>
+                  <option value="pago_frete_incluso">✅ Pago com frete</option>
                   <option value="em_separacao">📦 Em Separação</option>
                   <option value="enviado">🚚 Enviado</option>
                   <option value="concluido">🏁 Concluído</option>

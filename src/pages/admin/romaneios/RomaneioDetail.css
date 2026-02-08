@@ -42,7 +42,19 @@
 }
 
 .status-pago {
-  color: #22c55e;
+  background-color: #ea580c;
+  color: white;
+}
+
+.status-pago-sem-frete {
+  background-color: #ea580c;
+  color: white;
+}
+
+.status-pago_frete_incluso,
+.status-pago-com-frete {
+  background-color: #22c55e;
+  color: white;
 }
 
 .status-aguardando {

@@ -95,6 +95,7 @@
 }
 
 .status-warning { background: rgba(245, 158, 11, 0.1); color: #f59e0b; }
+.status-pago-sem-frete { background: rgba(249, 115, 22, 0.15); color: #c2410c; }
 .status-success { background: rgba(34, 197, 94, 0.1); color: #22c55e; }
 .status-info { background: rgba(59, 130, 246, 0.1); color: #3b82f6; }
 .status-primary { background: rgba(212, 175, 55, 0.1); color: #D4AF37; }

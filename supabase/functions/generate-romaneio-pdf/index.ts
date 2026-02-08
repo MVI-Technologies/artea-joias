@@ -350,10 +350,14 @@ Deno.serve(async (req) => {
     const totalProdutosFallback = items.reduce((sum, item) => sum + getItemValorTotal(item), 0)
     const quantidadeItensFallback = items.reduce((sum, item) => sum + getItemQuantidade(item), 0)
     const valorProdutos = Number(romaneio.valor_produtos ?? totalProdutosFallback)
-    const taxaSeparacao = Number(romaneio.taxa_separacao ?? 0)
+    let taxaSeparacao = Number(romaneio.taxa_separacao ?? 0)
+    if (taxaSeparacao <= 0 && valorProdutos >= 1) {
+      taxaSeparacao = valorProdutos <= 80 ? 15 : 25
+    }
     const descontoCredito = Number(romaneio.desconto_credito ?? 0)
     const quantidadeItens = Number(romaneio.quantidade_itens ?? quantidadeItensFallback)
-    const valorTotal = Number(romaneio.valor_total ?? (valorProdutos + taxaSeparacao - descontoCredito))
+    // Valor Total da Compra = sempre produtos + taxa - desconto (evita romaneios com valor_total só de produtos)
+    const valorTotal = valorProdutos + taxaSeparacao - descontoCredito
 
     const margin = 50
     let y = height - 60

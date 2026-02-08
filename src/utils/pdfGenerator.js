@@ -344,9 +344,17 @@ export const generateRomaneioPDF = async ({ romaneio, lot, client, items, compan
     doc.line(15, finalY, doc.internal.pageSize.width - 15, finalY)
     finalY += 8
 
+    const valorProdutos = Number(romaneio.valor_produtos ?? 0)
+    let taxaSeparacao = Number(romaneio.taxa_separacao ?? 0)
+    if (taxaSeparacao <= 0 && valorProdutos >= 1) {
+        taxaSeparacao = valorProdutos <= 80 ? 15 : 25
+    }
+    // Sempre exibir total = produtos + taxa (evita romaneios com valor_total só de produtos)
+    const valorTotalCompra = valorProdutos + taxaSeparacao
+
     doc.setFontSize(11)
     doc.setFont('helvetica', 'bold')
-    doc.text(`• Valor Total da Compra: ${formatCurrency(romaneio.valor_total)}`, 18, finalY)
+    doc.text(`• Valor Total da Compra: ${formatCurrency(valorTotalCompra)}`, 18, finalY)
 
     finalY += 6
     doc.setFontSize(9)
@@ -358,8 +366,8 @@ export const generateRomaneioPDF = async ({ romaneio, lot, client, items, compan
         finalY += 5
     }
 
-    addTotalLine('Valor Produtos', formatCurrency(romaneio.valor_produtos))
-    if (romaneio.taxa_separacao > 0) addTotalLine('Custo Separação', formatCurrency(romaneio.taxa_separacao))
+    addTotalLine('Valor Produtos', formatCurrency(valorProdutos))
+    if (taxaSeparacao > 0) addTotalLine('Custo Separação', formatCurrency(taxaSeparacao))
     addTotalLine('Quantidade Total de Produtos', romaneio.quantidade_itens)
 
     doc.setTextColor(0, 0, 0) // Reset to black

@@ -49,7 +49,7 @@ export default function Dashboard() {
       let queryTotalOrders = supabase.from('romaneio_items').select('*', { count: 'exact', head: true })
 
       let queryRevenue = supabase.from('romaneios').select('valor_total')
-        .in('status_pagamento', ['pago', 'enviado', 'concluido', 'em_separacao', 'admin_purchase'])
+        .in('status_pagamento', ['pago', 'pago_frete_incluso', 'enviado', 'concluido', 'em_separacao', 'admin_purchase'])
 
       if (selectedMonth !== 'all') {
         const startDate = `${selectedMonth}-01T00:00:00Z`
@@ -274,7 +274,8 @@ function getStatusColor(status) {
     pendente: 'warning',
     aguardando_pagamento: 'warning',
     aguardando: 'warning',
-    pago: 'success',
+    pago: 'pago-sem-frete',
+    pago_frete_incluso: 'success',
     em_separacao: 'info',
     em_preparacao: 'info',
     enviado: 'primary',
@@ -291,7 +292,8 @@ function getStatusLabel(status) {
     pendente: 'Pendente',
     aguardando_pagamento: 'Aguardando Pagamento',
     aguardando: 'Aguardando',
-    pago: 'Pago',
+    pago: 'Pago sem frete',
+    pago_frete_incluso: 'Pago com frete',
     em_separacao: 'Em Separação',
     em_preparacao: 'Em Preparação',
     enviado: 'Enviado',

@@ -22,7 +22,8 @@ import { generateRomaneioPDF } from '../../../utils/pdfGenerator'
 
 const STATUS_OPTIONS = [
   { value: 'aguardando_pagamento', label: 'Aguardando Pagamento', color: 'warning' },
-  { value: 'pago', label: 'Pago', color: 'success' },
+  { value: 'pago', label: 'Pago sem frete', color: 'warning' },
+  { value: 'pago_frete_incluso', label: 'Pago com frete', color: 'success' },
   { value: 'em_separacao', label: 'Em Separação', color: 'info' },
   { value: 'enviado', label: 'Enviado', color: 'primary' },
   { value: 'concluido', label: 'Concluído', color: 'success' },
@@ -504,7 +505,8 @@ export default function RomaneioDetail() {
       // Mensagem personalizada baseada no status
       const statusMessages = {
         'cancelado': '❌ Pedido cancelado com sucesso!',
-        'pago': '✅ Pagamento confirmado!',
+        'pago': '🟠 Marcado como Pago sem frete!',
+        'pago_frete_incluso': '✅ Marcado como Pago com frete!',
         'em_separacao': '📦 Pedido em separação!',
         'enviado': '🚚 Pedido marcado como enviado!',
         'concluido': '🎉 Pedido concluído!',
@@ -640,7 +642,9 @@ export default function RomaneioDetail() {
       <div className="payment-status-bar no-print">
         <div className={`payment-status status-${romaneio.status_pagamento === 'aguardando_pagamento' ? 'aguardando' : romaneio.status_pagamento}`}>
           {romaneio.status_pagamento === 'pago' ? (
-            <><CheckCircle size={18} /> Pagamento Confirmado</>
+            <><CheckCircle size={18} /> Pago sem frete</>
+          ) : romaneio.status_pagamento === 'pago_frete_incluso' ? (
+            <><CheckCircle size={18} /> Pago com frete</>
           ) : ['aguardando', 'aguardando_pagamento'].includes(romaneio.status_pagamento) ? (
             <><Clock size={18} /> Aguardando Pagamento</>
           ) : (
@@ -648,12 +652,11 @@ export default function RomaneioDetail() {
           )}
         </div>
 
-        {romaneio.status_pagamento !== 'pago' && (
-          <div className="payment-actions">
+        <div className="payment-actions">
+          {!['pago', 'pago_frete_incluso'].includes(romaneio.status_pagamento) && (
             <button
               className="btn btn-outline btn-sm"
               onClick={() => {
-                // Usar configuração centralizada de PIX
                 const pixKey = pixConfig?.chave
                 if (pixKey) {
                   navigator.clipboard.writeText(pixKey)
@@ -665,14 +668,14 @@ export default function RomaneioDetail() {
             >
               <DollarSign size={14} /> Copiar PIX
             </button>
-            <button
-              className="btn btn-primary btn-sm"
-              onClick={() => setShowStatusModal(true)}
-            >
-              <CheckCircle size={14} /> Alterar Status
-            </button>
-          </div>
-        )}
+          )}
+          <button
+            className="btn btn-primary btn-sm"
+            onClick={() => setShowStatusModal(true)}
+          >
+            <CheckCircle size={14} /> Alterar Status
+          </button>
+        </div>
       </div>
 
       {showStatusModal && (
@@ -903,11 +906,18 @@ export default function RomaneioDetail() {
           </table>
         </div>
 
-        {/* Resumo Financeiro */}
+        {/* Resumo Financeiro - custo de separação calculado quando não gravado (15 até R$80, 25 acima) */}
+        {(() => {
+          const valorProdutos = Number(romaneio.valor_produtos ?? 0)
+          let taxaSep = Number(romaneio.taxa_separacao ?? 0)
+          if (taxaSep <= 0 && valorProdutos >= 1) taxaSep = valorProdutos <= 80 ? 15 : 25
+          const totalComTaxa = valorProdutos + taxaSep + (romaneio.valor_frete || 0) - (romaneio.desconto_credito || 0)
+          const valorTotalExib = (Number(romaneio.valor_total ?? 0) <= valorProdutos && taxaSep > 0) ? totalComTaxa : (romaneio.valor_total ?? 0)
+          return (
         <div className="resumo-financeiro">
-          <h3>• Valor Total da Compra: R$ {romaneio.valor_total?.toFixed(2)}</h3>
+          <h3>• Valor Total da Compra: R$ {valorTotalExib.toFixed(2)}</h3>
           <ul>
-            <li>• Valor Produtos: R$ {romaneio.valor_produtos?.toFixed(2)}</li>
+            <li>• Valor Produtos: R$ {valorProdutos.toFixed(2)}</li>
             {romaneio.total_bruto > 0 && romaneio.total_bruto !== romaneio.valor_total && (
               <li>• Total Bruto: R$ {romaneio.total_bruto?.toFixed(2)}</li>
             )}
@@ -917,8 +927,8 @@ export default function RomaneioDetail() {
             {romaneio.desconto_credito > 0 && (
               <li style={{ marginLeft: 16 }}>○ Desconto (crédito anterior): R$ {romaneio.desconto_credito?.toFixed(2)}</li>
             )}
-            {romaneio.taxa_separacao > 0 && (
-              <li>• Custo Separação: R$ {romaneio.taxa_separacao?.toFixed(2)}</li>
+            {taxaSep > 0 && (
+              <li>• Custo Separação: R$ {taxaSep.toFixed(2)}</li>
             )}
             {romaneio.valor_frete > 0 && (
               <li>• Frete: R$ {romaneio.valor_frete?.toFixed(2)}</li>
@@ -929,6 +939,8 @@ export default function RomaneioDetail() {
             )}
           </ul>
         </div>
+          )
+        })()}
 
         {/* Dados de Pagamento - CENTRALIZED */}
         <div className="dados-pagamento">

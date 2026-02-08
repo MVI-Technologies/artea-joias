@@ -45,13 +45,17 @@ export default function ClientOrders() {
   const getStatusInfo = (status) => {
     const map = {
       pendente: { icon: Clock, label: 'Aguardando Pagamento', color: 'warning' },
-      pago: { icon: CheckCircle, label: 'Pago', color: 'success' },
+      aguardando_pagamento: { icon: Clock, label: 'Aguardando Pagamento', color: 'warning' },
+      pago: { icon: CheckCircle, label: 'Pago sem frete', color: 'pago-sem-frete' },
+      pago_frete_incluso: { icon: CheckCircle, label: 'Pago com frete', color: 'success' },
       em_preparacao: { icon: Package, label: 'Em Preparação', color: 'info' },
+      em_separacao: { icon: Package, label: 'Em Separação', color: 'info' },
       enviado: { icon: Truck, label: 'Enviado', color: 'primary' },
       entregue: { icon: CheckCircle, label: 'Entregue', color: 'success' },
+      concluido: { icon: CheckCircle, label: 'Concluído', color: 'success' },
       cancelado: { icon: X, label: 'Cancelado', color: 'danger' }
     }
-    return map[status] || { icon: ShoppingBag, label: status, color: 'secondary' }
+    return map[status] || { icon: ShoppingBag, label: String(status).replace(/_/g, ' '), color: 'secondary' }
   }
 
   const filteredOrders = orders.filter(order => {

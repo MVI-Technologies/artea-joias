@@ -87,6 +87,12 @@
   margin-top: 2px;
 }
 
+/* Status badges: Pago sem frete = laranja, Pago com frete = verde (badge-success) */
+.badge-pago-sem-frete {
+  background-color: rgba(249, 115, 22, 0.15);
+  color: #c2410c;
+}
+
 /* Dashboard Grid */
 .dashboard-grid {
   display: grid;

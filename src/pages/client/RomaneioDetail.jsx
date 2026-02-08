@@ -107,10 +107,16 @@ export default function RomaneioDetail() {
         description: 'Realize o pagamento para confirmar seu pedido'
       },
       'pago': {
-        label: 'Pagamento Confirmado',
+        label: 'Pago sem frete',
         class: 'status-success',
         icon: CheckCircle,
-        description: 'Seu pagamento foi confirmado!'
+        description: 'Seu pagamento foi confirmado (sem frete).'
+      },
+      'pago_frete_incluso': {
+        label: 'Pago com frete',
+        class: 'status-success',
+        icon: CheckCircle,
+        description: 'Pagamento confirmado (com frete incluso).'
       },
       'pendente': {
         label: 'Pendente',
@@ -226,7 +232,7 @@ export default function RomaneioDetail() {
 
   const isPaymentExpired = () => {
     const deadline = calculateDeadline()
-    if (!deadline || romaneio?.status_pagamento === 'pago') return false
+    if (!deadline || ['pago', 'pago_frete_incluso'].includes(romaneio?.status_pagamento)) return false
     return new Date() > deadline
   }
 
@@ -289,7 +295,7 @@ export default function RomaneioDetail() {
 
       <div className="romaneio-content">
         {/* Payment Section - CENTRALIZED CONFIG */}
-        {romaneio.status_pagamento !== 'pago' && !expired && (
+        {!['pago', 'pago_frete_incluso'].includes(romaneio.status_pagamento) && !expired && (
           <div className="payment-section card">
             <h2>💳 Pagamento</h2>
 
@@ -386,7 +392,7 @@ export default function RomaneioDetail() {
           </div>
         )}
 
-        {expired && romaneio.status_pagamento !== 'pago' && (
+        {expired && !['pago', 'pago_frete_incluso'].includes(romaneio.status_pagamento) && (
           <div className="alert alert-error">
             <AlertCircle size={20} />
             <div>
@@ -436,18 +442,26 @@ export default function RomaneioDetail() {
           ))}
         </div>
 
-        {/* Financial Breakdown */}
+        {/* Financial Breakdown - custo separação calculado quando não gravado (15 até R$80, 25 acima) */}
+        {(() => {
+          const valorProdutos = Number(romaneio.valor_produtos ?? 0)
+          let taxaSep = Number(romaneio.taxa_separacao ?? 0)
+          if (taxaSep <= 0 && valorProdutos >= 1) taxaSep = valorProdutos <= 80 ? 15 : 25
+          const totalExib = (Number(romaneio.valor_total ?? 0) <= valorProdutos && taxaSep > 0)
+            ? valorProdutos + taxaSep + (romaneio.valor_frete || 0) - (romaneio.desconto_credito || 0)
+            : (romaneio.valor_total ?? 0)
+          return (
         <div className="financial-breakdown card">
           <h2>Detalhamento Financeiro</h2>
           <div className="breakdown-items">
             <div className="breakdown-item">
               <span>Subtotal (Produtos):</span>
-              <span>R$ {romaneio.valor_produtos?.toFixed(2)}</span>
+              <span>R$ {valorProdutos.toFixed(2)}</span>
             </div>
-            {romaneio.taxa_separacao > 0 && (
+            {taxaSep > 0 && (
               <div className="breakdown-item">
                 <span>Taxa de Separação:</span>
-                <span>R$ {romaneio.taxa_separacao?.toFixed(2)}</span>
+                <span>R$ {taxaSep.toFixed(2)}</span>
               </div>
             )}
             {romaneio.valor_frete > 0 && (
@@ -464,10 +478,12 @@ export default function RomaneioDetail() {
             )}
             <div className="breakdown-item total">
               <strong>Total:</strong>
-              <strong>R$ {romaneio.valor_total?.toFixed(2)}</strong>
+              <strong>R$ {totalExib.toFixed(2)}</strong>
             </div>
           </div>
         </div>
+          )
+        })()}
       </div>
     </div>
   )

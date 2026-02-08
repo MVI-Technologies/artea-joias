@@ -92,6 +92,23 @@ export default function OrderHistory() {
     return romaneio.id
   }
 
+  const getStatusLabel = (status) => {
+    const labels = {
+      pendente: 'Pendente',
+      aguardando_pagamento: 'Aguardando Pagamento',
+      aguardando: 'Aguardando',
+      pago: 'Pago sem frete',
+      pago_frete_incluso: 'Pago com frete',
+      em_separacao: 'Em Separação',
+      em_preparacao: 'Em Preparação',
+      enviado: 'Enviado',
+      entregue: 'Entregue',
+      concluido: 'Concluído',
+      cancelado: 'Cancelado'
+    }
+    return labels[status] || (status ? String(status).replace(/_/g, ' ') : '')
+  }
+
   const handleDownloadRomaneio = async (romaneioId, fileName, order) => {
     try {
       setLoading(true)
@@ -180,7 +197,7 @@ export default function OrderHistory() {
                 <div className="order-card-content">
                   <div className="order-card-header">
                     <span className={`order-status-badge ${order.status}`}>
-                      {order.status?.replace('_', ' ')}
+                      {getStatusLabel(order.status)}
                     </span>
                     <span className="order-date">
                       {new Date(order.created_at).toLocaleDateString('pt-BR')}

@@ -24,7 +24,8 @@ import { Clock } from 'lucide-react'
 const statusOptions = [
   { value: '', label: 'Todos os Status' },
   { value: 'pendente', label: 'Pendente' },
-  { value: 'pago', label: 'Pago' },
+  { value: 'pago', label: 'Pago sem frete' },
+  { value: 'pago_frete_incluso', label: 'Pago com frete' },
   { value: 'em_preparacao', label: 'Em Preparação' },
   { value: 'enviado', label: 'Enviado' },
   { value: 'entregue', label: 'Entregue' },
@@ -175,7 +176,9 @@ export default function OrderList() {
       pendente: { label: 'Pendente', class: 'badge-warning', icon: Clock },
       aguardando: { label: 'Aguardando', class: 'badge-warning', icon: Clock },
       aguardando_pagamento: { label: 'Aguardando Pagto', class: 'badge-warning', icon: Clock },
-      pago: { label: 'Pago', class: 'badge-success', icon: CheckCircle },
+      pago: { label: 'Pago sem frete', class: 'badge-pago-sem-frete', icon: CheckCircle },
+      pago_frete_incluso: { label: 'Pago com frete', class: 'badge-success', icon: CheckCircle },
+      admin_purchase: { label: 'Compra Admin', class: 'badge-secondary', icon: CheckCircle },
       em_separacao: { label: 'Em Separação', class: 'badge-info', icon: Package },
       em_preparacao: { label: 'Em Preparação', class: 'badge-info', icon: Package },
       enviado: { label: 'Enviado', class: 'badge-primary', icon: Truck },
@@ -228,7 +231,7 @@ export default function OrderList() {
         </div>
         <div className="order-stat">
           <span className="order-stat-value">
-            {orders.filter(o => ['pago', 'enviado', 'concluido', 'em_separacao', 'admin_purchase'].includes(o.status)).length}
+            {orders.filter(o => ['pago', 'pago_frete_incluso', 'enviado', 'concluido', 'em_separacao', 'admin_purchase'].includes(o.status)).length}
           </span>
           <span className="order-stat-label">Pagos/Processados</span>
         </div>

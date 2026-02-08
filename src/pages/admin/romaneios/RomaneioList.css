@@ -284,9 +284,14 @@
   white-space: nowrap;
 }
 
-.status-pago {
-  background: rgba(34, 197, 94, 0.1);
-  color: #22c55e;
+.status-pago-sem-frete {
+  background: rgba(249, 115, 22, 0.2);
+  color: #c2410c;
+}
+
+.status-pago-com-frete {
+  background: rgba(34, 197, 94, 0.2);
+  color: #16a34a;
 }
 
 .status-aguardando {
