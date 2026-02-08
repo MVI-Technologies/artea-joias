@@ -86,8 +86,12 @@ export default function Cart() {
             return
         }
 
+        const idx = String(itemId).indexOf('__')
+        const productId = idx >= 0 ? itemId.slice(0, idx) : itemId
+        const variacaoPart = idx >= 0 ? itemId.slice(idx + 2) : ''
         items = items.map(item => {
-            if (item.id === itemId) {
+            const match = item.id === productId && (item.variacao ?? '') === variacaoPart
+            if (match) {
                 return { ...item, quantity: Math.max(1, item.quantity + delta) }
             }
             return item
@@ -111,7 +115,10 @@ export default function Cart() {
             return
         }
 
-        items = items.filter(item => item.id !== itemId)
+        const idx = String(itemId).indexOf('__')
+        const productId = idx >= 0 ? itemId.slice(0, idx) : itemId
+        const variacaoPart = idx >= 0 ? itemId.slice(idx + 2) : ''
+        items = items.filter(item => !(item.id === productId && (item.variacao ?? '') === variacaoPart))
 
         if (items.length === 0) {
             localStorage.removeItem(key)
@@ -377,7 +384,8 @@ export default function Cart() {
             const itemsPayload = group.items.map(item => ({
                 product_id: item.id,
                 quantity: item.quantity,
-                valor_unitario: item.preco
+                valor_unitario: item.preco,
+                variacao: item.variacao ?? ''
             }))
 
             const clientSnapshot = {
@@ -505,8 +513,10 @@ export default function Cart() {
 
                             {/* Lista de Itens */}
                             <div className="cart-items-list">
-                                {group.items.map(item => (
-                                    <div key={item.id} className="cart-item">
+                                {group.items.map(item => {
+                                    const lineKey = `${item.id}__${item.variacao ?? ''}`
+                                    return (
+                                    <div key={lineKey} className="cart-item">
                                         <div className="cart-item-image">
                                             {item.imagem1 ? (
                                                 <img src={item.imagem1} alt={item.nome} />
@@ -518,14 +528,14 @@ export default function Cart() {
                                         </div>
 
                                         <div className="cart-item-info">
-                                            <h3 className="cart-item-name">{item.nome}</h3>
+                                            <h3 className="cart-item-name">{item.nome}{item.variacao ? ` — ${item.variacao}` : ''}</h3>
                                             <p className="cart-item-price-unit">R$ {parseFloat(item.preco).toFixed(2)} un.</p>
                                         </div>
 
                                         <div className="cart-item-controls">
                                             <div className="cart-quantity-control">
                                                 <button
-                                                    onClick={() => updateQuantity(lotId, item.id, -1)}
+                                                    onClick={() => updateQuantity(lotId, lineKey, -1)}
                                                     className="cart-quantity-btn"
                                                     disabled={group.lot.status !== 'aberto'}
                                                     title="Diminuir quantidade"
@@ -534,7 +544,7 @@ export default function Cart() {
                                                 </button>
                                                 <span className="cart-quantity-value">{item.quantity}</span>
                                                 <button
-                                                    onClick={() => updateQuantity(lotId, item.id, 1)}
+                                                    onClick={() => updateQuantity(lotId, lineKey, 1)}
                                                     className="cart-quantity-btn"
                                                     disabled={group.lot.status !== 'aberto'}
                                                     title="Aumentar quantidade"
@@ -546,7 +556,7 @@ export default function Cart() {
                                                 R$ {(item.preco * item.quantity).toFixed(2)}
                                             </span>
                                             <button
-                                                onClick={() => removeItem(lotId, item.id)}
+                                                onClick={() => removeItem(lotId, lineKey)}
                                                 className="cart-item-remove"
                                                 title="Remover item"
                                             >
@@ -554,7 +564,8 @@ export default function Cart() {
                                             </button>
                                         </div>
                                     </div>
-                                ))}
+                                    )
+                                })}
                             </div>
 
                             {/* Footer Totais e Botão */}

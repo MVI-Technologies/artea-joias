@@ -32,6 +32,7 @@ export default function Catalog() {
   const [addingToCart, setAddingToCart] = useState(null)
   const [quantities, setQuantities] = useState({})
   const [selectedProduct, setSelectedProduct] = useState(null)
+  const [selectedVariacao, setSelectedVariacao] = useState('')
   const [productPurchases, setProductPurchases] = useState([])
   const [loadingPurchases, setLoadingPurchases] = useState(false)
   // Usar uma key baseada no ID para garantir que cada acesso ao catálogo seja único
@@ -420,6 +421,8 @@ export default function Catalog() {
 
   const handleProductClick = async (product) => {
     setSelectedProduct(product)
+    const opts = product?.variacoes ? String(product.variacoes).split(',').map(s => s.trim()).filter(Boolean) : []
+    setSelectedVariacao(opts?.length ? opts[0] : '')
     setLoadingPurchases(true)
 
     try {
@@ -487,40 +490,42 @@ export default function Catalog() {
     }
   }
 
-  const addToCart = async (product) => {
+  const addToCart = async (product, variacao = '') => {
     const qty = getQuantity(product.id)
+    const variacaoNorm = (variacao || '').trim()
     setAddingToCart(product.id)
     try {
       const cartKey = `cart_${id}`
       const currentCart = JSON.parse(localStorage.getItem(cartKey) || '[]')
 
-      // Calcular o preço final com as taxas do lote
       const precoFinal = calcularPrecoFinal(product.preco)
 
-      const existingInfo = currentCart.find(item => item.id === product.id)
-      let newCart;
+      const existingInfo = currentCart.find(
+        item => item.id === product.id && (item.variacao ?? '') === variacaoNorm
+      )
+      let newCart
 
       if (existingInfo) {
         newCart = currentCart.map(item =>
-          item.id === product.id
+          item.id === product.id && (item.variacao ?? '') === variacaoNorm
             ? { ...item, quantity: item.quantity + qty, preco: precoFinal }
             : item
         )
       } else {
-        newCart = [...currentCart, { ...product, preco: precoFinal, quantity: qty, lot_id: id }]
+        newCart = [...currentCart, {
+          ...product,
+          preco: precoFinal,
+          quantity: qty,
+          lot_id: id,
+          variacao: variacaoNorm
+        }]
       }
 
       localStorage.setItem(cartKey, JSON.stringify(newCart))
 
-      // Resetar quantidade para 1 após adicionar
       setQuantities(prev => ({ ...prev, [product.id]: 1 }))
-
-      // Mostrar toast de sucesso
-      toast.success(`${qty}x ${product.nome} adicionado ao carrinho!`)
-
-      // Pequeno feedback visual
+      toast.success(`${qty}x ${product.nome}${variacaoNorm ? ` (${variacaoNorm})` : ''} adicionado ao carrinho!`)
       await new Promise(r => setTimeout(r, 300))
-
     } catch (e) {
       console.error(e)
       toast.error('Erro ao adicionar produto ao carrinho')
@@ -755,6 +760,21 @@ export default function Catalog() {
                         <span className="label">Disponibilidade (lote):</span>{' '}
                         {disponibilidadeLoteParaExibicao(selectedProduct.qtd_minima_fornecedor, selectedProduct.quantidade_pedidos) ?? '—'}
                       </div>
+                      {selectedProduct.variacoes && (
+                        <div className="info-row">
+                          <span className="label">Variação:</span>
+                          <select
+                            value={selectedVariacao}
+                            onChange={(e) => setSelectedVariacao(e.target.value)}
+                            className="variacao-select"
+                            style={{ marginLeft: 8, padding: '4px 8px', borderRadius: 4, minWidth: 120 }}
+                          >
+                            {String(selectedProduct.variacoes).split(',').map(s => s.trim()).filter(Boolean).map(opt => (
+                              <option key={opt} value={opt}>{opt}</option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
                     </div>
 
                     {/* AVISO DE LINK FECHADO ou ÁREA DE COMPRA */}
@@ -779,8 +799,9 @@ export default function Catalog() {
                           </div>
                           <button
                             onClick={() => {
-                              addToCart(selectedProduct)
+                              addToCart(selectedProduct, selectedVariacao)
                               setSelectedProduct(null)
+                              setSelectedVariacao('')
                             }}
                             disabled={addingToCart === selectedProduct.id}
                             className="btn-add-cart-modal"

@@ -220,22 +220,24 @@ export const generateRomaneioPDF = async ({ romaneio, lot, client, items, compan
     drawLabelValue('Data Fechamento:', formatDate(lot?.updated_at), currentY)
 
     // --- Products Table ---
-    // Group items by product_id to merge duplicates
+    // Group items by (product_id, variacao) to merge same product+variation, keep different variations as separate rows
     const groupedItemsMap = {}
 
     items.forEach(item => {
         const prodId = item.product_id || item.product?.id
-        if (!prodId) return // Skip invalid items
+        if (!prodId) return
+        const variacao = (item.variacao || '').trim()
+        const key = `${prodId}\t${variacao}`
 
-        if (!groupedItemsMap[prodId]) {
-            groupedItemsMap[prodId] = {
+        if (!groupedItemsMap[key]) {
+            groupedItemsMap[key] = {
                 ...item,
                 quantidade: Number(item.quantidade),
                 valor_total: Number(item.valor_total)
             }
         } else {
-            groupedItemsMap[prodId].quantidade += Number(item.quantidade)
-            groupedItemsMap[prodId].valor_total += Number(item.valor_total)
+            groupedItemsMap[key].quantidade += Number(item.quantidade)
+            groupedItemsMap[key].valor_total += Number(item.valor_total)
         }
     })
 
@@ -244,40 +246,30 @@ export const generateRomaneioPDF = async ({ romaneio, lot, client, items, compan
 
     for (const item of uniqueItems) {
         const product = item.product || {}
-        // We will handle images via didDrawCell
-
         tableRows.push([
-            '', // Image placeholder
-            product.category?.nome || 'Geral', // Categoria
-            product.descricao || product.nome || '', // Descrição
+            '',
+            product.category?.nome || 'Geral',
+            product.descricao || product.nome || '',
+            item.variacao || '-',
             formatCurrency(item.valor_unitario || item.preco_unitario),
             item.quantidade,
             formatCurrency(item.valor_total)
         ])
     }
 
-    // Pre-load images for table
-    const imageUrls = items.map(item => item.product?.imagem1).filter(Boolean)
-    // We need a map of row index to image base64
+    // Pre-load images for table (one per unique row)
     const imageMap = {}
-
-    // Sequential loading to avoid overwhelming network/canvas
-    for (let i = 0; i < items.length; i++) {
-        const url = items[i].product?.imagem1
+    for (let i = 0; i < uniqueItems.length; i++) {
+        const url = uniqueItems[i].product?.imagem1
         if (url) {
-            console.log(`[PDF] Baixando imagem para item ${i}:`, url)
             const base64 = await getBase64ImageFromURL(url)
-            if (base64) {
-                imageMap[i] = base64
-                // Log simplified size info
-                console.log(`[PDF] Imagem ${i} carregada (Size: ${base64.length})`)
-            }
+            if (base64) imageMap[i] = base64
         }
     }
 
     autoTable(doc, {
         startY: startY + boxHeight + 8,
-        head: [['', 'CATEGORIA', 'DESCRIÇÃO', 'VALOR', 'QTD', 'TOTAL']],
+        head: [['', 'CATEGORIA', 'DESCRIÇÃO', 'VARIAÇÃO', 'VALOR', 'QTD', 'TOTAL']],
         body: tableRows,
         theme: 'grid',
         styles: {
@@ -291,11 +283,12 @@ export const generateRomaneioPDF = async ({ romaneio, lot, client, items, compan
         },
         columnStyles: {
             0: { cellWidth: 22 }, // Image
-            1: { cellWidth: 28 }, // Category
+            1: { cellWidth: 24 }, // Category
             2: { halign: 'left', cellPadding: { left: 3 } }, // Description
-            3: { cellWidth: 28 }, // Price
-            4: { cellWidth: 15 }, // Qty
-            5: { cellWidth: 28 }  // Total
+            3: { cellWidth: 24 }, // Variação
+            4: { cellWidth: 26 }, // Price
+            5: { cellWidth: 14 }, // Qty
+            6: { cellWidth: 26 }  // Total
         },
         headStyles: {
             fillColor: [245, 245, 245],

@@ -401,10 +401,11 @@ Deno.serve(async (req) => {
     const colX = {
       img: margin,
       cat: margin + 20,
-      desc: margin + 100,
-      unit: margin + 280,
-      qty: margin + 350,
-      total: margin + 410,
+      desc: margin + 85,
+      var: margin + 235,
+      unit: margin + 285,
+      qty: margin + 345,
+      total: margin + 400,
     }
 
     const drawTableHeader = () => {
@@ -420,9 +421,10 @@ Deno.serve(async (req) => {
       drawText('', colX.img, y - 2, 9, true)
       drawText('CATEGORIA', colX.cat, y - 2, 9, true)
       drawText('DESCRIÇÃO', colX.desc, y - 2, 9, true)
+      drawText('VARIAÇÃO', colX.var, y - 2, 8, true)
       drawText('VALOR', colX.unit, y + 5, 8, true)
-      drawText('UNITÁRIO', colX.unit, y - 5, 8, true)
-      drawText('QUANTIDADE', colX.qty, y - 2, 8, true)
+      drawText('UNIT.', colX.unit, y - 5, 8, true)
+      drawText('QTD', colX.qty, y - 2, 8, true)
       drawText('VALOR', colX.total, y + 5, 8, true)
       drawText('TOTAL', colX.total, y - 5, 8, true)
       y -= 24
@@ -448,9 +450,11 @@ Deno.serve(async (req) => {
       const valorUnitario = formatCurrency(getItemValorUnitario(item))
       const valorTotalItem = formatCurrency(getItemValorTotal(item))
 
+      const variacaoTexto = (item.variacao && String(item.variacao).trim()) ? truncateText(String(item.variacao).trim(), 45, 8) : '-'
       drawText('', colX.img, y, 9)
       drawText(truncateText(categoria, 70, 9), colX.cat, y, 9)
       drawText(descricao, colX.desc, y, 9)
+      drawText(variacaoTexto, colX.var, y, 8)
       drawText(valorUnitario, colX.unit, y, 9)
       drawText(String(quantidade), colX.qty + 10, y, 9)
       drawText(valorTotalItem, colX.total, y, 9)

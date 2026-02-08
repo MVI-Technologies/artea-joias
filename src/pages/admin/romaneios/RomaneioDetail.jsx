@@ -60,6 +60,7 @@ export default function RomaneioDetail() {
   const [availableProducts, setAvailableProducts] = useState([])
   const [showAddProductModal, setShowAddProductModal] = useState(false)
   const [loadingProducts, setLoadingProducts] = useState(false)
+  const [addVariacaoByProduct, setAddVariacaoByProduct] = useState({})
 
   useEffect(() => {
     fetchData()
@@ -134,7 +135,7 @@ export default function RomaneioDetail() {
         .from('romaneio_items')
         .select(`
           *,
-          product:products(id, nome, descricao, preco, imagem1, categoria_id, category:categories(nome))
+          product:products(id, nome, descricao, preco, imagem1, categoria_id, variacoes, category:categories(nome))
         `)
         .eq('romaneio_id', id)
         .order('created_at')
@@ -173,6 +174,7 @@ export default function RomaneioDetail() {
               preco,
               imagem1,
               categoria_id,
+              variacoes,
               category:categories(nome)
             )
           `)
@@ -216,10 +218,9 @@ export default function RomaneioDetail() {
     }))
   }
 
-  const addProductToRomaneio = (product, quantity = 1) => {
-    // Create a temporary item (will be saved to DB when user clicks Save)
+  const addProductToRomaneio = (product, quantity = 1, variacao = '') => {
     const newItem = {
-      id: `temp-${Date.now()}`, // Temporary ID
+      id: `temp-${Date.now()}`,
       romaneio_id: id,
       product_id: product.id,
       product: product,
@@ -227,6 +228,7 @@ export default function RomaneioDetail() {
       valor_unitario: product.preco,
       preco_unitario: product.preco,
       valor_total: product.preco * quantity,
+      variacao: (variacao || '').trim() || null,
       valor_recalculado: null,
       isNew: true // Flag to identify new items
     }
@@ -256,10 +258,9 @@ export default function RomaneioDetail() {
             romaneio_id: id,
             product_id: item.product_id,
             quantidade: item.quantidade,
-            valor_unitario: item.valor_unitario,
-            preco_unitario: item.preco_unitario,
-            valor_total: item.valor_total,
-            valor_recalculado: item.valor_recalculado
+            preco_unitario: item.preco_unitario ?? item.valor_unitario,
+            valor_recalculado: item.valor_recalculado,
+            variacao: item.variacao || null
           })
 
         if (error) throw error
@@ -272,7 +273,8 @@ export default function RomaneioDetail() {
           .from('romaneio_items')
           .update({
             quantidade: item.quantidade,
-            valor_recalculado: item.valor_total
+            valor_recalculado: item.valor_total,
+            variacao: item.variacao ?? null
           })
           .eq('id', item.id)
 
@@ -739,7 +741,10 @@ export default function RomaneioDetail() {
               </div>
             ) : (
               <div className="product-grid">
-                {availableProducts.map(product => (
+                {availableProducts.map(product => {
+                  const variacoesList = product.variacoes ? String(product.variacoes).split(',').map(s => s.trim()).filter(Boolean) : []
+                  const selectedVar = addVariacaoByProduct[product.id] ?? (variacoesList[0] ?? '')
+                  return (
                   <div key={product.id} className="product-card">
                     {product.imagem1 ? (
                       <img
@@ -764,16 +769,31 @@ export default function RomaneioDetail() {
                       <p className="product-price">
                         R$ {product.preco?.toFixed(2)}
                       </p>
+                      {variacoesList.length > 0 && (
+                        <div className="product-variacao">
+                          <label>Variação:</label>
+                          <select
+                            value={selectedVar}
+                            onChange={(e) => setAddVariacaoByProduct(prev => ({ ...prev, [product.id]: e.target.value }))}
+                            style={{ marginTop: 4, padding: '4px 8px', width: '100%', borderRadius: 4 }}
+                          >
+                            {variacoesList.map(opt => (
+                              <option key={opt} value={opt}>{opt}</option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
                     </div>
                     <button
                       className="btn btn-primary btn-sm"
-                      onClick={() => addProductToRomaneio(product, 1)}
+                      onClick={() => addProductToRomaneio(product, 1, selectedVar)}
                       style={{ width: '100%' }}
                     >
                       <Plus size={14} /> Adicionar
                     </button>
                   </div>
-                ))}
+                  )
+                })}
               </div>
             )}
 
@@ -837,6 +857,7 @@ export default function RomaneioDetail() {
                 <th className="col-img"></th>
                 <th className="col-cat">Categoria</th>
                 <th className="col-desc">Descrição</th>
+                <th className="col-var">Variação</th>
                 <th className="col-val">Valor</th>
                 <th className="col-qty">Qtd</th>
                 <th className="col-total">Total</th>
@@ -854,6 +875,7 @@ export default function RomaneioDetail() {
                   </td>
                   <td className="col-cat">{item.product?.category?.nome || '-'}</td>
                   <td className="col-desc">{item.product?.descricao || item.product?.nome}</td>
+                  <td className="col-var">{item.variacao || '-'}</td>
                   <td className="col-val">R$ {(item.valor_unitario || item.preco_unitario || item.product?.preco || 0).toFixed(2)}</td>
                   <td className="col-qty">
                     {editMode ? (
