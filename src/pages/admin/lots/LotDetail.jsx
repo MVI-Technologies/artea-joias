@@ -1817,13 +1817,13 @@ export default function LotDetail({ defaultTab }) {
                   </div>
 
                   <div className="form-group mt-3">
-                    <label>Variações/Tamanho (separados por vírgula)</label>
+                    <label>Variações Cores</label>
                     <input
                       type="text"
                       className="input-clean"
                       value={productForm.variacoes}
                       onChange={(e) => setProductForm({ ...productForm, variacoes: e.target.value })}
-                      placeholder="Ex: P, M, G, GG"
+                      placeholder="Ex: Dourado, Prata"
                     />
                   </div>
                 </div>

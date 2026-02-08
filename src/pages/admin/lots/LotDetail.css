@@ -1448,8 +1448,25 @@
   background: #f8fafc;
   display: flex;
   justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 12px;
   border-radius: 0 0 24px 24px;
+}
+
+@media (max-width: 480px) {
+  .modal-footer {
+    padding: 16px;
+    gap: 10px;
+    justify-content: stretch;
+  }
+  .modal-footer .btn {
+    flex: 1 1 auto;
+    min-width: 0;
+    white-space: normal;
+    padding: 10px 12px;
+    font-size: 0.875rem;
+    line-height: 1.2;
+  }
 }
 
 .checkbox-group label {
