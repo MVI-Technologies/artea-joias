@@ -157,14 +157,16 @@ _Artea Joias - Compras Coletivas_`
 export async function notifyNewCatalog(catalog, clients, catalogUrl) {
   // Gerar número do link baseado no ID ou criar sequencial
   const linkNumber = catalog.numero_link || catalog.id?.slice(-4).toUpperCase() || Date.now().toString().slice(-4)
+  const nomeLink = catalog.nome || 'Semijóias de Luxo no Precinho'
 
+  // Nome do link em negrito (WhatsApp: *texto*) e URL sozinha na linha para o WhatsApp exibir a capa (preview)
   const message = `🎉 *Novo Link Disponível!*
 
-*LINK ${linkNumber}* - ${catalog.nome || 'Semijóias de Luxo no Precinho'}
+*LINK ${linkNumber} - ${nomeLink}*
 
 ${catalog.descricao || 'Acabamos de lançar um link repleto de novidades para você. As peças estão incríveis e escolhidas com muito amor.'}
 
-🔗 Acesse agora:
+🔗 Confira no link abaixo:
 ${catalogUrl}
 
 ⏰ Não perca tempo! Garanta já suas peças favoritas.
@@ -173,75 +175,9 @@ _Att, Equipe ARTEA JOIAS_`
 
   const recipients = clients.map(c => ({ telefone: c.telefone, nome: c.nome }))
 
-  // Se o catálogo tiver imagem de capa, enviar como imagem com legenda
-  if (catalog.cover_image_url) {
-    try {
-      // Baixar a imagem e converter para base64
-      const imageResponse = await fetch(catalog.cover_image_url)
-      const imageBlob = await imageResponse.blob()
-      const arrayBuffer = await imageBlob.arrayBuffer()
-      const bytes = new Uint8Array(arrayBuffer)
-
-      // Converter para base64
-      let binary = ''
-      const len = bytes.byteLength
-      for (let i = 0; i < len; i++) {
-        binary += String.fromCharCode(bytes[i])
-      }
-      const base64 = btoa(binary)
-
-      // Determinar tipo MIME
-      const mimeType = imageBlob.type || 'image/jpeg'
-
-      // Enviar para cada cliente individualmente com imagem
-      const results = {
-        successCount: 0,
-        errorCount: 0,
-        total: recipients.length,
-        details: []
-      }
-
-      for (const recipient of recipients) {
-        try {
-          const personalizedMessage = message.replace(/%Nome%/gi, recipient.nome || 'Cliente')
-
-          const result = await sendWhatsAppFile(
-            recipient.telefone,
-            base64,
-            `${catalog.nome || 'Catálogo'}.jpg`,
-            personalizedMessage,
-            mimeType
-          )
-
-          if (result.success) {
-            results.successCount++
-            results.details.push({ nome: recipient.nome, success: true })
-          } else {
-            results.errorCount++
-            results.details.push({ nome: recipient.nome, success: false, error: result.error })
-          }
-
-          // Delay entre envios para evitar rate limiting
-          await new Promise(resolve => setTimeout(resolve, 2000))
-        } catch (error) {
-          results.errorCount++
-          results.details.push({ nome: recipient.nome, success: false, error: error.message })
-        }
-      }
-
-      return {
-        success: results.errorCount === 0,
-        data: results
-      }
-    } catch (error) {
-      console.error('Erro ao processar imagem, enviando apenas texto:', error)
-      // Se falhar ao processar imagem, enviar apenas texto
-      return sendBulkWhatsAppMessage(recipients, message)
-    }
-  } else {
-    // Sem imagem, enviar apenas texto
-    return sendBulkWhatsAppMessage(recipients, message)
-  }
+  // Sempre enviar como mensagem de TEXTO (não como imagem com legenda) para o WhatsApp
+  // exibir a prévia do link (capa) ao detectar a URL na mensagem.
+  return sendBulkWhatsAppMessage(recipients, message)
 }
 
 /**

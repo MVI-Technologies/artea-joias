@@ -190,7 +190,7 @@ export default function LotForm() {
 
             if (shouldNotifyNewCatalog) {
               // Notificação de novo catálogo
-              const catalogUrl = `https://arteajoias.semijoias.net/catalogo/${savedCatalog.link_compra}`
+              const catalogUrl = `https://www.grupoaadecomprascoletivas.site/catalogo/${savedCatalog.link_compra}`
               result = await notifyNewCatalog(savedCatalog, clients, catalogUrl)
             } else {
               // Notificação de fechamento
