@@ -490,6 +490,30 @@ export default function Catalog() {
     }
   }
 
+  const syncCartToServer = async (cartItems) => {
+    if (!client?.auth_id || !cartItems?.length) return
+    try {
+      const itemsPayload = cartItems.map(item => ({
+        product_id: item.id,
+        quantity: item.quantity,
+        valor_unitario: item.preco,
+        variacao: item.variacao ?? ''
+      }))
+      const clientSnapshot = {
+        nome: client.nome,
+        telefone: client.telefone,
+        endereco: client.enderecos?.[0] || null
+      }
+      await supabase.rpc('checkout_romaneio', {
+        p_lot_id: id,
+        p_items: itemsPayload,
+        p_client_snapshot: clientSnapshot
+      })
+    } catch (e) {
+      if (!e?.message?.includes('não está aberto')) console.warn('Sync carrinho:', e)
+    }
+  }
+
   const addToCart = async (product, variacao = '') => {
     const qty = getQuantity(product.id)
     const variacaoNorm = (variacao || '').trim()
@@ -522,6 +546,7 @@ export default function Catalog() {
       }
 
       localStorage.setItem(cartKey, JSON.stringify(newCart))
+      syncCartToServer(newCart)
 
       setQuantities(prev => ({ ...prev, [product.id]: 1 }))
       toast.success(`${qty}x ${product.nome}${variacaoNorm ? ` (${variacaoNorm})` : ''} adicionado ao carrinho!`)

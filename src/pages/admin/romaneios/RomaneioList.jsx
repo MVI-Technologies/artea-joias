@@ -36,19 +36,22 @@ export default function RomaneioList() {
 
   const fetchLots = async () => {
     try {
-      // Buscar TODOS os lots que tenham romaneios (remover filtro de status)
+      // Apenas links já fechados: romaneios aparecem para o admin só após fechar o link
       const { data, error } = await supabase
         .from('lots')
         .select('*')
+        .neq('status', 'aberto')
         .order('updated_at', { ascending: false })
 
       if (error) throw error
       setLots(data || [])
       
-      // Selecionar o primeiro automaticamente
       if (data && data.length > 0) {
         fetchRomaneios(data[0].id)
         setSelectedLot(data[0])
+      } else {
+        setSelectedLot(null)
+        setRomaneios([])
       }
     } catch (error) {
       console.error('Erro ao carregar links:', error)
