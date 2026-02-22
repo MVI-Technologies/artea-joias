@@ -583,7 +583,7 @@ export default function Catalog() {
 
   if (loading) {
     return (
-      <div className="client-page p-8 flex items-center justify-center">
+      <div className="client-page catalog-page p-8 flex items-center justify-center">
         <div className="text-slate-500">Carregando catálogo...</div>
       </div>
     )
@@ -596,7 +596,7 @@ export default function Catalog() {
 
   if (!lot) {
     return (
-      <div className="client-page p-8 flex flex-col items-center justify-center gap-4">
+      <div className="client-page catalog-page p-8 flex flex-col items-center justify-center gap-4">
         <div className="text-red-500">Não foi possível carregar o catálogo.</div>
         <button onClick={() => navigate('/app')} className="text-blue-500 underline">
           Voltar
@@ -606,7 +606,7 @@ export default function Catalog() {
   }
 
   return (
-    <div className="client-page">
+    <div className="client-page catalog-page">
       {/* Header Sticky */}
       <header className="catalog-header">
         <div className="catalog-nav">

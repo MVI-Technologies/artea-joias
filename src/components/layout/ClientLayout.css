@@ -115,6 +115,11 @@
 
 /* Responsive */
 @media (max-width: 768px) {
+  .client-main {
+    padding-left: 0;
+    padding-right: 0;
+  }
+
   .client-nav {
     position: fixed;
     top: 0;
