@@ -110,9 +110,11 @@ export default function UserList() {
         
         await ensureUserAuth({ ...selectedUser, ...formData })
 
+        // Atualizar apenas colunas que existem na tabela clients (não enviar password)
+        const { password: _p, ...payload } = formData
         const { error } = await supabase
           .from('clients')
-          .update(formData)
+          .update(payload)
           .eq('id', selectedUser.id)
         if (error) throw error
       } else {
@@ -225,6 +227,9 @@ export default function UserList() {
           placeholder="Buscar por nome ou email..." 
           value={search}
           onChange={e => setSearch(e.target.value)}
+          autoComplete="off"
+          data-lpignore
+          data-form-type="other"
         />
         <Search size={18} className="search-icon" />
       </div>
@@ -425,6 +430,7 @@ export default function UserList() {
                     onChange={e => setResetPasswordData({ ...resetPasswordData, newPassword: e.target.value })}
                     className="form-control"
                     placeholder="Mínimo 6 caracteres"
+                    autoComplete="new-password"
                   />
                 </div>
                 <div className="form-group">
@@ -434,6 +440,7 @@ export default function UserList() {
                     onChange={e => setResetPasswordData({ ...resetPasswordData, confirmPassword: e.target.value })}
                     className="form-control"
                     placeholder="Confirme a nova senha"
+                    autoComplete="new-password"
                   />
                 </div>
             </div>

@@ -293,24 +293,40 @@
   }
 }
 
+/* Mobile: 2 colunas, imagens quadradas, melhor uso da tela */
 @media (max-width: 768px) {
   .catalog-content-wrapper {
-    padding: 0 4px;
+    padding: 0 8px;
+  }
+
+  .products-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    padding-bottom: 24px;
   }
 
   .product-card {
-    border-radius: 4px;
+    border-radius: 8px;
     border: none;
-    height: 200px;
-    /* Force height on mobile */
-    /* Width is handled by grid (3 cols ~ 128px) */
+    height: auto;
+    aspect-ratio: 1 / 1;
+    min-height: 0;
+  }
+
+  .product-image-area {
+    aspect-ratio: 1 / 1;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
   }
 }
 
 @media (max-width: 640px) {
   .products-grid {
-    grid-template-columns: repeat(3, 1fr) !important;
-    gap: 2px !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
   }
 }
 

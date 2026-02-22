@@ -611,7 +611,7 @@ export default function Catalog() {
       </header>
 
       {/* Conteúdo Principal */}
-      <div className="catalog-content-wrapper" style={{ padding: '0 16px', maxWidth: '1200px', margin: '0 auto' }}>
+      <div className="catalog-content-wrapper" style={{ maxWidth: '1200px', margin: '0 auto' }}>
 
         {/* 1. Bloco de Descrição (REGRAS) */}
         {lot.descricao && (
