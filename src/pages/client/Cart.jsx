@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ShoppingCart, Trash2, ArrowRight, AlertTriangle, CheckCircle, Plus, Minus, FileText } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
-import { generateRomaneioPDF } from '../../utils/pdfGenerator'
 import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../components/common/Toast'
 import './Cart.css'
@@ -126,105 +125,6 @@ export default function Cart() {
             localStorage.setItem(key, JSON.stringify(items))
         }
         loadCart()
-    }
-
-    const generateRomaneioNumber = () => {
-        const now = new Date()
-        const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '')
-        const random = Math.floor(Math.random() * 10000).toString().padStart(4, '0')
-        return `ROM-${dateStr}-${random}`
-    }
-
-    const handleDownloadRomaneioPDF = async (romaneioId, fileName, items, lot) => {
-        if (!romaneioId) {
-            throw new Error('ID do romaneio não fornecido')
-        }
-
-        console.log('Gerando PDF para romaneio:', romaneioId)
-
-        try {
-            const { data: { session } } = await supabase.auth.getSession()
-
-            if (!session) {
-                throw new Error('Sessão não encontrada. Faça login novamente.')
-            }
-
-            // Buscar dados adicionais para o PDF (Company, PIX)
-            const { data: company } = await supabase
-                .from('company_settings')
-                .select('*')
-                .single()
-
-            const { data: pixInt } = await supabase
-                .from('integrations')
-                .select('config')
-                .eq('type', 'pix')
-                .single()
-
-            // Buscar dados do romaneio completo se não passados
-            let romaneioData = {
-                id: romaneioId,
-                numero_romaneio: romaneioId, // Fallback
-                valor_total: items.reduce((acc, i) => acc + i.valor_total, 0),
-                valor_produtos: items.reduce((acc, i) => acc + i.valor_total, 0),
-                quantidade_itens: items.reduce((acc, i) => acc + i.quantidade, 0),
-                created_at: new Date().toISOString(),
-                // Default props expected by generator
-                client: client || { nome: 'Cliente' }
-            }
-
-            // Tentar buscar romaneio real para garantir dados corretos (ex: numero_romaneio gerado pelo trigger)
-            const { data: realRomaneio } = await supabase
-                .from('romaneios')
-                .select('*')
-                .eq('id', romaneioId)
-                .single()
-
-            if (realRomaneio) {
-                romaneioData = realRomaneio
-            }
-
-            // BUSCAR ITENS REAIS DO BANCO para garantir Total e Imagens corretos
-            // Isso resolve o problema de mostrar apenas o carrinho atual mas com total acumulado
-            const { data: allItems } = await supabase
-                .from('romaneio_items')
-                .select(`
-                    *,
-                    product:products (nome, imagem1, descricao, codigo_sku, categoria_id, category:categories(nome))
-                `)
-                .eq('romaneio_id', romaneioId)
-
-            if (!allItems || allItems.length === 0) {
-                console.warn('Nenhum item encontrado no banco para este romaneio. Usando itens locais (pode estar incompleto).')
-            }
-
-            const itemsToUse = allItems && allItems.length > 0 ? allItems : items
-
-            const pdfBase64 = await generateRomaneioPDF({
-                romaneio: romaneioData,
-                lot: lot || { nome: 'Catálogo' },
-                client: client,
-                items: itemsToUse,
-                company: company,
-                pixConfig: pixInt?.config
-            })
-
-            if (!pdfBase64) {
-                throw new Error('Falha ao gerar conteúdo do PDF')
-            }
-
-            const link = document.createElement('a')
-            link.href = `data:application/pdf;base64,${pdfBase64}`
-            link.download = fileName || `Romaneio-${romaneioId.slice(0, 8)}.pdf`
-            document.body.appendChild(link)
-            link.click()
-            document.body.removeChild(link)
-
-            return true
-        } catch (error) {
-            console.error('Erro ao gerar PDF:', error)
-            throw error
-        }
     }
 
     const handleCheckout = async (lotId) => {
@@ -450,17 +350,11 @@ export default function Cart() {
                 throw new Error('Erro: Romaneio não retornado pelo servidor.')
             }
 
-            console.log('Romaneio criado/atualizado com sucesso:', romaneio.id)
+            console.log('Carrinho salvo no servidor (romaneio criado/atualizado):', romaneio.id)
 
-            // 4. Gerar e baixar PDF (Passando null nos items para forçar busca do banco)
-            await handleDownloadRomaneioPDF(romaneio.id, `Romaneio-${group.lot.nome}.pdf`, [], group.lot)
-
-            // 5. Limpar Carrinho Local
-            localStorage.removeItem(`cart_${lotId}`)
-
-            // 6. Sucesso
-            toast.success('Pedido realizado com sucesso! Romaneio gerado.')
-            navigate('/app/historico')
+            // Romaneio (PDF) só é gerado quando o admin fechar o catálogo.
+            // Cliente apenas salva o carrinho; pode continuar editando até o admin fechar.
+            toast.success('Carrinho salvo! Seu romaneio será gerado quando o administrador fechar este catálogo. Você pode continuar editando até lá.')
 
         } catch (error) {
             console.error('❌ ERRO GERAL no checkout:', error)
@@ -485,7 +379,7 @@ export default function Cart() {
         <div className="cart-page">
             <div className="cart-header">
                 <h1>Seu Carrinho</h1>
-                <p>Revise seus itens antes de confirmar.</p>
+                <p>Revise seus itens e salve o carrinho. O romaneio (PDF) será gerado quando o administrador fechar o catálogo.</p>
             </div>
 
             {Object.keys(groupedItems).length === 0 ? (
@@ -533,35 +427,46 @@ export default function Cart() {
                                         </div>
 
                                         <div className="cart-item-controls">
-                                            <div className="cart-quantity-control">
-                                                <button
-                                                    onClick={() => updateQuantity(lotId, lineKey, -1)}
-                                                    className="cart-quantity-btn"
-                                                    disabled={group.lot.status !== 'aberto'}
-                                                    title="Diminuir quantidade"
-                                                >
-                                                    <Minus size={16} />
-                                                </button>
-                                                <span className="cart-quantity-value">{item.quantity}</span>
-                                                <button
-                                                    onClick={() => updateQuantity(lotId, lineKey, 1)}
-                                                    className="cart-quantity-btn"
-                                                    disabled={group.lot.status !== 'aberto'}
-                                                    title="Aumentar quantidade"
-                                                >
-                                                    <Plus size={16} />
-                                                </button>
-                                            </div>
-                                            <span className="cart-item-total">
-                                                R$ {(item.preco * item.quantity).toFixed(2)}
-                                            </span>
-                                            <button
-                                                onClick={() => removeItem(lotId, lineKey)}
-                                                className="cart-item-remove"
-                                                title="Remover item"
-                                            >
-                                                <Trash2 size={18} />
-                                            </button>
+                                            {(() => {
+                                                const permitir = group?.lot?.permitir_modificacao_produtos || 'permitir_reduzir_excluir'
+                                                const podeAlterarQtd = permitir !== 'nao_permitir'
+                                                const podeExcluir = permitir === 'permitir_reduzir_excluir'
+                                                const lotAberto = group.lot.status === 'aberto'
+                                                return (
+                                                    <>
+                                                        <div className="cart-quantity-control">
+                                                            <button
+                                                                onClick={() => updateQuantity(lotId, lineKey, -1)}
+                                                                className="cart-quantity-btn"
+                                                                disabled={!lotAberto || !podeAlterarQtd}
+                                                                title={!podeAlterarQtd ? 'Este catálogo não permite alterar quantidades' : 'Diminuir quantidade'}
+                                                            >
+                                                                <Minus size={16} />
+                                                            </button>
+                                                            <span className="cart-quantity-value">{item.quantity}</span>
+                                                            <button
+                                                                onClick={() => updateQuantity(lotId, lineKey, 1)}
+                                                                className="cart-quantity-btn"
+                                                                disabled={!lotAberto || !podeAlterarQtd}
+                                                                title={!podeAlterarQtd ? 'Este catálogo não permite alterar quantidades' : 'Aumentar quantidade'}
+                                                            >
+                                                                <Plus size={16} />
+                                                            </button>
+                                                        </div>
+                                                        <span className="cart-item-total">
+                                                            R$ {(item.preco * item.quantity).toFixed(2)}
+                                                        </span>
+                                                        <button
+                                                            onClick={() => removeItem(lotId, lineKey)}
+                                                            className="cart-item-remove"
+                                                            disabled={!lotAberto || !podeExcluir}
+                                                            title={!podeExcluir ? 'Este catálogo não permite remover produtos' : 'Remover item'}
+                                                        >
+                                                            <Trash2 size={18} />
+                                                        </button>
+                                                    </>
+                                                )
+                                            })()}
                                         </div>
                                     </div>
                                     )
@@ -582,11 +487,11 @@ export default function Cart() {
                                     >
                                         {checkoutLoading ? (
                                             <>
-                                                <FileText size={16} className="spin" /> Gerando Romaneio...
+                                                <FileText size={16} className="spin" /> Salvando...
                                             </>
                                         ) : (
                                             <>
-                                                Fechar Compra e Gerar Romaneio <FileText size={16} />
+                                                Salvar Carrinho <FileText size={16} />
                                             </>
                                         )}
                                     </button>
