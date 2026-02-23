@@ -927,6 +927,13 @@
   gap: 12px;
 }
 
+.catalog-modal-min-error {
+  color: #dc2626;
+  font-size: 14px;
+  font-weight: 500;
+  margin: 0;
+}
+
 .quantity-controls-modal {
   display: flex;
   align-items: center;

@@ -45,6 +45,8 @@ export default function Catalog() {
   // Estados para bloqueio de lote fechado
   const [isBlocked, setIsBlocked] = useState(false)
   const [blockedLotName, setBlockedLotName] = useState(null)
+  /** Mensagem de erro no modal (ex.: quantidade mínima) — exibida em vermelho, sem fechar o modal */
+  const [modalAddError, setModalAddError] = useState(null)
 
   const { client } = useAuth()
 
@@ -58,6 +60,14 @@ export default function Catalog() {
     const totalComprado = product.quantidade_pedidos || 0
     if (minimoLote === 0 || totalComprado >= minimoLote) return 0
     return Math.max(minimoLote - totalComprado, 0)
+  }
+
+  // Quantidade mínima por cliente (configurada no produto)
+  const getMinQtyPerClient = (product) => {
+    if (!product) return 1
+    const raw = product.qtd_minima_cliente ?? product.quantidade_minima ?? 1
+    const n = parseInt(raw, 10)
+    return Number.isFinite(n) && n > 0 ? n : 1
   }
 
   window.console.log('🔍 Estado atual:', { id, loading, lot: lot?.id, client: client?.id })
@@ -575,6 +585,7 @@ export default function Catalog() {
   }
 
   const handleProductClick = async (product) => {
+    setModalAddError(null)
     setSelectedProduct(product)
     const opts = product?.variacoes ? String(product.variacoes).split(',').map(s => s.trim()).filter(Boolean) : []
     setSelectedVariacao(opts?.length ? opts[0] : '')
@@ -625,6 +636,15 @@ export default function Catalog() {
   const addToCart = async (product, variacao = '') => {
     const qty = getQuantity(product.id)
     const variacaoNorm = (variacao || '').trim()
+    // Validar quantidade mínima por cliente
+    const minClient = getMinQtyPerClient(product)
+    if (qty < minClient) {
+      const unidadeText = minClient === 1 ? 'unidade' : 'unidades'
+      setModalAddError(`A quantidade mínima para este produto é ${minClient} ${unidadeText}.`)
+      return false
+    }
+
+    setModalAddError(null)
     setAddingToCart(product.id)
     try {
       const cartKey = `cart_${lot?.id ?? id}`
@@ -670,9 +690,11 @@ export default function Catalog() {
 
       setQuantities(prev => ({ ...prev, [product.id]: 1 }))
       await new Promise(r => setTimeout(r, 300))
+      return true
     } catch (e) {
       console.error(e)
       toast.error('Erro ao adicionar produto ao carrinho')
+      return false
     } finally {
       setAddingToCart(null)
     }
@@ -827,9 +849,9 @@ export default function Catalog() {
                     return null
                   })()}
 
-                  {/* BADGE VERDE: quantidade no carrinho do cliente */}
+                  {/* BADGE VERDE: quantidade comprada do produto (total de todos os clientes / romaneio) */}
                   <div className="quantity-badge quantity-purchased">
-                    {getCartCountForProduct(product.id)}
+                    {totalsCompradoPorProduto[product.id] ?? 0}
                   </div>
                 </div>
               </div>
@@ -842,14 +864,14 @@ export default function Catalog() {
 
       {/* Modal de Detalhes do Produto */}
       {selectedProduct && (
-        <div className="product-modal-overlay" onClick={() => setSelectedProduct(null)}>
+        <div className="product-modal-overlay" onClick={() => { setModalAddError(null); setSelectedProduct(null) }}>
           <div className="product-modal" onClick={(e) => e.stopPropagation()}>
             {/* Header: Título Esquerda, X Direita */}
             <div className="product-modal-header">
               <h2>Detalhes do Produto</h2>
               <button
                 className="btn-close-modal"
-                onClick={() => setSelectedProduct(null)}
+                onClick={() => { setModalAddError(null); setSelectedProduct(null) }}
               >
                 <X size={20} />
               </button>
@@ -875,7 +897,7 @@ export default function Catalog() {
                     {/* Topo pequeno */}
                     <div className="info-card-top">
                       <div className="info-line-small">
-                        <span className="label">Qtd mínima por cliente:</span> {selectedProduct.quantidade_minima || 1}
+                        <span className="label">Qtd mínima por cliente:</span> {getMinQtyPerClient(selectedProduct)}
                       </div>
                       {selectedProduct.observacoes && (
                         <div className="info-line-small">
@@ -939,7 +961,7 @@ export default function Catalog() {
                         <div className="add-to-cart-section">
                           <div className="quantity-controls-modal">
                             <button
-                              onClick={() => decrementQuantity(selectedProduct.id)}
+                              onClick={() => { setModalAddError(null); decrementQuantity(selectedProduct.id) }}
                               className="qty-btn"
                               disabled={getQuantity(selectedProduct.id) <= 1}
                             >
@@ -947,17 +969,22 @@ export default function Catalog() {
                             </button>
                             <span className="qty-value">{getQuantity(selectedProduct.id)}</span>
                             <button
-                              onClick={() => incrementQuantity(selectedProduct.id)}
+                              onClick={() => { setModalAddError(null); incrementQuantity(selectedProduct.id) }}
                               className="qty-btn"
                             >
                               <Plus size={14} />
                             </button>
                           </div>
+                          {modalAddError && (
+                            <p className="catalog-modal-min-error" role="alert">{modalAddError}</p>
+                          )}
                           <button
-                            onClick={() => {
-                              addToCart(selectedProduct, selectedVariacao)
-                              setSelectedProduct(null)
-                              setSelectedVariacao('')
+                            onClick={async () => {
+                              const ok = await addToCart(selectedProduct, selectedVariacao)
+                              if (ok) {
+                                setSelectedProduct(null)
+                                setSelectedVariacao('')
+                              }
                             }}
                             disabled={addingToCart === selectedProduct.id}
                             className="btn-add-cart-modal"

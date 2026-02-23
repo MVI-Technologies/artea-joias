@@ -95,6 +95,13 @@
   color: rgb(220, 38, 38);
 }
 
+.cart-group-rule-hint {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin: 6px 0 0;
+  font-weight: 400;
+}
+
 /* Cart Items */
 .cart-items-list {
   border-top: 1px solid var(--border-color);

@@ -8,6 +8,14 @@ import './Cart.css'
 
 const SYNC_DEBOUNCE_MS = 800
 
+const PERMITIR_VALIDOS = ['permitir_reduzir_excluir', 'nao_permitir', 'permitir_reduzir_nao_excluir']
+/** Valor efetivo da regra do lote: se null/undefined/inválido, usa permitir_reduzir_excluir (mesmo comportamento antigo para nulo). */
+function permitirEfetivo(val) {
+    if (val != null && PERMITIR_VALIDOS.includes(String(val))) return String(val)
+    // Nulo ou inválido: considerar como permitir reduzir/excluir, mantendo compatibilidade
+    return 'permitir_reduzir_excluir'
+}
+
 /** Taxa de separação: até R$ 80 = R$ 15, acima de R$ 80 = R$ 25 */
 function getTaxaSeparacao(subtotal) {
     const n = Number(subtotal) || 0
@@ -45,12 +53,14 @@ export default function Cart() {
             // Agrupar por lot_id
             const grouped = {}
 
+            // Normalizar lot_id sempre como string para evitar 507 vs "507" no lookup
+            const norm = (id) => (id == null ? '' : String(id))
             // Buscar infos dos lotes (por id UUID e por link_compra) para aplicar permitir_modificacao_produtos
-            const lotIds = [...new Set(allItems.map(i => i.lot_id))]
+            const lotIds = [...new Set(allItems.map(i => norm(i.lot_id)))]
             let lotsMap = {}
 
             if (lotIds.length > 0) {
-                const uuidIds = lotIds.filter(l => typeof l === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(l))
+                const uuidIds = lotIds.filter(l => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(l))
                 const linkIds = lotIds.filter(l => !uuidIds.includes(l))
                 const lotsList = []
                 if (uuidIds.length > 0) {
@@ -68,25 +78,40 @@ export default function Cart() {
                     if (byLink?.length) lotsList.push(...byLink)
                 }
                 lotsList.forEach(l => {
-                    lotsMap[l.id] = l
-                    if (l.link_compra) lotsMap[l.link_compra] = l
+                    lotsMap[norm(l.id)] = l
+                    if (l.link_compra != null && l.link_compra !== '') lotsMap[norm(l.link_compra)] = l
                 })
             }
 
+            const fallbackLot = {
+                nome: 'Link Indisponível',
+                status: 'fechado',
+                permitir_modificacao_produtos: 'nao_permitir'
+            }
             allItems.forEach(item => {
-                if (!grouped[item.lot_id]) {
-                    grouped[item.lot_id] = {
-                        lot: lotsMap[item.lot_id] || { nome: 'Link Indisponível', status: 'fechado' },
+                const key = norm(item.lot_id)
+                if (!grouped[key]) {
+                    grouped[key] = {
+                        lot: lotsMap[key] || fallbackLot,
                         items: [],
                         total: 0
                     }
                 }
-                grouped[item.lot_id].items.push(item)
-                grouped[item.lot_id].total += item.preco * item.quantity
+                grouped[key].items.push(item)
+                grouped[key].total += item.preco * item.quantity
             })
 
+            // Remover do carrinho (localStorage e exibição) os grupos cujo link já foi fechado (romaneio gerado)
+            for (const lotId of Object.keys(grouped)) {
+                if (grouped[lotId].lot.status !== 'aberto') {
+                    localStorage.removeItem(`cart_${lotId}`)
+                    delete grouped[lotId]
+                }
+            }
+
+            const remainingItems = Object.values(grouped).flatMap(g => g.items)
             setGroupedItems(grouped)
-            setCartItems(allItems)
+            setCartItems(remainingItems)
         } catch (e) {
             console.error(e)
         } finally {
@@ -151,7 +176,7 @@ export default function Cart() {
 
         // Verificar configuração do lote
         const group = groupedItems[lotId]
-        const permitirModificacao = group?.lot?.permitir_modificacao_produtos || 'permitir_reduzir_excluir'
+        const permitirModificacao = permitirEfetivo(group?.lot?.permitir_modificacao_produtos)
 
         // Se não permite modificação, bloquear
         if (permitirModificacao === 'nao_permitir') {
@@ -162,10 +187,32 @@ export default function Cart() {
         const idx = String(itemId).indexOf('__')
         const productId = idx >= 0 ? itemId.slice(0, idx) : itemId
         const variacaoPart = idx >= 0 ? itemId.slice(idx + 2) : ''
+
+        // Respeitar quantidade mínima por cliente configurada no produto
+        const targetItem = items.find(item =>
+            item.id === productId && (item.variacao ?? '') === variacaoPart
+        )
+        if (targetItem) {
+            const rawMin = targetItem.qtd_minima_cliente ?? targetItem.quantidade_minima ?? 1
+            const minClient = Number.isFinite(parseInt(rawMin, 10)) && parseInt(rawMin, 10) > 0
+                ? parseInt(rawMin, 10)
+                : 1
+            if (delta < 0 && targetItem.quantity <= minClient) {
+                const unidadeText = minClient === 1 ? 'unidade' : 'unidades'
+                toast.warning(`A quantidade mínima para este produto é ${minClient} ${unidadeText}.`)
+                return
+            }
+        }
+
         items = items.map(item => {
             const match = item.id === productId && (item.variacao ?? '') === variacaoPart
             if (match) {
-                return { ...item, quantity: Math.max(1, item.quantity + delta) }
+                // Se não houver alvo (caso raro), usar mínimo 1
+                const rawMin = item.qtd_minima_cliente ?? item.quantidade_minima ?? 1
+                const minClient = Number.isFinite(parseInt(rawMin, 10)) && parseInt(rawMin, 10) > 0
+                    ? parseInt(rawMin, 10)
+                    : 1
+                return { ...item, quantity: Math.max(minClient, item.quantity + delta) }
             }
             return item
         })
@@ -181,11 +228,11 @@ export default function Cart() {
 
         // Verificar configuração do lote
         const group = groupedItems[lotId]
-        const permitirModificacao = group?.lot?.permitir_modificacao_produtos || 'permitir_reduzir_excluir'
+        const permitirModificacao = permitirEfetivo(group?.lot?.permitir_modificacao_produtos)
 
-        // Se não permite excluir
+        // Se não permite excluir (regra do link definida pelo admin)
         if (permitirModificacao === 'nao_permitir' || permitirModificacao === 'permitir_reduzir_nao_excluir') {
-            toast.error('Este catálogo não permite remover produtos. Entre em contato com o administrador.')
+            toast.error('Não é possível remover: a regra deste catálogo não permite excluir itens do carrinho.')
             return
         }
 
@@ -236,6 +283,12 @@ export default function Cart() {
                                     <span className={`cart-group-status ${group.lot.status === 'aberto' ? 'open' : 'closed'}`}>
                                         {group.lot.status === 'aberto' ? 'Aberto para Compras' : 'Fechado'}
                                     </span>
+                                    {group.lot.status === 'aberto' && (() => {
+                                        const p = permitirEfetivo(group.lot.permitir_modificacao_produtos)
+                                        if (p === 'nao_permitir') return <p className="cart-group-rule-hint">Não é permitido alterar nem remover itens neste catálogo.</p>
+                                        if (p === 'permitir_reduzir_nao_excluir') return <p className="cart-group-rule-hint">Você pode alterar quantidades, mas não remover itens.</p>
+                                        return null
+                                    })()}
                                 </div>
                             </div>
 
@@ -262,7 +315,7 @@ export default function Cart() {
 
                                         <div className="cart-item-controls">
                                             {(() => {
-                                                const permitir = group?.lot?.permitir_modificacao_produtos || 'permitir_reduzir_excluir'
+                                                const permitir = permitirEfetivo(group?.lot?.permitir_modificacao_produtos)
                                                 const podeAlterarQtd = permitir !== 'nao_permitir'
                                                 const podeExcluir = permitir === 'permitir_reduzir_excluir'
                                                 const lotAberto = group.lot.status === 'aberto'
@@ -294,7 +347,7 @@ export default function Cart() {
                                                             onClick={() => removeItem(lotId, lineKey)}
                                                             className="cart-item-remove"
                                                             disabled={!lotAberto || !podeExcluir}
-                                                            title={!podeExcluir ? 'Este catálogo não permite remover produtos' : 'Remover item'}
+                                                            title={!podeExcluir ? 'A regra deste catálogo não permite remover itens do carrinho' : 'Remover item'}
                                                         >
                                                             <Trash2 size={18} />
                                                         </button>
