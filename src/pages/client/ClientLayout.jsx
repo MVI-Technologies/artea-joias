@@ -19,7 +19,7 @@ export default function ClientLayout() {
   const location = useLocation()
   const navigate = useNavigate()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const isCartPage = location.pathname.includes('carrinho')
+  const showBackInHeader = location.pathname.includes('carrinho') || location.pathname.includes('catalogo')
   const [cartCount, setCartCount] = useState(0)
 
   // Calcular itens do carrinho
@@ -84,7 +84,7 @@ export default function ClientLayout() {
 
           {/* Ações Direita */}
           <div className="header-actions">
-            {isCartPage && (
+            {showBackInHeader && (
               <button
                 type="button"
                 className="header-back-btn"
