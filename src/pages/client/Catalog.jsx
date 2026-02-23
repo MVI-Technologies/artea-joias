@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, ShoppingCart, Plus, Minus, X } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
@@ -35,8 +35,13 @@ export default function Catalog() {
   const [selectedVariacao, setSelectedVariacao] = useState('')
   const [productPurchases, setProductPurchases] = useState([])
   const [loadingPurchases, setLoadingPurchases] = useState(false)
+  const [cartVersion, setCartVersion] = useState(0)
+  /** Total comprado por produto (soma de romaneio_items) — mesma fonte da Disponibilidade (lote) no modal */
+  const [totalsCompradoPorProduto, setTotalsCompradoPorProduto] = useState({})
   // Usar uma key baseada no ID para garantir que cada acesso ao catálogo seja único
   const clickTracked = useRef(new Map()) // Map<lotId, boolean> para rastrear por catálogo
+  const selectedProductRef = useRef(null) // para listeners atualizarem o modal (Qtd peças compradas / pessoas)
+  selectedProductRef.current = selectedProduct
   // Estados para bloqueio de lote fechado
   const [isBlocked, setIsBlocked] = useState(false)
   const [blockedLotName, setBlockedLotName] = useState(null)
@@ -75,6 +80,53 @@ export default function Catalog() {
       window.console.warn('⚠️ ID não encontrado!')
     }
   }, [id])
+
+  // Quando o carrinho é sincronizado (ex.: usuário removeu itens ou esvaziou no Cart), atualizar totais e modal
+  useEffect(() => {
+    const onCartSynced = (e) => {
+      const eventLotId = e?.detail?.lotId
+      if (!eventLotId) return
+      const isOurCatalog = String(eventLotId) === String(lot?.id) || String(eventLotId) === String(id)
+      if (!isOurCatalog) return
+      const uuidToFetch = lot?.id ?? eventLotId
+      loadTotalsCompradoPorProduto(uuidToFetch)
+      const product = selectedProductRef.current
+      if (product?.id) fetchProductPurchasesForModal(uuidToFetch, product)
+    }
+    window.addEventListener('cart-synced', onCartSynced)
+    return () => window.removeEventListener('cart-synced', onCartSynced)
+  }, [id, lot?.id])
+
+  // Ao voltar para o catálogo (aba ou página restaurada do cache), atualizar disponibilidade e modal (ex.: após apagar do carrinho)
+  useEffect(() => {
+    if (!id || !lot?.id) return
+    const lotId = lot.id
+    const onShow = () => {
+      loadTotalsCompradoPorProduto(lotId)
+      const product = selectedProductRef.current
+      if (product?.id) fetchProductPurchasesForModal(lotId, product)
+    }
+    const onVisibility = () => { if (document.visibilityState === 'visible') onShow() }
+    const onPageShow = (e) => { if (e.persisted) onShow() }
+    document.addEventListener('visibilitychange', onVisibility)
+    window.addEventListener('pageshow', onPageShow)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility)
+      window.removeEventListener('pageshow', onPageShow)
+    }
+  }, [id, lot?.id])
+
+  // Refresh atrasado ao ter lote carregado: ao voltar do Carrinho o sync pode ainda estar rodando; este refresh pega o estado final (lotes e produto de volta)
+  useEffect(() => {
+    if (!lot?.id) return
+    const lotId = lot.id
+    const t = setTimeout(() => {
+      loadTotalsCompradoPorProduto(lotId)
+      const product = selectedProductRef.current
+      if (product?.id) fetchProductPurchasesForModal(lotId, product)
+    }, 2000)
+    return () => clearTimeout(t)
+  }, [lot?.id])
 
   // Registrar clique no catálogo (sempre que o catálogo é carregado)
   // REMOVIDO: não usar mais este useEffect para tracking, pois está sendo feito diretamente no loadCatalog
@@ -379,6 +431,8 @@ export default function Catalog() {
         console.log('Produtos carregados:', mapped.length)
       }
 
+      await loadTotalsCompradoPorProduto(lotIdForProducts)
+
     } catch (error) {
       console.error('Erro ao carregar catalogo:', error)
       toast.error('Erro ao carregar catálogo. Tente novamente.')
@@ -402,6 +456,64 @@ export default function Catalog() {
     return Math.round(precoFinal * 100) / 100
   }
 
+  // Carrinho local: quantidade no carrinho por produto (para o badge verde) — mesma chave do addToCart (UUID quando tem lote); lê das duas chaves e mescla se diferente (migração de cart_<link> para cart_<uuid>)
+  const cartItemsForLot = useMemo(() => {
+    if (typeof window === 'undefined' || !id) return []
+    const keyUuid = lot?.id ? `cart_${lot.id}` : null
+    const keyLink = `cart_${id}`
+    try {
+      const fromUuid = keyUuid ? JSON.parse(localStorage.getItem(keyUuid) || '[]') : []
+      const fromLink = JSON.parse(localStorage.getItem(keyLink) || '[]')
+      if (keyUuid && keyUuid !== keyLink) {
+        const byKey = new Map()
+        for (const item of [...fromUuid, ...fromLink]) {
+          const k = `${item.id}|${item.variacao ?? ''}`
+          const existing = byKey.get(k)
+          if (existing) existing.quantity = (existing.quantity || 0) + (item.quantity || 0)
+          else byKey.set(k, { ...item, lot_id: lot?.id ?? item.lot_id })
+        }
+        return Array.from(byKey.values())
+      }
+      return fromLink.length ? fromLink : fromUuid
+    } catch {
+      return []
+    }
+  }, [id, lot?.id, cartVersion])
+
+  const getCartCountForProduct = (productId) =>
+    cartItemsForLot
+      .filter(item => item.id === productId)
+      .reduce((sum, item) => sum + (item.quantity || 0), 0)
+
+  /** Carrega totais comprados por produto (romaneio_items) — mesma fonte da Disponibilidade (lote) no modal */
+  const loadTotalsCompradoPorProduto = async (lotId) => {
+    if (!lotId) return
+    try {
+      const { data: romaneios } = await supabase
+        .from('romaneios')
+        .select('id')
+        .eq('lot_id', lotId)
+        .not('status_pagamento', 'in', '(cancelado,rejeitado)')
+      if (!romaneios?.length) {
+        setTotalsCompradoPorProduto({})
+        return
+      }
+      const { data: items } = await supabase
+        .from('romaneio_items')
+        .select('product_id, quantidade')
+        .in('romaneio_id', romaneios.map(r => r.id))
+      const byProduct = {}
+      ;(items || []).forEach(item => {
+        const pid = item.product_id
+        byProduct[pid] = (byProduct[pid] || 0) + (item.quantidade || 0)
+      })
+      setTotalsCompradoPorProduto(byProduct)
+    } catch (e) {
+      console.warn('Erro ao carregar totais comprados:', e)
+      setTotalsCompradoPorProduto({})
+    }
+  }
+
   // Funções para controlar quantidade
   const getQuantity = (productId) => quantities[productId] || 1
 
@@ -419,20 +531,13 @@ export default function Catalog() {
     }))
   }
 
-  const handleProductClick = async (product) => {
-    setSelectedProduct(product)
-    const opts = product?.variacoes ? String(product.variacoes).split(',').map(s => s.trim()).filter(Boolean) : []
-    setSelectedVariacao(opts?.length ? opts[0] : '')
-    setLoadingPurchases(true)
-
+  /** Atualiza a lista de compras do modal (para "Qtd peças compradas" e "X pessoas" refletirem remoção do carrinho) */
+  const fetchProductPurchasesForModal = async (lotId, product) => {
+    if (!lotId || !product?.id) {
+      setProductPurchases([])
+      return
+    }
     try {
-      if (!lot?.id) {
-        setProductPurchases([])
-        setLoadingPurchases(false)
-        return
-      }
-
-      // Buscar romaneios do lote atual (apenas não cancelados)
       const { data: romaneios, error: romError } = await supabase
         .from('romaneios')
         .select(`
@@ -442,46 +547,47 @@ export default function Catalog() {
           status_pagamento,
           client:clients(nome)
         `)
-        .eq('lot_id', lot.id)
+        .eq('lot_id', lotId)
         .not('status_pagamento', 'in', '(cancelado,rejeitado)')
-
-      if (romError) {
-        console.error('Erro ao buscar romaneios:', romError)
+      if (romError || !romaneios?.length) {
         setProductPurchases([])
-        setLoadingPurchases(false)
         return
       }
-
-      if (!romaneios || romaneios.length === 0) {
-        setProductPurchases([])
-        setLoadingPurchases(false)
-        return
-      }
-
       const romaneioIds = romaneios.map(r => r.id)
-
-      // Buscar itens deste produto nos romaneios
       const { data: purchases, error: itemsError } = await supabase
         .from('romaneio_items')
         .select('*')
         .eq('product_id', product.id)
         .in('romaneio_id', romaneioIds)
         .order('created_at', { ascending: false })
-
       if (itemsError) {
-        console.error('Erro ao buscar itens:', itemsError)
         setProductPurchases([])
-      } else {
-        // Combinar dados dos romaneios com os itens
-        const purchasesWithRomaneio = (purchases || []).map(item => {
-          const romaneio = romaneios.find(r => r.id === item.romaneio_id)
-          return {
-            ...item,
-            romaneio: romaneio || null
-          }
-        })
-        setProductPurchases(purchasesWithRomaneio)
+        return
       }
+      const purchasesWithRomaneio = (purchases || []).map(item => {
+        const romaneio = romaneios.find(r => r.id === item.romaneio_id)
+        return { ...item, romaneio: romaneio || null }
+      })
+      setProductPurchases(purchasesWithRomaneio)
+    } catch (e) {
+      setProductPurchases([])
+    }
+  }
+
+  const handleProductClick = async (product) => {
+    setSelectedProduct(product)
+    const opts = product?.variacoes ? String(product.variacoes).split(',').map(s => s.trim()).filter(Boolean) : []
+    setSelectedVariacao(opts?.length ? opts[0] : '')
+    setLoadingPurchases(true)
+    loadTotalsCompradoPorProduto(lot?.id)
+
+    try {
+      if (!lot?.id) {
+        setProductPurchases([])
+        setLoadingPurchases(false)
+        return
+      }
+      await fetchProductPurchasesForModal(lot.id, product)
     } catch (error) {
       console.error('Erro ao buscar compras:', error)
       setProductPurchases([])
@@ -492,6 +598,8 @@ export default function Catalog() {
 
   const syncCartToServer = async (cartItems) => {
     if (!client?.auth_id || !cartItems?.length) return
+    const lotUuid = lot?.id || cartItems[0]?.lot_id
+    if (!lotUuid) return
     try {
       const itemsPayload = cartItems.map(item => ({
         product_id: item.id,
@@ -505,7 +613,7 @@ export default function Catalog() {
         endereco: client.enderecos?.[0] || null
       }
       await supabase.rpc('checkout_romaneio', {
-        p_lot_id: id,
+        p_lot_id: lotUuid,
         p_items: itemsPayload,
         p_client_snapshot: clientSnapshot
       })
@@ -519,7 +627,7 @@ export default function Catalog() {
     const variacaoNorm = (variacao || '').trim()
     setAddingToCart(product.id)
     try {
-      const cartKey = `cart_${id}`
+      const cartKey = `cart_${lot?.id ?? id}`
       const currentCart = JSON.parse(localStorage.getItem(cartKey) || '[]')
 
       const precoFinal = calcularPrecoFinal(product.preco)
@@ -532,7 +640,7 @@ export default function Catalog() {
       if (existingInfo) {
         newCart = currentCart.map(item =>
           item.id === product.id && (item.variacao ?? '') === variacaoNorm
-            ? { ...item, quantity: item.quantity + qty, preco: precoFinal }
+            ? { ...item, quantity: item.quantity + qty, preco: precoFinal, lot_id: lot?.id ?? item.lot_id }
             : item
         )
       } else {
@@ -540,16 +648,27 @@ export default function Catalog() {
           ...product,
           preco: precoFinal,
           quantity: qty,
-          lot_id: id,
+          lot_id: lot?.id ?? id,
           variacao: variacaoNorm
         }]
       }
 
       localStorage.setItem(cartKey, JSON.stringify(newCart))
-      syncCartToServer(newCart)
+      setCartVersion(v => v + 1)
+      const lotUuid = lot?.id
+      if (client?.auth_id) {
+        setTotalsCompradoPorProduto(prev => {
+          const prevTotal = prev[product.id] ?? 0
+          return { ...prev, [product.id]: prevTotal + qty }
+        })
+        await syncCartToServer(newCart)
+        if (lotUuid) await loadTotalsCompradoPorProduto(lotUuid)
+        toast.success(`${qty}x ${product.nome}${variacaoNorm ? ` (${variacaoNorm})` : ''} adicionado ao carrinho!`)
+      } else {
+        toast.warning('Adicionado ao carrinho. Faça login para que sua compra seja contabilizada e apareça na lista de compradores.')
+      }
 
       setQuantities(prev => ({ ...prev, [product.id]: 1 }))
-      toast.success(`${qty}x ${product.nome}${variacaoNorm ? ` (${variacaoNorm})` : ''} adicionado ao carrinho!`)
       await new Promise(r => setTimeout(r, 300))
     } catch (e) {
       console.error(e)
@@ -691,10 +810,10 @@ export default function Catalog() {
 
                 {/* Indicadores de Progresso de Compra Coletiva */}
                 <div className="product-quantity-indicators">
-                  {/* BADGE VERMELHA: Faltam X peças para atingir o mínimo */}
+                  {/* BADGE VERMELHA: Faltam X peças — usa mesma variável da Disponibilidade (lote) */}
                   {(() => {
                     const minimoLote = product.quantidade_minima_lote || 0
-                    const totalComprado = product.quantidade_pedidos || 0
+                    const totalComprado = totalsCompradoPorProduto[product.id] ?? product.quantidade_pedidos ?? 0
                     const faltam = Math.max(minimoLote - totalComprado, 0)
 
                     // Só exibe se há mínimo definido E ainda faltam peças
@@ -708,9 +827,9 @@ export default function Catalog() {
                     return null
                   })()}
 
-                  {/* BADGE VERDE: Compradas (sempre visível) */}
+                  {/* BADGE VERDE: quantidade no carrinho do cliente */}
                   <div className="quantity-badge quantity-purchased">
-                    {product.quantidade_pedidos || 0}
+                    {getCartCountForProduct(product.id)}
                   </div>
                 </div>
               </div>
@@ -779,11 +898,23 @@ export default function Catalog() {
                         </div>
                       )}
                       <div className="info-row">
-                        <span className="label">Qtd peças compradas:</span> {selectedProduct.quantidade_pedidos || 0} ({selectedProduct.quantidade_clientes || 0} pessoas)
+                        <span className="label">Qtd peças compradas:</span>{' '}
+                        {(() => {
+                          if (loadingPurchases) return '… (…)'
+                          const totalPeças = productPurchases.reduce((s, p) => s + (p.quantidade || 0), 0)
+                          const numPessoas = new Set(productPurchases.map(p => p.romaneio?.client_id).filter(Boolean)).size
+                          const pessoasText = `${numPessoas} ${numPessoas === 1 ? 'pessoa' : 'pessoas'}`
+                          return `${totalPeças} (${pessoasText})`
+                        })()}
                       </div>
                       <div className="info-row">
                         <span className="label">Disponibilidade (lote):</span>{' '}
-                        {disponibilidadeLoteParaExibicao(selectedProduct.qtd_minima_fornecedor, selectedProduct.quantidade_pedidos) ?? '—'}
+                        {loadingPurchases
+                          ? '…'
+                          : (disponibilidadeLoteParaExibicao(
+                              selectedProduct.qtd_minima_fornecedor,
+                              productPurchases.reduce((s, p) => s + (p.quantidade || 0), 0)
+                            ) ?? '—')}
                       </div>
                       {selectedProduct.variacoes && (
                         <div className="info-row">
@@ -852,27 +983,35 @@ export default function Catalog() {
                     <div className="loading-purchases">Carregando...</div>
                   ) : (
                     <div className="purchases-list-container">
-                      {(lot?.show_buyers_list && productPurchases.length > 0) ? (
-                        <ol className="purchases-list">
-                          {productPurchases.map((purchase, index) => (
-                            <li key={purchase.id || index} className="purchase-item-row">
-                              <div className="purchase-header">
-                                <span className="purchase-name">{purchase.romaneio?.client?.nome || 'Cliente'}</span>
-                                <span className="purchase-date">
-                                  {new Date(purchase.created_at).toLocaleDateString('pt-BR')} {new Date(purchase.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                                </span>
-                              </div>
-                              <div className="purchase-sub">
-                                {purchase.product_name || selectedProduct.nome} - {purchase.quantidade} (qtd confirmada: {purchase.quantidade}) un. compradas
-                              </div>
-                            </li>
-                          ))}
-                        </ol>
-                      ) : (
-                        <div className="no-purchases">
-                          {productPurchases.length > 0 ? 'Lista de compradores oculta.' : 'Nenhuma compra registrada.'}
-                        </div>
-                      )}
+                      {(() => {
+                        const cartCount = selectedProduct ? getCartCountForProduct(selectedProduct.id) : 0
+                        const hasPurchases = productPurchases.length > 0
+                        const showList = lot?.show_buyers_list && hasPurchases
+                        if (showList) {
+                          return (
+                            <ol className="purchases-list">
+                              {productPurchases.map((purchase, index) => (
+                                <li key={purchase.id || index} className="purchase-item-row">
+                                  <div className="purchase-header">
+                                    <span className="purchase-name">{purchase.romaneio?.client?.nome || 'Cliente'}</span>
+                                    <span className="purchase-date">
+                                      {new Date(purchase.created_at).toLocaleDateString('pt-BR')} {new Date(purchase.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                                    </span>
+                                  </div>
+                                  <div className="purchase-sub">
+                                    {purchase.product_name || selectedProduct.nome} - {purchase.quantidade} (qtd confirmada: {purchase.quantidade}) un. compradas
+                                  </div>
+                                </li>
+                              ))}
+                            </ol>
+                          )
+                        }
+                        return (
+                          <div className="no-purchases">
+                            {hasPurchases ? 'Lista de compradores oculta.' : cartCount > 0 ? `Você tem ${cartCount} un. no carrinho.` : 'Nenhuma compra registrada.'}
+                          </div>
+                        )
+                      })()}
                     </div>
                   )}
 

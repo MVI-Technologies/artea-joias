@@ -241,10 +241,38 @@
   border-top: 1px solid var(--border-color);
 }
 
+.cart-footer-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cart-footer-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.cart-footer-value {
+  font-size: var(--font-size-base);
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.cart-taxa-obs {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin: 4px 0 0;
+  font-style: italic;
+}
+
 .cart-footer-total {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-color);
 }
 
 .cart-group-total-label {

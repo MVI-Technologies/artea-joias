@@ -8,6 +8,12 @@ import './Cart.css'
 
 const SYNC_DEBOUNCE_MS = 800
 
+/** Taxa de separação: até R$ 80 = R$ 15, acima de R$ 80 = R$ 25 */
+function getTaxaSeparacao(subtotal) {
+    const n = Number(subtotal) || 0
+    return n <= 80 ? 15 : 25
+}
+
 export default function Cart() {
     const navigate = useNavigate()
     const { user, client } = useAuth()
@@ -39,17 +45,32 @@ export default function Cart() {
             // Agrupar por lot_id
             const grouped = {}
 
-            // Buscar infos dos lotes para mostrar nomes
+            // Buscar infos dos lotes (por id UUID e por link_compra) para aplicar permitir_modificacao_produtos
             const lotIds = [...new Set(allItems.map(i => i.lot_id))]
             let lotsMap = {}
 
             if (lotIds.length > 0) {
-                const { data: lots } = await supabase
-                    .from('lots')
-                    .select('id, nome, status, data_fim, permitir_modificacao_produtos, exigir_dados_galvanica')
-                    .in('id', lotIds)
-
-                lots?.forEach(l => lotsMap[l.id] = l)
+                const uuidIds = lotIds.filter(l => typeof l === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(l))
+                const linkIds = lotIds.filter(l => !uuidIds.includes(l))
+                const lotsList = []
+                if (uuidIds.length > 0) {
+                    const { data: byId } = await supabase
+                        .from('lots')
+                        .select('id, nome, status, data_fim, permitir_modificacao_produtos, exigir_dados_galvanica, link_compra')
+                        .in('id', uuidIds)
+                    if (byId?.length) lotsList.push(...byId)
+                }
+                if (linkIds.length > 0) {
+                    const { data: byLink } = await supabase
+                        .from('lots')
+                        .select('id, nome, status, data_fim, permitir_modificacao_produtos, exigir_dados_galvanica, link_compra')
+                        .in('link_compra', linkIds)
+                    if (byLink?.length) lotsList.push(...byLink)
+                }
+                lotsList.forEach(l => {
+                    lotsMap[l.id] = l
+                    if (l.link_compra) lotsMap[l.link_compra] = l
+                })
             }
 
             allItems.forEach(item => {
@@ -77,10 +98,17 @@ export default function Cart() {
         if (!user || !client?.auth_id) return
         const key = `cart_${lotId}`
         const items = JSON.parse(localStorage.getItem(key) || '[]')
+        let lotUuid = lotId
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(lotId)
+        if (!isUuid) {
+            const { data } = await supabase.from('lots').select('id').eq('link_compra', lotId).single()
+            lotUuid = data?.id ?? lotId
+        }
 
         try {
             if (items.length === 0) {
-                await supabase.rpc('clear_draft_romaneio', { p_lot_id: lotId })
+                await supabase.rpc('clear_draft_romaneio', { p_lot_id: lotUuid })
+                window.dispatchEvent(new CustomEvent('cart-synced', { detail: { lotId: lotUuid } }))
                 return
             }
             const itemsPayload = items.map(item => ({
@@ -95,12 +123,14 @@ export default function Cart() {
                 endereco: client.enderecos?.[0] || null
             }
             const { error } = await supabase.rpc('checkout_romaneio', {
-                p_lot_id: lotId,
+                p_lot_id: lotUuid,
                 p_items: itemsPayload,
                 p_client_snapshot: clientSnapshot
             })
             if (error && !error.message?.includes('não está aberto')) {
                 console.warn('Sync carrinho:', error.message)
+            } else {
+                window.dispatchEvent(new CustomEvent('cart-synced', { detail: { lotId: lotUuid } }))
             }
         } catch (e) {
             console.warn('Sync carrinho:', e)
@@ -277,11 +307,22 @@ export default function Cart() {
                                 })}
                             </div>
 
-                            {/* Footer Totais */}
+                            {/* Footer Totais: subtotal, taxa de separação e total */}
                             <div className="cart-group-footer">
+                                <div className="cart-footer-lines">
+                                    <div className="cart-footer-line">
+                                        <span className="cart-group-total-label">Subtotal (produtos):</span>
+                                        <span className="cart-footer-value">R$ {group.total.toFixed(2)}</span>
+                                    </div>
+                                    <div className="cart-footer-line">
+                                        <span className="cart-group-total-label">Taxa de separação:</span>
+                                        <span className="cart-footer-value">R$ {(getTaxaSeparacao(group.total)).toFixed(2)}</span>
+                                    </div>
+                                    <p className="cart-taxa-obs">Até R$ 80,00 a taxa é R$ 15,00. Acima de R$ 80,00 a taxa é R$ 25,00.</p>
+                                </div>
                                 <div className="cart-footer-total">
-                                    <span className="cart-group-total-label">Total do Grupo:</span>
-                                    <span className="cart-group-total-value">R$ {group.total.toFixed(2)}</span>
+                                    <span className="cart-group-total-label">Total do pedido:</span>
+                                    <span className="cart-group-total-value">R$ {(group.total + getTaxaSeparacao(group.total)).toFixed(2)}</span>
                                 </div>
                             </div>
                         </div>
