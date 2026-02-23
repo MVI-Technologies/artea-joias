@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom'
 import { 
   Home, 
@@ -24,10 +24,9 @@ export default function ClientLayout() {
   }
 
   const menuItems = [
-    { path: '/cliente', icon: Home, label: 'Início' },
-    { path: '/cliente/catalogo', icon: Package, label: 'Catálogo' },
-    { path: '/cliente/pedidos', icon: ShoppingBag, label: 'Meus Pedidos' },
-    { path: '/cliente/perfil', icon: User, label: 'Meu Perfil' }
+    { path: '/app', icon: Home, label: 'Início' },
+    { path: '/app/historico', icon: ShoppingBag, label: 'Meus Pedidos' },
+    { path: '/app/perfil', icon: User, label: 'Meu Perfil' }
   ]
 
   return (
@@ -35,7 +34,7 @@ export default function ClientLayout() {
       {/* Header */}
       <header className="client-header">
         <div className="client-header-content">
-          <Link to="/cliente" className="client-logo">
+          <Link to="/app" className="client-logo">
             Grupo AA
           </Link>
 
@@ -66,7 +65,7 @@ export default function ClientLayout() {
             <span className="client-greeting">
               Olá, {client?.nome?.split(' ')[0] || 'Cliente'}
             </span>
-            <button className="client-menu-toggle" onClick={() => setMenuOpen(true)}>
+            <button className="client-menu-toggle" onClick={() => setMenuOpen(true)} aria-label="Menu">
               <Menu size={24} />
             </button>
           </div>

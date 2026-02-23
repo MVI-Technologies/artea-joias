@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Outlet, Link, useLocation } from 'react-router-dom'
+import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom'
 import { 
   ShoppingBag, 
   Clock, 
@@ -8,7 +8,8 @@ import {
   Menu, 
   X,
   ShoppingCart,
-  Package 
+  Package,
+  ArrowLeft
 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import './ClientLayout.css'
@@ -16,7 +17,9 @@ import './ClientLayout.css'
 export default function ClientLayout() {
   const { signOut } = useAuth()
   const location = useLocation()
+  const navigate = useNavigate()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const isCartPage = location.pathname.includes('carrinho')
   const [cartCount, setCartCount] = useState(0)
 
   // Calcular itens do carrinho
@@ -81,6 +84,18 @@ export default function ClientLayout() {
 
           {/* Ações Direita */}
           <div className="header-actions">
+            {isCartPage && (
+              <button
+                type="button"
+                className="header-back-btn"
+                onClick={() => navigate(-1)}
+                aria-label="Voltar para a página anterior"
+              >
+                <ArrowLeft size={22} />
+                <span className="header-back-text">Voltar</span>
+              </button>
+            )}
+
             <Link 
                 to="/app/carrinho" 
                 className={`cart-btn desktop-only ${cartCount > 0 ? 'has-items' : ''}`}
@@ -102,7 +117,7 @@ export default function ClientLayout() {
               <LogOut size={20} />
             </button>
 
-            {/* Mobile Menu Toggle */}
+            {/* Mobile Menu Toggle (três barras) */}
             <button 
               className="mobile-menu-btn" 
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
