@@ -28,6 +28,12 @@ import './Sidebar.css'
 
 const menuItems = [
   {
+    label: 'Dashboard',
+    icon: LayoutDashboard,
+    path: '/admin',
+    badge: null
+  },
+  {
     label: 'Grupo de Compras',
     icon: LinkIcon,
     path: '/admin/lotes',
