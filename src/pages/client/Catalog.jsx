@@ -50,9 +50,11 @@ export default function Catalog() {
 
   const { client } = useAuth()
 
-  // Disponibilidade no lote (calculada: limite_maximo - unidades confirmadas). Sem uso de estoque manual.
-  const getEsgotadoNoLote = (product) =>
-    esgotadoNoLote(product.qtd_minima_fornecedor, product.quantidade_pedidos)
+  // Disponibilidade no lote (calculada: limite_maximo - unidades confirmadas) + flag manual_esgotado.
+  const getEsgotadoNoLote = (product) => {
+    const realEsgotado = esgotadoNoLote(product.qtd_minima_fornecedor, product.quantidade_pedidos)
+    return realEsgotado || !!product.manual_esgotado
+  }
 
   // Função para calcular quantidade faltando (mínimo para fechar compra coletiva)
   const getMissingQuantity = (product) => {
@@ -436,6 +438,7 @@ export default function Catalog() {
           quantidade_pedidos: lp.quantidade_pedidos || 0,
           quantidade_clientes: lp.quantidade_clientes || 0,
           quantidade_minima_lote: lp.product.qtd_minima_fornecedor || 0, // Mínimo do fornecedor = mínimo para compra coletiva
+          manual_esgotado: lp.manual_esgotado ?? false
         }))
         setProducts(mapped)
         console.log('Produtos carregados:', mapped.length)
@@ -1015,18 +1018,51 @@ export default function Catalog() {
                         const hasPurchases = productPurchases.length > 0
                         const showList = lot?.show_buyers_list && hasPurchases
                         if (showList) {
+                          // Agrupar compras por cliente para somar quantidade total
+                          const byClient = new Map()
+                          productPurchases.forEach(purchase => {
+                            const clientId = purchase.romaneio?.client_id || purchase.romaneio?.client?.id || purchase.romaneio_id
+                            const nome = purchase.romaneio?.client?.nome || 'Cliente'
+                            const quantidade = purchase.quantidade || 0
+                            const createdAt = purchase.created_at ? new Date(purchase.created_at) : null
+                            const key = clientId || nome
+
+                            if (!byClient.has(key)) {
+                              byClient.set(key, {
+                                nome,
+                                totalQuantidade: quantidade,
+                                lastDate: createdAt
+                              })
+                            } else {
+                              const entry = byClient.get(key)
+                              entry.totalQuantidade += quantidade
+                              if (createdAt && (!entry.lastDate || createdAt > entry.lastDate)) {
+                                entry.lastDate = createdAt
+                              }
+                              byClient.set(key, entry)
+                            }
+                          })
+
+                          const grouped = Array.from(byClient.values()).sort((a, b) => {
+                            if (!a.lastDate || !b.lastDate) return 0
+                            return b.lastDate - a.lastDate
+                          })
+
                           return (
                             <ol className="purchases-list">
-                              {productPurchases.map((purchase, index) => (
-                                <li key={purchase.id || index} className="purchase-item-row">
+                              {grouped.map((entry, index) => (
+                                <li key={index} className="purchase-item-row">
                                   <div className="purchase-header">
-                                    <span className="purchase-name">{purchase.romaneio?.client?.nome || 'Cliente'}</span>
-                                    <span className="purchase-date">
-                                      {new Date(purchase.created_at).toLocaleDateString('pt-BR')} {new Date(purchase.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                                    </span>
+                                    <span className="purchase-name">{entry.nome}</span>
+                                    {entry.lastDate && (
+                                      <span className="purchase-date">
+                                        {entry.lastDate.toLocaleDateString('pt-BR')}{' '}
+                                        {entry.lastDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                                      </span>
+                                    )}
                                   </div>
                                   <div className="purchase-sub">
-                                    {purchase.product_name || selectedProduct.nome} - {purchase.quantidade} (qtd confirmada: {purchase.quantidade}) un. compradas
+                                    {entry.totalQuantidade} un. compradas neste produto
                                   </div>
                                 </li>
                               ))}

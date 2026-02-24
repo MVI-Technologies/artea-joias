@@ -34,7 +34,7 @@ import {
 } from 'lucide-react'
 import ImageUpload from '../../../components/common/ImageUpload'
 import { supabase } from '../../../lib/supabase'
-import { disponibilidadeLoteParaExibicao } from '../../../utils/lotAvailability'
+import { disponibilidadeLoteParaExibicao, esgotadoNoLote } from '../../../utils/lotAvailability'
 import { notifyCatalogClosed, sendRomaneiosAutomaticamente } from '../../../services/whatsapp'
 import { useToast } from '../../../components/common/Toast'
 import PortalDropdown from '../../../components/ui/PortalDropdown'
@@ -102,6 +102,7 @@ export default function LotDetail({ defaultTab }) {
     registrar_preco_custo: false
   })
   const [savingProduct, setSavingProduct] = useState(false)
+  const [togglingManualSoldOutId, setTogglingManualSoldOutId] = useState(null)
 
   useEffect(() => {
     fetchData()
@@ -206,6 +207,48 @@ export default function LotDetail({ defaultTab }) {
       console.error('Erro:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const toggleManualSoldOut = async (lp) => {
+    if (!lp?.id || !lp.product) return
+
+    const realEsgotado = esgotadoNoLote(lp.product.qtd_minima_fornecedor, lp.quantidade_pedidos)
+    const manualAtual = !!lp.manual_esgotado
+
+    // Regra: se o produto já esgotou de verdade no lote, não permite tirar do esgotado
+    if (realEsgotado) {
+      toast.warning('Este produto está esgotado de verdade no lote. Não é possível alterar o status.')
+      return
+    }
+
+    const novoValor = !manualAtual
+
+    try {
+      setTogglingManualSoldOutId(lp.id)
+      const { error } = await supabase
+        .from('lot_products')
+        .update({ manual_esgotado: novoValor })
+        .eq('id', lp.id)
+
+      if (error) throw error
+
+      setProducts(prev =>
+        prev.map(item =>
+          item.id === lp.id ? { ...item, manual_esgotado: novoValor } : item
+        )
+      )
+
+      if (novoValor) {
+        toast.success('Produto marcado como esgotado neste link.')
+      } else {
+        toast.success('Produto voltou a ficar disponível neste link.')
+      }
+    } catch (error) {
+      console.error('Erro ao alterar esgotado manual:', error)
+      toast.error('Erro ao alterar status de esgotado.')
+    } finally {
+      setTogglingManualSoldOutId(null)
     }
   }
 
@@ -1053,6 +1096,9 @@ export default function LotDetail({ defaultTab }) {
                 const progressoPacote = isPacote ? (qtdReservada % qtdPacote) : 0
                 const pacotesCompletos = isPacote ? Math.floor(qtdReservada / qtdPacote) : 0
 
+                const realEsgotado = esgotadoNoLote(product.qtd_minima_fornecedor, lp.quantidade_pedidos)
+                const manualEsgotado = !!lp.manual_esgotado
+
                 return (
                   <div
                     key={lp.id}
@@ -1126,6 +1172,14 @@ export default function LotDetail({ defaultTab }) {
                           })()}
                         </li>
                         <li><b>Valor Unitário:</b> R$ {product.preco?.toFixed(2).replace('.', ',') || '0,00'}</li>
+                        <li>
+                          <b>Status no catálogo:</b>{' '}
+                          {realEsgotado
+                            ? 'Esgotado automaticamente (lote cheio)'
+                            : manualEsgotado
+                              ? 'Marcado como esgotado (manual)'
+                              : 'Disponível'}
+                        </li>
                       </ul>
                     </div>
 
@@ -1161,6 +1215,20 @@ export default function LotDetail({ defaultTab }) {
                         }}
                       >
                         <Edit size={20} />
+                      </button>
+                      <button
+                        className="btn-pedidos justify-content-center justify-center"
+                        disabled={togglingManualSoldOutId === lp.id || realEsgotado}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          toggleManualSoldOut(lp)
+                        }}
+                      >
+                        {togglingManualSoldOutId === lp.id
+                          ? 'Atualizando...'
+                          : manualEsgotado
+                            ? 'Tirar do ESGOTADO'
+                            : 'Marcar ESGOTADO'}
                       </button>
                     </div>
 
