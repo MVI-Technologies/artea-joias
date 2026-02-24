@@ -267,8 +267,21 @@ export default function RomaneioDetail() {
         if (error) throw error
       }
 
-      // Update existing items in database
-      for (const item of existingItems) {
+      // Delete existing items with quantidade = 0 (violates check constraint)
+      const itemsToDelete = existingItems.filter(item => item.quantidade === 0)
+      const itemsToUpdate = existingItems.filter(item => item.quantidade > 0)
+
+      for (const item of itemsToDelete) {
+        const { error } = await supabase
+          .from('romaneio_items')
+          .delete()
+          .eq('id', item.id)
+
+        if (error) throw error
+      }
+
+      // Update existing items with valid quantity
+      for (const item of itemsToUpdate) {
         // Update quantidade and valor_recalculado (manual override)
         const { error } = await supabase
           .from('romaneio_items')
@@ -743,37 +756,37 @@ export default function RomaneioDetail() {
                 <p>Todos os produtos do catálogo já estão no romaneio.</p>
               </div>
             ) : (
-              <div className="product-grid">
+              <div className="romaneio-product-grid">
                 {availableProducts.map(product => {
                   const variacoesList = product.variacoes ? String(product.variacoes).split(',').map(s => s.trim()).filter(Boolean) : []
                   const selectedVar = addVariacaoByProduct[product.id] ?? (variacoesList[0] ?? '')
                   return (
-                  <div key={product.id} className="product-card">
+                  <div key={product.id} className="romaneio-product-card">
                     {product.imagem1 ? (
                       <img
                         src={product.imagem1}
                         alt={product.nome}
-                        className="product-image"
+                        className="romaneio-product-image"
                       />
                     ) : (
-                      <div className="product-image-placeholder">
+                      <div className="romaneio-product-image-placeholder">
                         Sem imagem
                       </div>
                     )}
-                    <div className="product-info">
-                      <h4 className="product-name">
+                    <div className="romaneio-product-info">
+                      <h4 className="romaneio-product-name">
                         {product.nome}
                       </h4>
                       {product.category?.nome && (
-                        <p className="product-category">
+                        <p className="romaneio-product-category">
                           {product.category.nome}
                         </p>
                       )}
-                      <p className="product-price">
+                      <p className="romaneio-product-price">
                         R$ {product.preco?.toFixed(2)}
                       </p>
                       {variacoesList.length > 0 && (
-                        <div className="product-variacao">
+                        <div className="romaneio-product-variacao">
                           <label>Variação:</label>
                           <select
                             value={selectedVar}
