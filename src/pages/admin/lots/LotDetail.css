@@ -134,7 +134,7 @@
    ======================================== */
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 16px;
   margin-bottom: 24px;
 }
@@ -1554,11 +1554,7 @@
   padding: 12px;
 }
 
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: var(--spacing-sm);
-}
+/* stats-grid já usa auto-fit acima; nenhuma regra extra aqui para evitar conflito */
 
 .header-left {
   flex-wrap: wrap;
@@ -2466,6 +2462,15 @@
     min-width: 0;
     padding: 0;
     margin: 0;
+  }
+
+  /* Sold-out button: full-width below the first row */
+  .btn-sold-out {
+    grid-column: 1 / -1;
+    margin-top: 4px;
+    width: 100%;
+    min-width: 0;
+    justify-content: center;
   }
 }
 

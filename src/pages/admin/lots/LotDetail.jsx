@@ -1217,7 +1217,7 @@ export default function LotDetail({ defaultTab }) {
                         <Edit size={20} />
                       </button>
                       <button
-                        className="btn-pedidos justify-content-center justify-center"
+                        className="btn-pedidos btn-sold-out justify-content-center justify-center"
                         disabled={togglingManualSoldOutId === lp.id || realEsgotado}
                         onClick={(e) => {
                           e.stopPropagation()
