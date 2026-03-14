@@ -22,12 +22,16 @@ function getTaxaSeparacao(subtotal) {
     return n <= 80 ? 15 : 25
 }
 
+/** Por lotId -> productId -> { limit, totalPedidos, ourQuantityAtLoad }. available = limit - totalPedidos + ourQuantityAtLoad - currentQty (considera qtd atual no carrinho). */
+const norm = (x) => (x == null ? '' : String(x))
+
 export default function Cart() {
     const navigate = useNavigate()
     const { user, client } = useAuth()
     const toast = useToast()
     const [cartItems, setCartItems] = useState([])
     const [groupedItems, setGroupedItems] = useState({})
+    const [productAvailability, setProductAvailability] = useState({}) // { [lotId]: { [productId]: { limit, totalPedidos } } }
     const [loading, setLoading] = useState(true)
     const syncTimeoutRef = useRef({})
 
@@ -150,6 +154,31 @@ export default function Cart() {
                 }
             }
 
+            // Disponibilidade por produto no lote; ourQuantityAtLoad = nossa qtd quando carregamos (para calcular disponível ao diminuir)
+            const availabilityByLot = {}
+            for (const lotId of Object.keys(grouped)) {
+                const lotUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(lotId)
+                    ? lotId
+                    : (lotsMap[lotId]?.id ?? lotId)
+                const { data: lpData } = await supabase
+                    .from('lot_products')
+                    .select('product_id, quantidade_pedidos, product:products(qtd_minima_fornecedor)')
+                    .eq('lot_id', lotUuid)
+                const groupItems = grouped[lotId]?.items ?? []
+                if (lpData?.length) {
+                    availabilityByLot[lotId] = {}
+                    lpData.forEach(lp => {
+                        const limit = lp.product?.qtd_minima_fornecedor != null ? Number(lp.product.qtd_minima_fornecedor) : 0
+                        const totalPedidos = Number(lp.quantidade_pedidos) || 0
+                        const ourQuantityAtLoad = groupItems
+                            .filter(i => norm(i.id) === norm(lp.product_id))
+                            .reduce((s, i) => s + (i.quantity || 0), 0)
+                        availabilityByLot[lotId][norm(lp.product_id)] = { limit, totalPedidos, ourQuantityAtLoad }
+                    })
+                }
+            }
+            setProductAvailability(availabilityByLot)
+
             const remainingItems = Object.values(grouped).flatMap(g => g.items)
             setGroupedItems(grouped)
             setCartItems(remainingItems)
@@ -157,6 +186,174 @@ export default function Cart() {
             console.error(e)
         } finally {
             setLoading(false)
+        }
+    }
+
+    /** Reverte apenas o carrinho de um lote a partir do servidor (sem recarregar a tela toda). */
+    const revertLotFromServer = async (lotId) => {
+        if (!client?.id) return
+        const lotUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(lotId)
+            ? lotId
+            : (groupedItems[lotId]?.lot?.id ?? lotId)
+        try {
+            const { data: rom } = await supabase
+                .from('romaneios')
+                .select('id')
+                .eq('lot_id', lotUuid)
+                .eq('client_id', client.id)
+                .in('status_pagamento', ['aguardando_pagamento', 'aguardando', 'pendente', 'gerado'])
+                .maybeSingle()
+            const items = []
+            if (rom?.id) {
+                const { data: serverItems } = await supabase
+                    .from('romaneio_items')
+                    .select('product_id, quantidade, preco_unitario, variacao, product:products(id, nome, imagem1, preco)')
+                    .eq('romaneio_id', rom.id)
+                const list = (serverItems || []).map(ri => ({
+                    id: ri.product_id,
+                    quantity: ri.quantidade || 0,
+                    preco: Number(ri.preco_unitario ?? ri.product?.preco ?? 0),
+                    variacao: ri.variacao ?? '',
+                    lot_id: lotUuid,
+                    nome: ri.product?.nome ?? '',
+                    imagem1: ri.product?.imagem1 ?? null
+                })).filter(i => i.quantity > 0)
+                items.push(...list)
+            }
+            const key = String(lotUuid)
+            localStorage.setItem(`cart_${key}`, JSON.stringify(items))
+            if (norm(lotId) !== norm(lotUuid)) {
+                localStorage.setItem(`cart_${lotId}`, JSON.stringify(items))
+            }
+            const group = groupedItems[lotId]
+            const total = items.reduce((s, i) => s + i.preco * i.quantity, 0)
+            setGroupedItems(prev => ({ ...prev, [lotId]: { ...group, items, total } }))
+            setCartItems(prev => {
+                const rest = prev.filter(i => norm(i.lot_id) !== norm(lotId) && norm(i.lot_id) !== norm(lotUuid))
+                return [...rest, ...items]
+            })
+            const { data: lpData } = await supabase
+                .from('lot_products')
+                .select('product_id, quantidade_pedidos, product:products(qtd_minima_fornecedor)')
+                .eq('lot_id', lotUuid)
+            if (lpData?.length) {
+                const next = {}
+                lpData.forEach(lp => {
+                    const limit = lp.product?.qtd_minima_fornecedor != null ? Number(lp.product.qtd_minima_fornecedor) : 0
+                    const totalPedidos = Number(lp.quantidade_pedidos) || 0
+                    const ourQuantityAtLoad = items
+                        .filter(i => norm(i.id) === norm(lp.product_id))
+                        .reduce((s, i) => s + (i.quantity || 0), 0)
+                    next[norm(lp.product_id)] = { limit, totalPedidos, ourQuantityAtLoad }
+                })
+                setProductAvailability(prev => ({ ...prev, [lotId]: next }))
+            }
+        } catch (e) {
+            console.warn('Revert lot:', e)
+        }
+    }
+
+    /** Quando o sync falha por estoque: limita o carrinho à disponibilidade (volta para o máximo permitido, não para o estado anterior). */
+    const capLotToAvailability = async (lotId) => {
+        if (!client?.id) return
+        const lotUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(lotId)
+            ? lotId
+            : (groupedItems[lotId]?.lot?.id ?? lotId)
+        const key = `cart_${lotId}`
+        let items = JSON.parse(localStorage.getItem(key) || '[]')
+        const altKey = norm(lotId) !== norm(lotUuid) ? `cart_${lotUuid}` : null
+        if (items.length === 0 && altKey) {
+            items = JSON.parse(localStorage.getItem(altKey) || '[]')
+        }
+        if (items.length === 0) return
+        try {
+            const [{ data: rom }, { data: lpData }] = await Promise.all([
+                supabase.from('romaneios').select('id').eq('lot_id', lotUuid).eq('client_id', client.id).in('status_pagamento', ['aguardando_pagamento', 'aguardando', 'pendente', 'gerado']).maybeSingle(),
+                supabase.from('lot_products').select('product_id, quantidade_pedidos, product:products(qtd_minima_fornecedor)').eq('lot_id', lotUuid)
+            ])
+            let serverItems = []
+            if (rom?.id) {
+                const { data: serverRows } = await supabase.from('romaneio_items').select('product_id, quantidade, preco_unitario, variacao, product:products(id, nome, imagem1, preco)').eq('romaneio_id', rom.id)
+                serverRows?.forEach(ri => {
+                    serverItems.push({
+                        id: ri.product_id,
+                        quantity: ri.quantidade || 0,
+                        preco: Number(ri.preco_unitario ?? ri.product?.preco ?? 0),
+                        variacao: ri.variacao ?? '',
+                        lot_id: lotUuid,
+                        nome: ri.product?.nome ?? '',
+                        imagem1: ri.product?.imagem1 ?? null
+                    })
+                })
+            }
+            const avByProduct = {}
+            lpData?.forEach(lp => {
+                const limit = lp.product?.qtd_minima_fornecedor != null ? Number(lp.product.qtd_minima_fornecedor) : 0
+                const totalPedidos = Number(lp.quantidade_pedidos) || 0
+                avByProduct[norm(lp.product_id)] = { limit, totalPedidos }
+            })
+            const serverQtyByProduct = {}
+            serverItems.forEach(i => {
+                const pid = norm(i.id)
+                serverQtyByProduct[pid] = (serverQtyByProduct[pid] || 0) + (i.quantity || 0)
+            })
+            const currentQtyByProduct = {}
+            items.forEach(i => {
+                const pid = norm(i.id)
+                currentQtyByProduct[pid] = (currentQtyByProduct[pid] || 0) + (i.quantity || 0)
+            })
+            const maxAllowedByProduct = {}
+            Object.keys(avByProduct).forEach(pid => {
+                const { limit, totalPedidos } = avByProduct[pid]
+                if (limit <= 0) return
+                const ourServer = serverQtyByProduct[pid] || 0
+                maxAllowedByProduct[pid] = Math.max(0, limit - totalPedidos + ourServer)
+            })
+            let needCap = false
+            const newItems = []
+            const reducedByProduct = {}
+            for (const item of items) {
+                const pid = norm(item.id)
+                const maxAllowed = maxAllowedByProduct[pid]
+                if (maxAllowed == null) {
+                    newItems.push({ ...item })
+                    continue
+                }
+                const soFar = reducedByProduct[pid] || 0
+                const maxForThisLine = Math.max(0, maxAllowed - soFar)
+                const newQty = Math.min(item.quantity || 0, maxForThisLine)
+                if (newQty < (item.quantity || 0)) needCap = true
+                reducedByProduct[pid] = soFar + newQty
+                newItems.push({ ...item, quantity: newQty })
+            }
+            const finalItems = newItems.filter(i => (i.quantity || 0) > 0)
+            if (!needCap && finalItems.length === items.length) {
+                revertLotFromServer(lotId)
+                return
+            }
+            const storageKey = String(norm(lotId) === norm(lotUuid) ? lotUuid : lotId)
+            localStorage.setItem(`cart_${storageKey}`, JSON.stringify(finalItems))
+            if (altKey && storageKey !== altKey.replace('cart_', '')) {
+                localStorage.setItem(altKey, JSON.stringify(finalItems))
+            }
+            const group = groupedItems[lotId]
+            const total = finalItems.reduce((s, i) => s + i.preco * i.quantity, 0)
+            const availabilityNext = {}
+            lpData?.forEach(lp => {
+                const limit = lp.product?.qtd_minima_fornecedor != null ? Number(lp.product.qtd_minima_fornecedor) : 0
+                const totalPedidos = Number(lp.quantidade_pedidos) || 0
+                const ourQuantityAtLoad = finalItems.filter(i => norm(i.id) === norm(lp.product_id)).reduce((s, i) => s + (i.quantity || 0), 0)
+                availabilityNext[norm(lp.product_id)] = { limit, totalPedidos, ourQuantityAtLoad }
+            })
+            setProductAvailability(prev => ({ ...prev, [lotId]: availabilityNext }))
+            setGroupedItems(prev => ({ ...prev, [lotId]: { ...group, items: finalItems, total } }))
+            setCartItems(prev => {
+                const rest = prev.filter(i => norm(i.lot_id) !== norm(lotId) && norm(i.lot_id) !== norm(lotUuid))
+                return [...rest, ...finalItems]
+            })
+        } catch (e) {
+            console.warn('Cap lot:', e)
+            revertLotFromServer(lotId)
         }
     }
 
@@ -224,10 +421,24 @@ export default function Cart() {
                 delete syncTimeoutRef.current[lotId]
                 if (result?.error) {
                     toast.error(result.error)
-                    loadCart()
+                    const isAvailabilityError = /disponibilidade|insuficiente|esgotado/i.test(result.error)
+                    if (isAvailabilityError) {
+                        capLotToAvailability(lotId)
+                    } else {
+                        revertLotFromServer(lotId)
+                    }
                 }
             })
         }, SYNC_DEBOUNCE_MS)
+    }
+
+    /** Disponibilidade para adicionar: considera qtd atual no carrinho. <= 0 = não pode subir mais. */
+    const getAvailable = (lotId, productId, currentQuantityInCart) => {
+        const av = productAvailability[lotId]?.[norm(productId)]
+        if (!av || av.limit == null || av.limit <= 0) return null
+        const ourAtLoad = av.ourQuantityAtLoad ?? 0
+        const totalPedidos = av.totalPedidos ?? 0
+        return Math.max(0, (av.limit || 0) - totalPedidos + ourAtLoad - (currentQuantityInCart || 0))
     }
 
     const updateQuantity = (lotId, itemId, delta) => {
@@ -266,7 +477,6 @@ export default function Cart() {
         const sameProduct = (item) =>
             norm(item.id) === norm(productId) && norm(item.variacao ?? '') === norm(variacaoPart)
 
-        // Respeitar quantidade mínima por cliente configurada no produto
         const targetItem = items.find(sameProduct)
         if (targetItem) {
             const rawMin = targetItem.qtd_minima_cliente ?? targetItem.quantidade_minima ?? 1
@@ -277,6 +487,16 @@ export default function Cart() {
                 const unidadeText = minClient === 1 ? 'unidade' : 'unidades'
                 toast.warning(`A quantidade mínima para este produto é ${minClient} ${unidadeText}.`)
                 return
+            }
+            if (delta > 0) {
+                const currentTotalForProduct = items
+                    .filter(i => norm(i.id) === norm(productId))
+                    .reduce((s, i) => s + (i.quantity || 0), 0)
+                const available = getAvailable(lotId, productId, currentTotalForProduct)
+                if (available !== null && available < delta) {
+                    toast.error('Este produto está esgotado neste catálogo. Não é possível aumentar a quantidade.')
+                    return
+                }
             }
         }
 
@@ -433,6 +653,11 @@ export default function Cart() {
                                                 const podeAlterarQtd = permitir !== 'nao_permitir'
                                                 const podeExcluir = permitir === 'permitir_reduzir_excluir'
                                                 const lotAberto = group.lot.status === 'aberto'
+                                                const currentTotalForProduct = group.items
+                                                    .filter(i => norm(i.id) === norm(item.id))
+                                                    .reduce((s, i) => s + (i.quantity || 0), 0)
+                                                const available = getAvailable(lotId, item.id, currentTotalForProduct)
+                                                const esgotado = available !== null && available <= 0
                                                 return (
                                                     <>
                                                         <div className="cart-quantity-control">
@@ -448,8 +673,8 @@ export default function Cart() {
                                                             <button
                                                                 onClick={() => updateQuantity(lotId, lineKey, 1)}
                                                                 className="cart-quantity-btn"
-                                                                disabled={!lotAberto || !podeAlterarQtd}
-                                                                title={!podeAlterarQtd ? 'Este catálogo não permite alterar quantidades' : 'Aumentar quantidade'}
+                                                                disabled={!lotAberto || !podeAlterarQtd || esgotado}
+                                                                title={esgotado ? 'Produto esgotado neste catálogo' : !podeAlterarQtd ? 'Este catálogo não permite alterar quantidades' : 'Aumentar quantidade'}
                                                             >
                                                                 <Plus size={16} />
                                                             </button>
