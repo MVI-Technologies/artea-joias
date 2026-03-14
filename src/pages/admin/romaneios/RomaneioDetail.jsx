@@ -13,7 +13,9 @@ import {
   Save,
   X,
   Plus,
-  Trash2
+  Trash2,
+  ChevronUp,
+  ChevronDown
 } from 'lucide-react'
 import { supabase } from '../../../lib/supabase'
 import './RomaneioDetail.css'
@@ -211,9 +213,11 @@ export default function RomaneioDetail() {
   const updateItemQuantity = (itemId, newQuantity) => {
     setEditedItems(prev => prev.map(item => {
       if (item.id === itemId) {
-        const quantidade = Math.max(0, parseInt(newQuantity) || 0)
+        const isEmpty = newQuantity === '' || newQuantity == null
+        const num = isEmpty ? 0 : Math.max(0, parseInt(newQuantity, 10) || 0)
+        const quantidade = isEmpty ? '' : num
         const precoUnitario = item.valor_unitario || item.preco_unitario || item.product?.preco || 0
-        const valor_total = quantidade * precoUnitario
+        const valor_total = num * precoUnitario
         return { ...item, quantidade, valor_total }
       }
       return item
@@ -263,12 +267,14 @@ export default function RomaneioDetail() {
 
       // Insert new items into database
       for (const item of newItems) {
+        const qty = Number(item.quantidade) || 0
+        if (qty <= 0) continue
         const { error } = await supabase
           .from('romaneio_items')
           .insert({
             romaneio_id: id,
             product_id: item.product_id,
-            quantidade: item.quantidade,
+            quantidade: qty,
             preco_unitario: item.preco_unitario ?? item.valor_unitario,
             valor_recalculado: item.valor_recalculado,
             variacao: item.variacao || null
@@ -277,9 +283,14 @@ export default function RomaneioDetail() {
         if (error) throw error
       }
 
-      // Delete: itens que estavam no romaneio e foram excluídos na edição (removidos da lista ou qtd 0)
-      const itemsToDelete = items.filter(orig => !idsKept.has(orig.id))
-      const itemsToUpdate = existingEdited.filter(item => item.quantidade > 0)
+      // Delete: itens removidos da lista ou com quantidade 0/vazia
+      const qtyZeroOrEmpty = (i) => i.quantidade === '' || i.quantidade == null || Number(i.quantidade) <= 0
+      const itemsToDelete = items.filter(orig => {
+        if (!idsKept.has(orig.id)) return true
+        const ed = existingEdited.find(e => e.id === orig.id)
+        return ed && qtyZeroOrEmpty(ed)
+      })
+      const itemsToUpdate = existingEdited.filter(item => Number(item.quantidade) > 0)
 
       for (const item of itemsToDelete) {
         const { error } = await supabase
@@ -292,11 +303,11 @@ export default function RomaneioDetail() {
 
       // Update existing items with valid quantity
       for (const item of itemsToUpdate) {
-        // Update quantidade and valor_recalculado (manual override)
+        const qty = Number(item.quantidade) || 0
         const { error } = await supabase
           .from('romaneio_items')
           .update({
-            quantidade: item.quantidade,
+            quantidade: qty,
             valor_recalculado: item.valor_total,
             variacao: item.variacao ?? null
           })
@@ -918,19 +929,40 @@ export default function RomaneioDetail() {
                   <td className="col-val">R$ {(item.valor_unitario || item.preco_unitario || item.product?.preco || 0).toFixed(2)}</td>
                   <td className="col-qty">
                     {editMode ? (
-                      <input
-                        type="number"
-                        min="0"
-                        value={item.quantidade}
-                        onChange={(e) => updateItemQuantity(item.id, e.target.value)}
-                        style={{
-                          width: '60px',
-                          padding: '4px',
-                          border: '1px solid #ddd',
-                          borderRadius: '4px',
-                          textAlign: 'center'
-                        }}
-                      />
+                      <div className="romaneio-qty-control">
+                        <button
+                          type="button"
+                          className="romaneio-qty-btn"
+                          onClick={() => {
+                            const cur = item.quantidade === '' || item.quantidade == null ? 0 : Number(item.quantidade) || 0
+                            updateItemQuantity(item.id, String(Math.max(0, cur - 1)))
+                          }}
+                          title="Diminuir"
+                          aria-label="Diminuir quantidade"
+                        >
+                          <ChevronDown size={18} />
+                        </button>
+                        <input
+                          type="number"
+                          min="0"
+                          value={item.quantidade === '' || item.quantidade == null ? '' : item.quantidade}
+                          onChange={(e) => updateItemQuantity(item.id, e.target.value)}
+                          className="romaneio-qty-input"
+                          aria-label="Quantidade"
+                        />
+                        <button
+                          type="button"
+                          className="romaneio-qty-btn"
+                          onClick={() => {
+                            const cur = item.quantidade === '' || item.quantidade == null ? 0 : Number(item.quantidade) || 0
+                            updateItemQuantity(item.id, String(cur + 1))
+                          }}
+                          title="Aumentar"
+                          aria-label="Aumentar quantidade"
+                        >
+                          <ChevronUp size={18} />
+                        </button>
+                      </div>
                     ) : (
                       item.quantidade
                     )}

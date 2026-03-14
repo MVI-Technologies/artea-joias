@@ -813,7 +813,98 @@
   color: white;
 }
 
-/* Edit Mode Styles */
+/* Edit Mode Styles - Controle de quantidade com setas (mobile-friendly) */
+.romaneio-qty-control {
+  display: inline-flex;
+  align-items: stretch;
+  gap: 0;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #fff;
+  min-height: 44px;
+}
+
+.romaneio-qty-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  min-width: 40px;
+  height: 44px;
+  padding: 0;
+  border: none;
+  background: var(--bg-secondary, #f1f5f9);
+  color: var(--text-secondary, #475569);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  -webkit-tap-highlight-color: transparent;
+  flex-shrink: 0;
+}
+
+.romaneio-qty-btn:hover {
+  background: #e2e8f0;
+  color: #1e293b;
+}
+
+.romaneio-qty-btn:active {
+  background: #cbd5e1;
+}
+
+.romaneio-qty-input {
+  width: 56px;
+  min-width: 56px;
+  padding: 10px 6px;
+  font-size: 18px;
+  font-weight: 600;
+  font-family: inherit;
+  text-align: center;
+  border: none;
+  border-left: 1px solid #e2e8f0;
+  border-right: 1px solid #e2e8f0;
+  background: #fff;
+  color: #1e293b;
+  transition: box-shadow 0.2s;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.romaneio-qty-input::-webkit-inner-spin-button,
+.romaneio-qty-input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  appearance: none;
+  margin: 0;
+}
+
+.romaneio-qty-input:focus {
+  outline: none;
+  box-shadow: inset 0 0 0 2px rgba(212, 175, 55, 0.3);
+}
+
+.romaneio-qty-input::placeholder {
+  color: transparent;
+}
+
+/* Mobile: input maior para ver melhor a quantidade */
+@media (max-width: 768px) {
+  .romaneio-qty-control {
+    min-height: 48px;
+  }
+
+  .romaneio-qty-btn {
+    width: 44px;
+    min-width: 44px;
+    height: 48px;
+  }
+
+  .romaneio-qty-input {
+    width: 64px;
+    min-width: 64px;
+    font-size: 20px;
+    padding: 12px 8px;
+  }
+}
+
 .col-qty input[type="number"] {
   font-family: inherit;
   font-size: 13px;
@@ -830,7 +921,7 @@
   border-color: #C5A028;
 }
 
-/* Remove spinner arrows from number input */
+/* Remove spinner arrows from number input (fallback) */
 .col-qty input[type="number"]::-webkit-inner-spin-button,
 .col-qty input[type="number"]::-webkit-outer-spin-button {
   -webkit-appearance: none;
