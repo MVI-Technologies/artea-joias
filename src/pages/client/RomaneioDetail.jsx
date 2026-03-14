@@ -199,7 +199,7 @@ export default function RomaneioDetail() {
 
   const downloadPDF = async () => {
     try {
-      const pdfBase64 = await generateRomaneioPDF({
+      const pdfBlob = await generateRomaneioPDF({
         romaneio,
         lot,
         client: romaneio.client,
@@ -208,14 +208,18 @@ export default function RomaneioDetail() {
         pixConfig
       })
 
-      if (!pdfBase64) throw new Error('Erro ao gerar PDF')
+      if (!pdfBlob) throw new Error('Erro ao gerar PDF')
+
+      const blobUrl = URL.createObjectURL(pdfBlob)
 
       const link = document.createElement('a')
-      link.href = `data:application/pdf;base64,${pdfBase64}`
+      link.href = blobUrl
       link.download = `Romaneio-${romaneio.numero_romaneio || romaneio.numero_pedido}.pdf`
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
+      
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 1000)
     } catch (error) {
       console.error('Erro ao baixar PDF:', error)
       toast.error('Erro ao baixar PDF. Tente novamente.')

@@ -477,8 +477,6 @@ export const generateRomaneioPDF = async ({ romaneio, lot, client, items, compan
         doc.text(`Página ${i}/${pageCount}`, doc.internal.pageSize.width - 18, pageHeight - 10, { align: 'right' })
     }
 
-    // Generate Data URI
-    const pdfOutput = doc.output('datauristring')
-    // Remove "data:application/pdf;base64," prefix
-    return pdfOutput.split(',')[1]
+    // Return Blob directly
+    return doc.output('blob')
 }

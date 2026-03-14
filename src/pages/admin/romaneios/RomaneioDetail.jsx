@@ -359,7 +359,7 @@ export default function RomaneioDetail() {
       console.log('📄 Gerando PDF do romaneio...')
 
       // Generate PDF
-      const pdfBase64 = await generateRomaneioPDF({
+      const pdfBlob = await generateRomaneioPDF({
         romaneio,
         lot,
         client,
@@ -368,9 +368,16 @@ export default function RomaneioDetail() {
         pixConfig
       })
 
+      // Convert Blob to Base64 for WhatsApp API
+      const pdfBase64 = await new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result.split(',')[1]);
+        reader.readAsDataURL(pdfBlob);
+      });
+
       console.log('✅ PDF gerado:', pdfBase64 ? `${pdfBase64.length} caracteres` : 'VAZIO')
 
-      if (!pdfBase64) throw new Error('Falha ao gerar PDF')
+      if (!pdfBase64) throw new Error('Falha ao gerar PDF para WhatsApp')
 
       // Prepare message about availability
       const unavailableItems = items.filter(item => item.quantidade === 0)
@@ -466,7 +473,7 @@ export default function RomaneioDetail() {
       console.log('📦 Lote no momento do PDF:', lot)
       console.log('📝 Nome do lote:', lot?.nome)
 
-      const pdfBase64 = await generateRomaneioPDF({
+      const pdfBlob = await generateRomaneioPDF({
         romaneio,
         lot,
         client,
@@ -475,15 +482,20 @@ export default function RomaneioDetail() {
         pixConfig
       })
 
-      if (!pdfBase64) throw new Error('Falha ao gerar PDF')
+      if (!pdfBlob) throw new Error('Falha ao gerar PDF')
 
-      // Create download link
+      // Use Blob Url to download directly
+      const blobUrl = URL.createObjectURL(pdfBlob)
+      
       const link = document.createElement('a')
-      link.href = `data:application/pdf;base64,${pdfBase64}`
+      link.href = blobUrl
       link.download = `Romaneio-${romaneio.numero_romaneio || romaneio.id.slice(-6)}.pdf`
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
+      
+      // Cleanup
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 1000)
 
       toast.success('PDF baixado com sucesso!')
     } catch (error) {
