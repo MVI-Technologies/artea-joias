@@ -12,7 +12,8 @@ import {
   Edit,
   Save,
   X,
-  Plus
+  Plus,
+  Trash2
 } from 'lucide-react'
 import { supabase } from '../../../lib/supabase'
 import './RomaneioDetail.css'
@@ -219,6 +220,14 @@ export default function RomaneioDetail() {
     }))
   }
 
+  /** Remove item da lista em edição (excluir produto). Itens novos somem da lista; itens existentes serão deletados ao salvar. */
+  const removeItemFromRomaneio = (item) => {
+    setEditedItems(prev => prev.filter(i => i.id !== item.id))
+    if (!item.isNew) {
+      toast.info(`${item.product?.nome || 'Produto'} será removido ao salvar.`)
+    }
+  }
+
   const addProductToRomaneio = (product, quantity = 1, variacao = '') => {
     const newItem = {
       id: `temp-${Date.now()}`,
@@ -249,7 +258,8 @@ export default function RomaneioDetail() {
 
       // Separate new items from existing items
       const newItems = editedItems.filter(item => item.isNew)
-      const existingItems = editedItems.filter(item => !item.isNew)
+      const existingEdited = editedItems.filter(item => !item.isNew)
+      const idsKept = new Set(existingEdited.map(i => i.id))
 
       // Insert new items into database
       for (const item of newItems) {
@@ -267,9 +277,9 @@ export default function RomaneioDetail() {
         if (error) throw error
       }
 
-      // Delete existing items with quantidade = 0 (violates check constraint)
-      const itemsToDelete = existingItems.filter(item => item.quantidade === 0)
-      const itemsToUpdate = existingItems.filter(item => item.quantidade > 0)
+      // Delete: itens que estavam no romaneio e foram excluídos na edição (removidos da lista ou qtd 0)
+      const itemsToDelete = items.filter(orig => !idsKept.has(orig.id))
+      const itemsToUpdate = existingEdited.filter(item => item.quantidade > 0)
 
       for (const item of itemsToDelete) {
         const { error } = await supabase
@@ -889,11 +899,12 @@ export default function RomaneioDetail() {
                 <th className="col-val">Valor</th>
                 <th className="col-qty">Qtd</th>
                 <th className="col-total">Total</th>
+                {editMode && <th className="col-action no-print">Ação</th>}
               </tr>
             </thead>
             <tbody>
               {(editMode ? editedItems : items).map((item, index) => (
-                <tr key={index}>
+                <tr key={item.id || index}>
                   <td className="col-img">
                     {item.product?.imagem1 ? (
                       <img src={item.product.imagem1} alt="" className="produto-thumb" />
@@ -925,6 +936,18 @@ export default function RomaneioDetail() {
                     )}
                   </td>
                   <td className="col-total">R$ {((item.valor_recalculado ?? item.valor_total) || 0).toFixed(2)}</td>
+                  {editMode && (
+                    <td className="col-action no-print">
+                      <button
+                        type="button"
+                        className="btn btn-outline btn-sm"
+                        onClick={() => removeItemFromRomaneio(item)}
+                        title="Excluir produto do romaneio"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>

@@ -33,11 +33,52 @@ export default function Cart() {
 
     useEffect(() => {
         loadCart()
-    }, [])
+    }, [client?.id])
 
     const loadCart = async () => {
         setLoading(true)
         try {
+            // Se o cliente está logado, trazer do servidor o estado do romaneio (rascunho) para lotes ainda abertos.
+            // Assim, alterações feitas pelo admin no romaneio refletem no carrinho do cliente.
+            if (client?.id) {
+                const { data: draftRomaneios } = await supabase
+                    .from('romaneios')
+                    .select('id, lot_id, lot:lots(id, status, link_compra)')
+                    .eq('client_id', client.id)
+                    .in('status_pagamento', ['aguardando_pagamento', 'aguardando', 'pendente', 'gerado'])
+
+                const openDrafts = (draftRomaneios || []).filter(
+                    r => r.lot?.status === 'aberto'
+                )
+
+                for (const rom of openDrafts) {
+                    const lotId = rom.lot_id || rom.lot?.id
+                    if (!lotId) continue
+
+                    const { data: serverItems } = await supabase
+                        .from('romaneio_items')
+                        .select('product_id, quantidade, preco_unitario, variacao, product:products(id, nome, imagem1, preco)')
+                        .eq('romaneio_id', rom.id)
+
+                    const cartItemsFromServer = (serverItems || []).map(ri => ({
+                        id: ri.product_id,
+                        quantity: ri.quantidade || 0,
+                        preco: Number(ri.preco_unitario ?? ri.product?.preco ?? 0),
+                        variacao: ri.variacao ?? '',
+                        lot_id: lotId,
+                        nome: ri.product?.nome ?? '',
+                        imagem1: ri.product?.imagem1 ?? null
+                    })).filter(i => i.quantity > 0)
+
+                    const key = String(lotId)
+                    localStorage.setItem(`cart_${key}`, JSON.stringify(cartItemsFromServer))
+                    const linkCompra = rom.lot?.link_compra
+                    if (linkCompra && String(linkCompra) !== String(lotId)) {
+                        localStorage.removeItem(`cart_${linkCompra}`)
+                    }
+                }
+            }
+
             // Ler de todas as chaves cart_lotID do localStorage
             const allItems = []
             for (let i = 0; i < localStorage.length; i++) {
@@ -120,7 +161,7 @@ export default function Cart() {
     }
 
     const syncCartToServer = async (lotId) => {
-        if (!user || !client?.auth_id) return
+        if (!user || !client?.auth_id) return { error: null }
         const key = `cart_${lotId}`
         const items = JSON.parse(localStorage.getItem(key) || '[]')
         let lotUuid = lotId
@@ -134,7 +175,7 @@ export default function Cart() {
             if (items.length === 0) {
                 await supabase.rpc('clear_draft_romaneio', { p_lot_id: lotUuid })
                 window.dispatchEvent(new CustomEvent('cart-synced', { detail: { lotId: lotUuid } }))
-                return
+                return { error: null }
             }
             const itemsPayload = items.map(item => ({
                 product_id: item.id,
@@ -152,30 +193,63 @@ export default function Cart() {
                 p_items: itemsPayload,
                 p_client_snapshot: clientSnapshot
             })
-            if (error && !error.message?.includes('não está aberto')) {
-                console.warn('Sync carrinho:', error.message)
-            } else {
-                window.dispatchEvent(new CustomEvent('cart-synced', { detail: { lotId: lotUuid } }))
+            if (error) {
+                if (!error.message?.includes('não está aberto')) {
+                    console.warn('Sync carrinho:', error.message)
+                }
+                const isAvailabilityError = /disponibilidade|insuficiente|esgotado/i.test(error.message || '')
+                const message = isAvailabilityError
+                    ? 'Este produto está esgotado neste catálogo. Não foi possível aumentar a quantidade.'
+                    : error.message
+                return { error: message }
             }
+            window.dispatchEvent(new CustomEvent('cart-synced', { detail: { lotId: lotUuid } }))
+            return { error: null }
         } catch (e) {
             console.warn('Sync carrinho:', e)
+            const msg = e?.message || String(e)
+            const isAvailabilityError = /disponibilidade|insuficiente|esgotado/i.test(msg)
+            return {
+                error: isAvailabilityError
+                    ? 'Este produto está esgotado neste catálogo. Não foi possível atualizar a quantidade.'
+                    : msg
+            }
         }
     }
 
     const scheduleSync = (lotId) => {
         if (syncTimeoutRef.current[lotId]) clearTimeout(syncTimeoutRef.current[lotId])
         syncTimeoutRef.current[lotId] = setTimeout(() => {
-            syncCartToServer(lotId)
-            delete syncTimeoutRef.current[lotId]
+            syncCartToServer(lotId).then((result) => {
+                delete syncTimeoutRef.current[lotId]
+                if (result?.error) {
+                    toast.error(result.error)
+                    loadCart()
+                }
+            })
         }, SYNC_DEBOUNCE_MS)
     }
 
     const updateQuantity = (lotId, itemId, delta) => {
-        const key = `cart_${lotId}`
+        const group = groupedItems[lotId]
+        // Garantir leitura do carrinho na chave correta (pode ser UUID ou link_compra conforme origem dos itens)
+        const norm = (x) => (x == null ? '' : String(x))
+        let key = `cart_${lotId}`
         let items = JSON.parse(localStorage.getItem(key) || '[]')
+        if (items.length === 0 && group?.lot) {
+            const altId = group.lot.id && norm(group.lot.id) !== norm(lotId) ? `cart_${group.lot.id}` : null
+            const altLink = group.lot.link_compra != null && norm(group.lot.link_compra) !== norm(lotId) ? `cart_${group.lot.link_compra}` : null
+            for (const k of [altId, altLink].filter(Boolean)) {
+                const alt = JSON.parse(localStorage.getItem(k) || '[]')
+                if (alt.length > 0) {
+                    items = alt
+                    key = k
+                    break
+                }
+            }
+        }
 
         // Verificar configuração do lote
-        const group = groupedItems[lotId]
         const permitirModificacao = permitirEfetivo(group?.lot?.permitir_modificacao_produtos)
 
         // Se não permite modificação, bloquear
@@ -188,10 +262,12 @@ export default function Cart() {
         const productId = idx >= 0 ? itemId.slice(0, idx) : itemId
         const variacaoPart = idx >= 0 ? itemId.slice(idx + 2) : ''
 
+        // Comparação normalizada (id pode vir como string ou UUID em diferentes contextos)
+        const sameProduct = (item) =>
+            norm(item.id) === norm(productId) && norm(item.variacao ?? '') === norm(variacaoPart)
+
         // Respeitar quantidade mínima por cliente configurada no produto
-        const targetItem = items.find(item =>
-            item.id === productId && (item.variacao ?? '') === variacaoPart
-        )
+        const targetItem = items.find(sameProduct)
         if (targetItem) {
             const rawMin = targetItem.qtd_minima_cliente ?? targetItem.quantidade_minima ?? 1
             const minClient = Number.isFinite(parseInt(rawMin, 10)) && parseInt(rawMin, 10) > 0
@@ -205,7 +281,7 @@ export default function Cart() {
         }
 
         items = items.map(item => {
-            const match = item.id === productId && (item.variacao ?? '') === variacaoPart
+            const match = sameProduct(item)
             if (match) {
                 // Se não houver alvo (caso raro), usar mínimo 1
                 const rawMin = item.qtd_minima_cliente ?? item.quantidade_minima ?? 1
@@ -218,16 +294,38 @@ export default function Cart() {
         })
 
         localStorage.setItem(key, JSON.stringify(items))
-        loadCart()
+        // Atualização otimista: só atualiza o estado do grupo, sem refetch (evita "reload" da tela)
+        const newTotal = items.reduce((s, i) => s + i.preco * i.quantity, 0)
+        setGroupedItems(prev => ({
+            ...prev,
+            [lotId]: { ...group, items, total: newTotal }
+        }))
+        setCartItems(prev => {
+            const rest = prev.filter(i => norm(i.lot_id) !== norm(lotId))
+            return [...rest, ...items]
+        })
         scheduleSync(lotId)
     }
 
     const removeItem = (lotId, itemId) => {
-        const key = `cart_${lotId}`
+        const group = groupedItems[lotId]
+        const norm = (x) => (x == null ? '' : String(x))
+        let key = `cart_${lotId}`
         let items = JSON.parse(localStorage.getItem(key) || '[]')
+        if (items.length === 0 && group?.lot) {
+            const altId = group.lot.id && norm(group.lot.id) !== norm(lotId) ? `cart_${group.lot.id}` : null
+            const altLink = group.lot.link_compra != null && norm(group.lot.link_compra) !== norm(lotId) ? `cart_${group.lot.link_compra}` : null
+            for (const k of [altId, altLink].filter(Boolean)) {
+                const alt = JSON.parse(localStorage.getItem(k) || '[]')
+                if (alt.length > 0) {
+                    items = alt
+                    key = k
+                    break
+                }
+            }
+        }
 
         // Verificar configuração do lote
-        const group = groupedItems[lotId]
         const permitirModificacao = permitirEfetivo(group?.lot?.permitir_modificacao_produtos)
 
         // Se não permite excluir (regra do link definida pelo admin)
@@ -239,14 +337,28 @@ export default function Cart() {
         const idx = String(itemId).indexOf('__')
         const productId = idx >= 0 ? itemId.slice(0, idx) : itemId
         const variacaoPart = idx >= 0 ? itemId.slice(idx + 2) : ''
-        items = items.filter(item => !(item.id === productId && (item.variacao ?? '') === variacaoPart))
+        items = items.filter(item => !(norm(item.id) === norm(productId) && norm(item.variacao ?? '') === norm(variacaoPart)))
 
         if (items.length === 0) {
             localStorage.removeItem(key)
+            setGroupedItems(prev => {
+                const next = { ...prev }
+                delete next[lotId]
+                return next
+            })
+            setCartItems(prev => prev.filter(i => norm(i.lot_id) !== norm(lotId)))
         } else {
             localStorage.setItem(key, JSON.stringify(items))
+            const newTotal = items.reduce((s, i) => s + i.preco * i.quantity, 0)
+            setGroupedItems(prev => ({
+                ...prev,
+                [lotId]: { ...group, items, total: newTotal }
+            }))
+            setCartItems(prev => {
+                const rest = prev.filter(i => norm(i.lot_id) !== norm(lotId))
+                return [...rest, ...items]
+            })
         }
-        loadCart()
         scheduleSync(lotId)
     }
 
@@ -283,10 +395,12 @@ export default function Cart() {
                                     <span className={`cart-group-status ${group.lot.status === 'aberto' ? 'open' : 'closed'}`}>
                                         {group.lot.status === 'aberto' ? 'Aberto para Compras' : 'Fechado'}
                                     </span>
-                                    {group.lot.status === 'aberto' && (() => {
+                                    {/* Sempre exibir a regra do grupo (pode ou não diminuir/remover itens) */}
+                                    {(() => {
                                         const p = permitirEfetivo(group.lot.permitir_modificacao_produtos)
                                         if (p === 'nao_permitir') return <p className="cart-group-rule-hint">Não é permitido alterar nem remover itens neste catálogo.</p>
                                         if (p === 'permitir_reduzir_nao_excluir') return <p className="cart-group-rule-hint">Você pode alterar quantidades, mas não remover itens.</p>
+                                        if (p === 'permitir_reduzir_excluir') return <p className="cart-group-rule-hint">Você pode alterar quantidades e remover itens.</p>
                                         return null
                                     })()}
                                 </div>
