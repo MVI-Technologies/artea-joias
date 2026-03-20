@@ -21,6 +21,7 @@ import WhatsAppIcon from '../../../components/icons/WhatsAppIcon'
 import { supabase } from '../../../lib/supabase'
 import { useToast } from '../../../components/common/Toast'
 import './ClientList.css'
+import ConfirmationModal from '../../../components/common/ConfirmationModal'
 
 export default function ClientList() {
   const navigate = useNavigate()
@@ -36,6 +37,13 @@ export default function ClientList() {
   const [modalMode, setModalMode] = useState('') // 'saldo', 'credito', 'ultima_compra'
   const [modalValue, setModalValue] = useState('')
   const [saving, setSaving] = useState(false)
+  
+  // Deletion Modal State
+  const [deleteConfirmModal, setDeleteConfirmModal] = useState({
+    isOpen: false,
+    client: null,
+    loading: false
+  })
 
   useEffect(() => {
     fetchClients()
@@ -58,25 +66,39 @@ export default function ClientList() {
     }
   }
 
-  const handleDelete = async (client) => {
-    if (!window.confirm(`Tem certeza que deseja excluir o cliente "${client.nome}"? Esta ação não pode ser desfeita.`)) {
-      return
-    }
+  const handleDelete = (client) => {
+    setDeleteConfirmModal({
+      isOpen: true,
+      client,
+      loading: false
+    })
+  }
 
+  const confirmDelete = async () => {
+    const { client } = deleteConfirmModal
+    if (!client) return
+
+    setDeleteConfirmModal(prev => ({ ...prev, loading: true }))
     try {
       const { error } = await supabase
         .from('clients')
         .delete()
         .eq('id', client.id)
 
-      if (error) throw error
+      if (error) {
+        if (error.code === '23503') {
+          throw new Error('Não é possível excluir este cliente porque existem registros vinculados a ele (logs de romaneio, etc).')
+        }
+        throw error
+      }
 
-      // Update local state directly to avoid refetch flicker
       setClients(clients.filter(c => c.id !== client.id))
-      // fetchClients() // Optional: refetch to be sure
+      toast.success('Cliente removido com sucesso!')
+      setDeleteConfirmModal({ isOpen: false, client: null, loading: false })
     } catch (error) {
       console.error('Erro ao excluir cliente:', error)
       toast.error('Erro ao excluir cliente: ' + error.message)
+      setDeleteConfirmModal(prev => ({ ...prev, loading: false }))
     }
   }
 
@@ -317,30 +339,18 @@ export default function ClientList() {
                 <span className="mobile-card-value">{formatTelefone(client.telefone)}</span>
               </div>
               <div className="mobile-card-row">
-                <span className="mobile-card-label">Saldo Devedor:</span>
-                <span className="mobile-card-value" style={{ color: client.saldo_devedor > 0 ? '#ef4444' : 'inherit' }}>
-                  R$ {client.saldo_devedor?.toFixed(2) || '0.00'}
-                </span>
-              </div>
-              <div className="mobile-card-row">
-                <span className="mobile-card-label">Crédito:</span>
-                <span className="mobile-card-value" style={{ color: '#22c55e' }}>
-                  R$ {client.credito_disponivel?.toFixed(2) || '0.00'}
-                </span>
-              </div>
-              <div className="mobile-card-row">
                 <span className="mobile-card-label">Última Compra:</span>
                 <span className="mobile-card-value">
-                  {client.ultima_compra ? new Date(client.ultima_compra).toLocaleDateString() : 'Nunca'}
+                  {client.ultima_compra ? new Date(client.ultima_compra).toLocaleDateString('pt-BR') : 'Nunca'}
                 </span>
               </div>
             </div>
             <div className="mobile-card-actions">
               <Link to={`/admin/clientes/${client.id}`} className="btn btn-sm btn-primary">
-                <Edit size={14} /> {client.cadastro_status === 'incompleto' ? 'Completar' : 'Editar'}
+                <Edit size={14} />{client.cadastro_status === 'incompleto' ? 'Completar' : 'Editar'}
               </Link>
               <button onClick={() => handleDelete(client)} className="btn btn-sm btn-danger">
-                <Trash2 size={14} /> Excluir
+                <Trash2 size={14} />Excluir
               </button>
             </div>
           </div>
@@ -392,6 +402,17 @@ export default function ClientList() {
           </div>
         </div>
       )}
+      {/* Modal de Confirmação de Exclusão */}
+      <ConfirmationModal
+        isOpen={deleteConfirmModal.isOpen}
+        onClose={() => !deleteConfirmModal.loading && setDeleteConfirmModal({ isOpen: false, client: null, loading: false })}
+        onConfirm={confirmDelete}
+        isLoading={deleteConfirmModal.loading}
+        title="Excluir Cliente"
+        message={`Tem certeza que deseja excluir o cliente "${deleteConfirmModal.client?.nome}"? Esta ação não pode ser desfeita.`}
+        confirmText="Excluir"
+        variant="danger"
+      />
     </div>
   )
 }

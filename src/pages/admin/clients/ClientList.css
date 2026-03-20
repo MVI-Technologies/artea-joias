@@ -115,18 +115,66 @@
 }
 
 .client-list-page .mobile-card {
-  margin-bottom: 12px;
+  margin-bottom: var(--spacing-md);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); /* Better elevation */
+  border-radius: 12px;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  overflow: hidden;
+  padding: 16px;
 }
 
 .client-list-page .mobile-card-actions {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: stretch !important;
+  gap: 12px;
+  margin-top: 16px;
+  width: 100%;
+  background-color: transparent !important;
+  border-top: none;
+  padding: 0;
+}
+
+.client-list-page .mobile-card-actions > * {
+  flex: 1;
 }
 
 .client-list-page .mobile-card-actions .btn {
-  font-size: 12px;
-  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 0 !important;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 40px !important; /* Force identical height */
+  margin: 0 !important; /* Prevent any global margin from shifting them */
+  border-radius: 8px !important;
+  box-sizing: border-box !important;
+  line-height: normal !important;
+  cursor: pointer;
+  text-decoration: none !important;
+  white-space: nowrap;
+  vertical-align: middle;
+  border-width: 1px !important;
+  border-style: solid !important;
+}
+
+.client-list-page .mobile-card-actions .btn-primary {
+  background-color: #3b82f6 !important;
+  border-color: #3b82f6 !important;
+  color: white !important;
+}
+
+.client-list-page .mobile-card-actions .btn-danger {
+  background-color: #ef4444 !important;
+  border-color: #ef4444 !important;
+  color: white !important;
+}
+
+.client-list-page .mobile-card-actions .btn svg {
+  flex-shrink: 0;
 }
 
 /* Tablet and up (≥ 768px) */
