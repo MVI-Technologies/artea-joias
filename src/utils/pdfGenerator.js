@@ -480,3 +480,152 @@ export const generateRomaneioPDF = async ({ romaneio, lot, client, items, compan
     // Return Blob directly
     return doc.output('blob')
 }
+
+export const generateRelatorioFabricaPDF = async ({ lot, items, company }) => {
+    const doc = new jsPDF()
+    doc.setFont('helvetica')
+
+    // --- Header ---
+    let logoBase64 = null
+    if (company?.logo_url) {
+        logoBase64 = await getBase64ImageFromURL(company.logo_url)
+    }
+    if (logoBase64) {
+        try { doc.addImage(logoBase64, 'JPEG', 15, 8, 20, 20) } catch (e) { /* ignore */ }
+    }
+
+    const companyName = company?.nome_empresa || 'Grupo AA de Importação e Compras Coletivas'
+    const centerX = doc.internal.pageSize.width / 2
+
+    doc.setFontSize(14)
+    doc.setFont('helvetica', 'bold')
+    doc.text(companyName, centerX, 15, { align: 'center' })
+
+    doc.setFontSize(9)
+    doc.setFont('helvetica', 'normal')
+    doc.text('Pedido à Fábrica — Relatório Consolidado', centerX, 21, { align: 'center' })
+
+    doc.setLineWidth(0.5)
+    doc.line(15, 27, doc.internal.pageSize.width - 15, 27)
+
+    // --- Info block ---
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'bold')
+    doc.text(`Link: ${lot?.nome || ''}`, 15, 34)
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(8)
+    doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 15, 39)
+
+    // --- Table rows ---
+    const tableRows = []
+    for (const item of items) {
+        tableRows.push([
+            '',
+            item.product?.descricao || item.product?.nome || '—',
+            item.variacao || '—',
+            formatCurrency(item.preco_unitario),
+            String(item.quantidade),
+            formatCurrency(item.valor_total)
+        ])
+    }
+
+    const totalQtd = items.reduce((s, r) => s + r.quantidade, 0)
+    const totalValor = items.reduce((s, r) => s + r.valor_total, 0)
+
+    // Pre-load images
+    const imageMap = {}
+    for (let i = 0; i < items.length; i++) {
+        const url = items[i].product?.imagem1
+        if (url) {
+            const base64 = await getBase64ImageFromURL(url)
+            if (base64) imageMap[i] = base64
+        }
+    }
+
+    autoTable(doc, {
+        startY: 44,
+        head: [['', 'DESCRIÇÃO', 'VARIAÇÃO', 'VLR UNIT.', 'QTD', 'TOTAL']],
+        body: tableRows,
+        theme: 'grid',
+        styles: {
+            fontSize: 8,
+            cellPadding: 2.5,
+            valign: 'middle',
+            halign: 'center',
+            minCellHeight: 22,
+            lineColor: [221, 221, 221],
+            lineWidth: 0.1
+        },
+        columnStyles: {
+            0: { cellWidth: 22 },
+            1: { halign: 'left', cellPadding: { left: 3 } },
+            2: { cellWidth: 28 },
+            3: { cellWidth: 26 },
+            4: { cellWidth: 20 },
+            5: { cellWidth: 26 }
+        },
+        headStyles: {
+            fillColor: [245, 245, 245],
+            textColor: [0, 0, 0],
+            lineWidth: 0.1,
+            lineColor: [221, 221, 221],
+            fontStyle: 'bold',
+            fontSize: 7,
+            halign: 'center'
+        },
+        bodyStyles: {
+            textColor: [0, 0, 0]
+        },
+        rowPageBreak: 'avoid',
+        didDrawCell: (data) => {
+            if (data.section === 'body' && data.column.index === 0) {
+                const imageBase64 = imageMap[data.row.index]
+                if (imageBase64) {
+                    try {
+                        let format = 'JPEG'
+                        if (imageBase64.includes('image/png')) format = 'PNG'
+                        const imgSize = 18
+                        const x = data.cell.x + (data.cell.width - imgSize) / 2
+                        const y = data.cell.y + (data.cell.height - imgSize) / 2
+                        doc.addImage(imageBase64, format, x, y, imgSize, imgSize)
+                    } catch (err) { /* ignore */ }
+                }
+            }
+        }
+    })
+
+    // --- Totals (text, after table) ---
+    let finalY = doc.lastAutoTable.finalY + 8
+
+    if (finalY > doc.internal.pageSize.height - 40) {
+        doc.addPage()
+        finalY = 20
+    }
+
+    doc.setLineWidth(0.5)
+    doc.setDrawColor(0, 0, 0)
+    doc.line(15, finalY, doc.internal.pageSize.width - 15, finalY)
+    finalY += 7
+
+    doc.setFontSize(11)
+    doc.setFont('helvetica', 'bold')
+    doc.text(`• Total de Peças: ${totalQtd}`, 18, finalY)
+    finalY += 6
+
+    doc.setFontSize(11)
+    doc.text(`• Valor Total: ${formatCurrency(totalValor)}`, 18, finalY)
+
+    // --- Page footer ---
+    const pageHeight = doc.internal.pageSize.height
+    const pageCount = doc.internal.getNumberOfPages()
+    for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i)
+        doc.setFontSize(7)
+        doc.setFont('helvetica', 'normal')
+        doc.setTextColor(128, 128, 128)
+        doc.text(`Documento gerado em: ${new Date().toLocaleString('pt-BR')}`, 18, pageHeight - 10)
+        doc.text(`Página ${i}/${pageCount}`, doc.internal.pageSize.width - 18, pageHeight - 10, { align: 'right' })
+    }
+
+    return doc.output('blob')
+}

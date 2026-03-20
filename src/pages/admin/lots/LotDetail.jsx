@@ -30,7 +30,8 @@ import {
   Bell,
   Loader2,
   Save,
-  TrendingUp
+  TrendingUp,
+  Factory
 } from 'lucide-react'
 import ImageUpload from '../../../components/common/ImageUpload'
 import { supabase } from '../../../lib/supabase'
@@ -38,6 +39,7 @@ import { disponibilidadeLoteParaExibicao, esgotadoNoLote } from '../../../utils/
 import { notifyCatalogClosed, sendRomaneiosAutomaticamente } from '../../../services/whatsapp'
 import { useToast } from '../../../components/common/Toast'
 import PortalDropdown from '../../../components/ui/PortalDropdown'
+import { generateRelatorioFabricaPDF } from '../../../utils/pdfGenerator'
 import './LotDetail.css'
 
 export default function LotDetail({ defaultTab }) {
@@ -103,6 +105,8 @@ export default function LotDetail({ defaultTab }) {
   })
   const [savingProduct, setSavingProduct] = useState(false)
   const [togglingManualSoldOutId, setTogglingManualSoldOutId] = useState(null)
+  const [relatorio, setRelatorio] = useState([])
+  const [exportingPDF, setExportingPDF] = useState(false)
 
   useEffect(() => {
     fetchData()
@@ -564,6 +568,63 @@ export default function LotDetail({ defaultTab }) {
     }
   }
 
+  // Construir relatório consolidado de itens para pedido à fábrica
+  const buildRelatorio = () => {
+    const map = {}
+    reservas.forEach(clientReserva => {
+      clientReserva.items.forEach(item => {
+        const prodId = item.product?.id
+        if (!prodId) return
+        const variacao = (item.variacao || '').trim()
+        const key = `${prodId}__${variacao}`
+        if (!map[key]) {
+          map[key] = {
+            product: item.product,
+            variacao,
+            preco_unitario: item.valor_total / (item.quantidade || 1),
+            quantidade: Number(item.quantidade),
+            valor_total: Number(item.valor_total)
+          }
+        } else {
+          map[key].quantidade += Number(item.quantidade)
+          map[key].valor_total += Number(item.valor_total)
+        }
+      })
+    })
+    // Ordenar por descrição/nome
+    const sorted = Object.values(map).sort((a, b) => {
+      const nameA = a.product?.descricao || a.product?.nome || ''
+      const nameB = b.product?.descricao || b.product?.nome || ''
+      return nameA.localeCompare(nameB, 'pt-BR')
+    })
+    setRelatorio(sorted)
+    setActiveTab('fabrica')
+  }
+
+  const handleExportFabricaPDF = async () => {
+    setExportingPDF(true)
+    try {
+      toast.info('Gerando PDF...')
+      const { data: company } = await supabase.from('company_settings').select('*').single()
+      const blob = await generateRelatorioFabricaPDF({ lot, items: relatorio, company })
+      if (!blob) throw new Error('Falha ao gerar PDF')
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `pedido-fabrica-${lot.nome?.replace(/\s+/g, '-')}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      setTimeout(() => URL.revokeObjectURL(url), 1000)
+      toast.success('PDF baixado com sucesso!')
+    } catch (err) {
+      console.error('Erro ao gerar PDF:', err)
+      toast.error('Erro ao gerar PDF: ' + (err.message || 'Erro desconhecido'))
+    } finally {
+      setExportingPDF(false)
+    }
+  }
+
   // Duplicar lote
   const duplicateLot = async () => {
     setShowActionsMenu(false)
@@ -1019,6 +1080,12 @@ export default function LotDetail({ defaultTab }) {
         >
           <ClipboardList size={16} /> Separação
         </button>
+        <button
+          className={`tab-btn ${activeTab === 'fabrica' ? 'active' : ''}`}
+          onClick={buildRelatorio}
+        >
+          <Factory size={16} /> Pedido Fábrica
+        </button>
       </div>
 
       {/* Tab Content: Produtos */}
@@ -1393,6 +1460,81 @@ export default function LotDetail({ defaultTab }) {
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {/* Tab Content: Pedido à Fábrica */}
+      {activeTab === 'fabrica' && (
+        <div className="tab-content">
+          <div className="fabrica-header">
+            <div>
+              <h3 style={{ margin: 0 }}>Pedido à Fábrica — {lot.nome}</h3>
+              <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: '0.875rem' }}>
+                Consolidado de todos os romaneios do link ({relatorio.reduce((s, r) => s + r.quantidade, 0)} peças •
+                R$ {relatorio.reduce((s, r) => s + r.valor_total, 0).toFixed(2).replace('.', ',')} total)
+              </p>
+            </div>
+            <button
+              className="btn btn-primary"
+              onClick={handleExportFabricaPDF}
+              disabled={exportingPDF || relatorio.length === 0}
+            >
+              {exportingPDF ? <><Loader2 size={16} className="spinning" /> Gerando PDF...</> : <><Download size={16} /> Exportar PDF</>}
+            </button>
+          </div>
+
+          {relatorio.length === 0 ? (
+            <div className="empty-state">
+              <Factory size={48} />
+              <h3>Nenhum item consolidado</h3>
+              <p>Ainda não há reservas neste link, ou os dados ainda não carregaram.</p>
+            </div>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table className="fabrica-table">
+                <thead>
+                  <tr>
+                    <th>Foto</th>
+                    <th>Descrição</th>
+                    <th>Variação</th>
+                    <th style={{ textAlign: 'right' }}>Vlr Unit.</th>
+                    <th style={{ textAlign: 'right' }}>Qtd Total</th>
+                    <th style={{ textAlign: 'right' }}>Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {relatorio.map((row, idx) => (
+                    <tr key={idx}>
+                      <td>
+                        {row.product?.imagem1
+                          ? <img src={row.product.imagem1} alt="" style={{ width: 48, height: 48, objectFit: 'cover', borderRadius: 6 }} />
+                          : <div style={{ width: 48, height: 48, background: '#f1f5f9', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Package size={20} /></div>
+                        }
+                      </td>
+                      <td style={{ maxWidth: 280 }}>
+                        <span style={{ fontSize: '0.85rem' }}>{row.product?.descricao || row.product?.nome || '—'}</span>
+                      </td>
+                      <td>{row.variacao || '—'}</td>
+                      <td style={{ textAlign: 'right' }}>R$ {row.preco_unitario.toFixed(2).replace('.', ',')}</td>
+                      <td style={{ textAlign: 'right', fontWeight: 700 }}>{row.quantidade}</td>
+                      <td style={{ textAlign: 'right', fontWeight: 600 }}>R$ {row.valor_total.toFixed(2).replace('.', ',')}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr className="fabrica-totals">
+                    <td colSpan={4} style={{ textAlign: 'right', fontWeight: 700 }}>TOTAL GERAL</td>
+                    <td style={{ textAlign: 'right', fontWeight: 700 }}>
+                      {relatorio.reduce((s, r) => s + r.quantidade, 0)} peças
+                    </td>
+                    <td style={{ textAlign: 'right', fontWeight: 700 }}>
+                      R$ {relatorio.reduce((s, r) => s + r.valor_total, 0).toFixed(2).replace('.', ',')}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          )}
         </div>
       )}
 

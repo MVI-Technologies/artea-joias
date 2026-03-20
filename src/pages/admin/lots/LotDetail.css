@@ -2589,3 +2589,65 @@
     padding: 10px;
   }
 }
+
+/* ========================================
+   PEDIDO À FÁBRICA
+   ======================================== */
+.fabrica-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.fabrica-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.fabrica-table thead th {
+  background: #1e293b;
+  color: white;
+  padding: 10px 12px;
+  text-align: left;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.fabrica-table tbody tr {
+  border-bottom: 1px solid #e5e7eb;
+  transition: background 0.15s;
+}
+
+.fabrica-table tbody tr:hover {
+  background: #f8fafc;
+}
+
+.fabrica-table tbody td {
+  padding: 10px 12px;
+  vertical-align: middle;
+  color: #1e293b;
+}
+
+.fabrica-table tfoot .fabrica-totals td {
+  background: #f1f5f9;
+  padding: 12px;
+  border-top: 2px solid #cbd5e1;
+  font-size: 0.9rem;
+}
+
+@media (max-width: 640px) {
+  .fabrica-header {
+    flex-direction: column;
+    gap: 12px;
+  }
+  .fabrica-header .btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
