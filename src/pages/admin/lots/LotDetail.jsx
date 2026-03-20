@@ -179,14 +179,18 @@ export default function LotDetail({ defaultTab }) {
           // Adicionar itens deste romaneio
           const romItems = (itemsData || []).filter(item => item.romaneio_id === rom.id)
           romItems.forEach(item => {
+            const rowPreco = item.valor_unitario || item.preco_unitario || item.product?.preco || 0
             grouped[clientId].items.push({
               id: item.id,
               product: item.product,
               quantidade: item.quantidade,
-              valor_total: item.valor_total || (item.quantidade * item.preco_unitario),
+              variacao: item.variacao,
+              valor_unitario: item.valor_unitario,
+              preco_unitario: item.preco_unitario,
+              valor_total: item.valor_total || (item.quantidade * rowPreco),
               created_at: item.created_at
             })
-            grouped[clientId].total += (item.valor_total || (item.quantidade * item.preco_unitario))
+            grouped[clientId].total += (item.valor_total || (item.quantidade * rowPreco))
             grouped[clientId].quantidade += item.quantidade
           })
         })
@@ -568,36 +572,34 @@ export default function LotDetail({ defaultTab }) {
     }
   }
 
-  // Construir relatório consolidado de itens para pedido à fábrica
+  // Construir relatório final de itens (detalhado por cliente)
   const buildRelatorio = () => {
-    const map = {}
+    const list = []
     reservas.forEach(clientReserva => {
       clientReserva.items.forEach(item => {
-        const prodId = item.product?.id
-        if (!prodId) return
-        const variacao = (item.variacao || '').trim()
-        const key = `${prodId}__${variacao}`
-        if (!map[key]) {
-          map[key] = {
-            product: item.product,
-            variacao,
-            preco_unitario: item.valor_total / (item.quantidade || 1),
-            quantidade: Number(item.quantidade),
-            valor_total: Number(item.valor_total)
-          }
-        } else {
-          map[key].quantidade += Number(item.quantidade)
-          map[key].valor_total += Number(item.valor_total)
-        }
+        const preco = item.valor_unitario || item.preco_unitario || item.product?.preco || 0
+        list.push({
+          product: item.product,
+          variacao: (item.variacao || '').trim() || '—',
+          cliente: clientReserva.client?.nome || '—',
+          preco_unitario: preco,
+          quantidade: Number(item.quantidade),
+          valor_total: Number(item.valor_total || (item.quantidade * preco))
+        })
       })
     })
-    // Ordenar por descrição/nome
-    const sorted = Object.values(map).sort((a, b) => {
-      const nameA = a.product?.descricao || a.product?.nome || ''
-      const nameB = b.product?.descricao || b.product?.nome || ''
+    
+    // Ordenar primeiro por Cliente, depois por Nome do Produto
+    list.sort((a, b) => {
+      if (a.cliente !== b.cliente) {
+        return a.cliente.localeCompare(b.cliente, 'pt-BR')
+      }
+      const nameA = a.product?.nome || ''
+      const nameB = b.product?.nome || ''
       return nameA.localeCompare(nameB, 'pt-BR')
     })
-    setRelatorio(sorted)
+
+    setRelatorio(list)
     setActiveTab('fabrica')
   }
 
@@ -1084,7 +1086,7 @@ export default function LotDetail({ defaultTab }) {
           className={`tab-btn ${activeTab === 'fabrica' ? 'active' : ''}`}
           onClick={buildRelatorio}
         >
-          <Factory size={16} /> Pedido Fábrica
+          <Factory size={16} /> Relatório Final
         </button>
       </div>
 
@@ -1358,7 +1360,10 @@ export default function LotDetail({ defaultTab }) {
                         </div>
                         <div className="item-info">
                           <span className="item-name">{item.product?.nome}</span>
-                          <span className="item-qty">Qtd: {item.quantidade}</span>
+                          <span className="item-qty">
+                            Qtd: {item.quantidade}
+                            {item.variacao && <span className="item-variation" style={{ marginLeft: 8, color: '#64748b', fontSize: '0.75rem' }}>({item.variacao})</span>}
+                          </span>
                         </div>
                         <span className="item-price">R$ {item.valor_total.toFixed(2)}</span>
                       </div>
@@ -1450,7 +1455,10 @@ export default function LotDetail({ defaultTab }) {
                           <span className="checkmark-box"><CheckSquare size={18} /></span>
                           <div className="sep-item-info">
                             <span className="sep-prod-name">{item.product?.nome}</span>
-                            <span className="sep-prod-qty">x{item.quantidade}</span>
+                            <span className="sep-prod-qty">
+                              x{item.quantidade}
+                              {item.variacao && <span style={{ marginLeft: 6, color: '#64748b', fontSize: '0.75rem' }}>({item.variacao})</span>}
+                            </span>
                           </div>
                         </label>
                       ))}
@@ -1463,14 +1471,14 @@ export default function LotDetail({ defaultTab }) {
         </div>
       )}
 
-      {/* Tab Content: Pedido à Fábrica */}
+      {/* Tab Content: Relatório Final de Romaneios */}
       {activeTab === 'fabrica' && (
         <div className="tab-content">
           <div className="fabrica-header">
             <div>
-              <h3 style={{ margin: 0 }}>Pedido à Fábrica — {lot.nome}</h3>
+              <h3 style={{ margin: 0 }}>Relatório Final de Romaneios — {lot.nome}</h3>
               <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: '0.875rem' }}>
-                Consolidado de todos os romaneios do link ({relatorio.reduce((s, r) => s + r.quantidade, 0)} peças •
+                Lista detalhada de todos os produtos comprados por cliente ({relatorio.reduce((s, r) => s + r.quantidade, 0)} peças •
                 R$ {relatorio.reduce((s, r) => s + r.valor_total, 0).toFixed(2).replace('.', ',')} total)
               </p>
             </div>
@@ -1490,11 +1498,12 @@ export default function LotDetail({ defaultTab }) {
               <p>Ainda não há reservas neste link, ou os dados ainda não carregaram.</p>
             </div>
           ) : (
-            <div style={{ overflowX: 'auto' }}>
+            <div className="fabrica-table-container">
               <table className="fabrica-table">
                 <thead>
                   <tr>
                     <th>Foto</th>
+                    <th>Cliente</th>
                     <th>Descrição</th>
                     <th>Variação</th>
                     <th style={{ textAlign: 'right' }}>Vlr Unit.</th>
@@ -1511,6 +1520,9 @@ export default function LotDetail({ defaultTab }) {
                           : <div style={{ width: 48, height: 48, background: '#f1f5f9', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Package size={20} /></div>
                         }
                       </td>
+                      <td>
+                        <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>{row.cliente}</span>
+                      </td>
                       <td style={{ maxWidth: 280 }}>
                         <span style={{ fontSize: '0.85rem' }}>{row.product?.descricao || row.product?.nome || '—'}</span>
                       </td>
@@ -1523,7 +1535,7 @@ export default function LotDetail({ defaultTab }) {
                 </tbody>
                 <tfoot>
                   <tr className="fabrica-totals">
-                    <td colSpan={4} style={{ textAlign: 'right', fontWeight: 700 }}>TOTAL GERAL</td>
+                    <td colSpan={5} style={{ textAlign: 'right', fontWeight: 700 }}>TOTAL GERAL</td>
                     <td style={{ textAlign: 'right', fontWeight: 700 }}>
                       {relatorio.reduce((s, r) => s + r.quantidade, 0)} peças
                     </td>

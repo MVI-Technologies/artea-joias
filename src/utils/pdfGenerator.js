@@ -501,9 +501,9 @@ export const generateRelatorioFabricaPDF = async ({ lot, items, company }) => {
     doc.setFont('helvetica', 'bold')
     doc.text(companyName, centerX, 15, { align: 'center' })
 
-    doc.setFontSize(9)
-    doc.setFont('helvetica', 'normal')
-    doc.text('Pedido à Fábrica — Relatório Consolidado', centerX, 21, { align: 'center' })
+  doc.setFontSize(9)
+  doc.setFont('helvetica', 'normal')
+  doc.text('Relatório Final de Romaneios — Detalhado por Cliente', centerX, 21, { align: 'center' })
 
     doc.setLineWidth(0.5)
     doc.line(15, 27, doc.internal.pageSize.width - 15, 27)
@@ -516,11 +516,11 @@ export const generateRelatorioFabricaPDF = async ({ lot, items, company }) => {
     doc.setFontSize(8)
     doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 15, 39)
 
-    // --- Table rows ---
     const tableRows = []
     for (const item of items) {
         tableRows.push([
             '',
+            item.cliente || '—',
             item.product?.descricao || item.product?.nome || '—',
             item.variacao || '—',
             formatCurrency(item.preco_unitario),
@@ -544,7 +544,7 @@ export const generateRelatorioFabricaPDF = async ({ lot, items, company }) => {
 
     autoTable(doc, {
         startY: 44,
-        head: [['', 'DESCRIÇÃO', 'VARIAÇÃO', 'VLR UNIT.', 'QTD', 'TOTAL']],
+        head: [['', 'CLIENTE', 'DESCRIÇÃO', 'VARIAÇÃO', 'VLR UNIT.', 'QTD', 'TOTAL']],
         body: tableRows,
         theme: 'grid',
         styles: {
@@ -557,12 +557,13 @@ export const generateRelatorioFabricaPDF = async ({ lot, items, company }) => {
             lineWidth: 0.1
         },
         columnStyles: {
-            0: { cellWidth: 22 },
-            1: { halign: 'left', cellPadding: { left: 3 } },
-            2: { cellWidth: 28 },
-            3: { cellWidth: 26 },
-            4: { cellWidth: 20 },
-            5: { cellWidth: 26 }
+            0: { cellWidth: 20 },
+            1: { cellWidth: 35, halign: 'left', fontStyle: 'bold' },
+            2: { halign: 'left', cellPadding: { left: 3 } },
+            3: { cellWidth: 24 },
+            4: { cellWidth: 24 },
+            5: { cellWidth: 14 },
+            6: { cellWidth: 24 }
         },
         headStyles: {
             fillColor: [245, 245, 245],

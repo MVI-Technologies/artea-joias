@@ -2472,6 +2472,11 @@
     min-width: 0;
     justify-content: center;
   }
+
+  .fabrica-table {
+    display: table;
+    min-width: 800px;
+  }
 }
 
 /* Responsive Checkbox Group */
@@ -2650,4 +2655,32 @@
     width: 100%;
     justify-content: center;
   }
-}
+}
+/* Relatório Final Responsivo */
+.fabrica-table-container {
+  width: 100%;
+  overflow-x: auto;
+  margin-bottom: 24px;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+}
+
+@media (max-width: 640px) {
+  .fabrica-table {
+    min-width: 800px;
+  }
+  .fabrica-table thead th,
+  .fabrica-table tbody td {
+    padding: 8px 10px;
+    font-size: 13px;
+  }
+}
+
+.fabrica-table th, .fabrica-table td {
+  white-space: nowrap;
+}
+.fabrica-table td:nth-child(3) { /* Descricao */
+  white-space: normal;
+  min-width: 200px;
+}
