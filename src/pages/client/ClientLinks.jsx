@@ -9,11 +9,10 @@ export default function ClientLinks() {
   const toast = useToast()
   const [links, setLinks] = useState([])
   const [loading, setLoading] = useState(true)
-  const [showAllLinks, setShowAllLinks] = useState(false)
 
   useEffect(() => {
     loadLinks()
-  }, [showAllLinks])
+  }, [])
 
   const loadLinks = async () => {
     setLoading(true)
@@ -26,12 +25,8 @@ export default function ClientLinks() {
                 quantidade_pedidos
             )
         `)
+        .eq('status', 'aberto')
         .order('created_at', { ascending: false })
-
-      // Se não estiver mostrando todos, filtra apenas os abertos
-      if (!showAllLinks) {
-        query = query.eq('status', 'aberto')
-      }
 
       const { data, error } = await query
 
@@ -63,12 +58,6 @@ export default function ClientLinks() {
         <h1 className="client-title">Grupos de Compra</h1>
         <div className="header-actions">
            <p className="client-subtitle">Participe dos grupos abertos e garanta preços de atacado.</p>
-           <button 
-             className={`btn-toggle-links ${showAllLinks ? 'active' : ''}`}
-             onClick={() => setShowAllLinks(!showAllLinks)}
-           >
-             {showAllLinks ? 'Ocultar links fechados' : 'Exibir links não abertos'}
-           </button>
         </div>
       </div>
 

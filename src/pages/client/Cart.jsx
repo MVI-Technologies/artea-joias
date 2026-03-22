@@ -465,7 +465,12 @@ export default function Cart() {
 
         // Se não permite modificação, bloquear
         if (permitirModificacao === 'nao_permitir') {
-            toast.error('Este catálogo não permite modificar quantidades. Entre em contato com o administrador.')
+            toast.error('Não é possível apagar pois o adm restringiu.')
+            return
+        }
+        
+        if (group?.lot?.status !== 'aberto') {
+            toast.error('Não é possível apagar pois o link já foi fechado pelo adm.')
             return
         }
 
@@ -550,7 +555,12 @@ export default function Cart() {
 
         // Se não permite excluir (regra do link definida pelo admin)
         if (permitirModificacao === 'nao_permitir' || permitirModificacao === 'permitir_reduzir_nao_excluir') {
-            toast.error('Não é possível remover: a regra deste catálogo não permite excluir itens do carrinho.')
+            toast.error('Não é possível apagar pois o adm restringiu.')
+            return
+        }
+
+        if (group?.lot?.status !== 'aberto') {
+            toast.error('Não é possível apagar pois o link já foi fechado pelo adm.')
             return
         }
 
@@ -663,8 +673,7 @@ export default function Cart() {
                                                         <div className="cart-quantity-control">
                                                             <button
                                                                 onClick={() => updateQuantity(lotId, lineKey, -1)}
-                                                                className="cart-quantity-btn"
-                                                                disabled={!lotAberto || !podeAlterarQtd}
+                                                                className={`cart-quantity-btn ${!lotAberto || !podeAlterarQtd ? 'opacity-50' : ''}`}
                                                                 title={!podeAlterarQtd ? 'Este catálogo não permite alterar quantidades' : 'Diminuir quantidade'}
                                                             >
                                                                 <Minus size={16} />
@@ -672,8 +681,7 @@ export default function Cart() {
                                                             <span className="cart-quantity-value">{item.quantity}</span>
                                                             <button
                                                                 onClick={() => updateQuantity(lotId, lineKey, 1)}
-                                                                className="cart-quantity-btn"
-                                                                disabled={!lotAberto || !podeAlterarQtd || esgotado}
+                                                                className={`cart-quantity-btn ${!lotAberto || !podeAlterarQtd || esgotado ? 'opacity-50' : ''}`}
                                                                 title={esgotado ? 'Produto esgotado neste catálogo' : !podeAlterarQtd ? 'Este catálogo não permite alterar quantidades' : 'Aumentar quantidade'}
                                                             >
                                                                 <Plus size={16} />
@@ -683,9 +691,11 @@ export default function Cart() {
                                                             R$ {(item.preco * item.quantity).toFixed(2)}
                                                         </span>
                                                         <button
-                                                            onClick={() => removeItem(lotId, lineKey)}
-                                                            className="cart-item-remove"
-                                                            disabled={!lotAberto || !podeExcluir}
+                                                            onClick={(e) => {
+                                                              e.stopPropagation()
+                                                              removeItem(lotId, lineKey)
+                                                            }}
+                                                            className={`cart-item-remove ${!lotAberto || !podeExcluir ? 'opacity-50' : ''}`}
                                                             title={!podeExcluir ? 'A regra deste catálogo não permite remover itens do carrinho' : 'Remover item'}
                                                         >
                                                             <Trash2 size={18} />

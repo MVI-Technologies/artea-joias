@@ -57,3 +57,25 @@
     transform: scale(1) translateY(0);
   }
 }
+
+@media (max-width: 768px) {
+  .confirmation-modal .modal-footer {
+    display: flex !important;
+    flex-direction: row !important;
+    padding: 16px !important;
+    gap: 12px !important;
+    justify-content: space-between !important;
+  }
+  .confirmation-modal .modal-footer .btn {
+    flex: 1 1 50% !important;
+    max-width: 50% !important;
+    margin: 0 !important;
+    width: 100% !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    min-width: 0 !important;
+    padding: 10px 8px !important;
+    white-space: nowrap !important;
+  }
+}

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Plus, Search, Bell, ChevronDown, Copy, ExternalLink, Link as LinkIcon, MoreVertical, Edit, Lock, FileText, Package, Scissors, X, Settings, AlertTriangle, CheckCircle, MessageSquare, Clock } from 'lucide-react'
+import { Plus, Search, Bell, ChevronDown, Copy, ExternalLink, Link as LinkIcon, MoreVertical, Edit, Lock, FileText, Package, Scissors, X, Settings, AlertTriangle, CheckCircle, MessageSquare, Clock, Trash2 } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../../../lib/supabase'
 import { notifyCatalogClosed, sendRomaneiosAutomaticamente } from '../../../services/whatsapp'
@@ -11,9 +11,8 @@ export default function LotList() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('todos')
-  const [openDropdown, setOpenDropdown] = useState(null)
-  const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0 })
-  const dropdownBtnRef = useRef(null)
+  const [openDropdown, setOpenDropdown] = useState(null) // ID do lote ou 'toolbar'
+
 
   // Modal states
   const [showConfirmModal, setShowConfirmModal] = useState(null) // { type: 'fechar' | 'duplicar', lot: object }
@@ -56,20 +55,7 @@ export default function LotList() {
     }
   }, [openDropdown])
 
-  // Fechar dropdown ao fazer scroll
-  useEffect(() => {
-    if (!openDropdown) return
 
-    const handleScroll = () => {
-      setOpenDropdown(null)
-    }
-
-    window.addEventListener('scroll', handleScroll, true)
-
-    return () => {
-      window.removeEventListener('scroll', handleScroll, true)
-    }
-  }, [openDropdown])
 
   const fetchLots = async () => {
     try {
@@ -91,28 +77,19 @@ export default function LotList() {
     }
   }
 
-  // Função para calcular posição do dropdown
-  const calculateDropdownPosition = (buttonRect) => {
-    const dropdownWidth = 220
-    const padding = 4
+  // Fechar dropdown ao clicar fora
+  useEffect(() => {
+    if (!openDropdown) return
 
-    // Sempre abaixo do botão, alinhado à direita
-    const top = buttonRect.bottom + padding
-    let left = buttonRect.right - dropdownWidth
-
-    // Ajustar se sair da tela pela esquerda
-    if (left < padding) {
-      left = padding
+    const handleClickOutside = (event) => {
+      if (!event.target.closest('.dropdown-container-root')) {
+        setOpenDropdown(null)
+      }
     }
 
-    // Ajustar se sair da tela pela direita
-    const viewportWidth = window.innerWidth
-    if (left + dropdownWidth > viewportWidth) {
-      left = viewportWidth - dropdownWidth - padding
-    }
-
-    return { top, left }
-  }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [openDropdown])
 
   const getStatusBadge = (status) => {
     // Garantir string
@@ -184,6 +161,9 @@ export default function LotList() {
         break
       case 'separacao':
         navigate(`/admin/separacao?lot=${lot.id}`)
+        break
+      case 'excluir':
+        setShowConfirmModal({ type: 'excluir', lot })
         break
       default:
         break
@@ -327,6 +307,28 @@ export default function LotList() {
     }
   }
 
+  const deleteLot = async () => {
+    setShowConfirmModal(null)
+    setProcessing(true)
+
+    try {
+      const { error } = await supabase
+        .from('lots')
+        .delete()
+        .eq('id', showConfirmModal.lot.id)
+
+      if (error) throw error
+
+      fetchLots()
+      showToast('success', 'Grupo excluído com sucesso!')
+    } catch (error) {
+      console.error('Erro ao excluir:', error)
+      showToast('error', 'Erro ao excluir o grupo. Tente novamente.')
+    } finally {
+      setProcessing(false)
+    }
+  }
+
   const filteredLots = lots.filter(lot => {
     const matchSearch = lot.nome?.toLowerCase().includes(search.toLowerCase())
     const s = (lot.status || '').toLowerCase()
@@ -376,22 +378,55 @@ export default function LotList() {
           <Plus size={16} /> Catálogo
         </button>
 
-        <div className="dropdown-container">
+        <div className="dropdown-container-root">
           <button
             type="button"
             className="btn btn-dark"
-            onClick={(e) => {
-              if (openDropdown === 'toolbar') {
-                setOpenDropdown(null)
-              } else {
-                const rect = e.currentTarget.getBoundingClientRect()
-                setDropdownPos(calculateDropdownPosition(rect))
-                setOpenDropdown('toolbar')
-              }
-            }}
+            onClick={() => setOpenDropdown(openDropdown === 'toolbar' ? null : 'toolbar')}
           >
             <Settings size={16} /> Ações Gerais <ChevronDown size={14} />
           </button>
+          
+          {openDropdown === 'toolbar' && (
+            <div className="dropdown-menu-local dropdown-menu-toolbar">
+              <button
+                className="dropdown-close-btn-top-right"
+                onClick={(e) => { e.stopPropagation(); setOpenDropdown(null); }}
+                aria-label="Fechar menu"
+              >
+                <X size={10} />
+              </button>
+              <div className="dropdown-content-scrollable">
+                <div className="dropdown-section">
+                  <span className="dropdown-header">GESTÃO</span>
+                  <button type="button" onClick={() => { setOpenDropdown(null); navigate('/admin/lotes/novo'); }}>
+                    <Plus size={14} /> Novo Catálogo
+                  </button>
+                  <button type="button" onClick={() => { setOpenDropdown(null); navigate('/admin/categorias'); }}>
+                    <Settings size={14} /> Configurações Gerais
+                  </button>
+                </div>
+                <div className="dropdown-section">
+                  <span className="dropdown-header">OPERAÇÃO</span>
+                  <button type="button" onClick={() => { setOpenDropdown(null); navigate('/admin/romaneios'); }}>
+                    <Package size={14} /> Romaneios
+                  </button>
+                  <button type="button" onClick={() => { setOpenDropdown(null); navigate('/admin/separacao'); }}>
+                    <Scissors size={14} /> Separação
+                  </button>
+                </div>
+                <div className="dropdown-section">
+                  <span className="dropdown-header">RELATÓRIOS</span>
+                  <button type="button" onClick={() => { setOpenDropdown(null); navigate('/admin/relatorios?type=produtos'); }}>
+                    <FileText size={14} /> Relatório Produtos
+                  </button>
+                  <button type="button" onClick={() => { setOpenDropdown(null); navigate('/admin/relatorios?type=financeiro'); }}>
+                    <Clock size={14} /> Relatório Financeiro
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
       </div>
@@ -431,22 +466,53 @@ export default function LotList() {
                       </Link>
                       <Link to={`/admin/romaneios?lot=${lot.id}`} className="btn-action btn-romaneios">Romaneios</Link>
                       <Link to={`/admin/separacao?lot=${lot.id}`} className="btn-action btn-separacao">Separação</Link>
-                      <div className="dropdown-container">
+                      <div className="dropdown-container-root">
                         <button
                           type="button"
                           className="btn-action btn-acoes"
-                          onClick={(e) => {
-                            if (openDropdown === lot.id) {
-                              setOpenDropdown(null)
-                            } else {
-                              const rect = e.currentTarget.getBoundingClientRect()
-                              setDropdownPos(calculateDropdownPosition(rect))
-                              setOpenDropdown(lot.id)
-                            }
-                          }}
+                          onClick={() => setOpenDropdown(openDropdown === lot.id ? null : lot.id)}
                         >
                           Ações <ChevronDown size={12} />
                         </button>
+                        
+                        {openDropdown === lot.id && (
+                          <div className={`dropdown-menu-local ${index > filteredLots.length - 3 ? 'open-up' : ''}`}>
+                             <button
+                                className="dropdown-close-btn-top-right"
+                                onClick={(e) => { e.stopPropagation(); setOpenDropdown(null); }}
+                                aria-label="Fechar menu"
+                              >
+                                <X size={10} />
+                              </button>
+                             <div className="dropdown-catalog-header">
+                                {lot.nome || 'Catálogo'}
+                              </div>
+                              <div className="dropdown-content-scrollable">
+                                <button type="button" onClick={() => { setOpenDropdown(null); handleAction('editar', lot); }}>
+                                  <Edit size={14} /> Editar
+                                </button>
+                                <button type="button" onClick={() => { setOpenDropdown(null); handleAction('privacidade', lot); }}>
+                                  <Settings size={14} /> Privacidade
+                                </button>
+                                <button type="button" onClick={() => { setOpenDropdown(null); handleAction('duplicar', lot); }}>
+                                  <Copy size={14} /> Duplicar
+                                </button>
+                                <button type="button" onClick={() => { setOpenDropdown(null); handleAction('relatorio', lot); }}>
+                                  <FileText size={14} /> Relatório Produtos
+                                </button>
+                                <button type="button" onClick={() => { setOpenDropdown(null); handleAction('romaneios', lot); }}>
+                                  <Package size={14} /> Romaneios
+                                </button>
+                                <button type="button" onClick={() => { setOpenDropdown(null); handleAction('separacao', lot); }}>
+                                  <Scissors size={14} /> Separação
+                                </button>
+                                <div style={{ height: '1px', backgroundColor: '#e2e8f0', margin: '4px 0' }}></div>
+                                <button type="button" style={{color: '#ef4444'}} onClick={() => { setOpenDropdown(null); handleAction('excluir', lot); }}>
+                                  <Trash2 size={14} /> Excluir
+                                </button>
+                              </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </td>
@@ -498,16 +564,53 @@ export default function LotList() {
                 <Link to={`/admin/separacao?lot=${lot.id}`} className="btn btn-sm btn-secondary">
                   <Scissors size={14} /> Separação
                 </Link>
-                <button
-                  className="btn btn-sm btn-success"
-                  onClick={(e) => {
-                    const rect = e.currentTarget.getBoundingClientRect()
-                    setDropdownPos(calculateDropdownPosition(rect))
-                    setOpenDropdown(lot.id)
-                  }}
-                >
-                  <MoreVertical size={14} /> Ações
-                </button>
+                <div className="dropdown-container-root">
+                  <button
+                    className="btn btn-sm btn-success"
+                    onClick={() => setOpenDropdown(openDropdown === lot.id ? null : lot.id)}
+                  >
+                    <MoreVertical size={14} /> Ações
+                  </button>
+                  
+                  {openDropdown === lot.id && (
+                    <div className="dropdown-menu-local dropdown-mobile">
+                        <button
+                          className="dropdown-close-btn-top-right"
+                          onClick={(e) => { e.stopPropagation(); setOpenDropdown(null); }}
+                          aria-label="Fechar menu"
+                        >
+                          <X size={10} />
+                        </button>
+                        <div className="dropdown-catalog-header">
+                          {lot.nome}
+                        </div>
+                        <div className="dropdown-content-scrollable">
+                          <button type="button" onClick={() => { setOpenDropdown(null); handleAction('editar', lot); }}>
+                            <Edit size={14} /> Editar
+                          </button>
+                          <button type="button" onClick={() => { setOpenDropdown(null); handleAction('privacidade', lot); }}>
+                            <Settings size={14} /> Privacidade
+                          </button>
+                          <button type="button" onClick={() => { setOpenDropdown(null); handleAction('duplicar', lot); }}>
+                            <Copy size={14} /> Duplicar
+                          </button>
+                          <button type="button" onClick={() => { setOpenDropdown(null); handleAction('relatorio', lot); }}>
+                            <FileText size={14} /> Relatório Produtos
+                          </button>
+                          <button type="button" onClick={() => { setOpenDropdown(null); handleAction('romaneios', lot); }}>
+                            <Package size={14} /> Romaneios
+                          </button>
+                          <button type="button" onClick={() => { setOpenDropdown(null); handleAction('separacao', lot); }}>
+                            <Scissors size={14} /> Separação
+                          </button>
+                          <div style={{ height: '1px', backgroundColor: '#e2e8f0', margin: '4px 0' }}></div>
+                          <button type="button" style={{color: '#ef4444'}} onClick={() => { setOpenDropdown(null); handleAction('excluir', lot); }}>
+                            <Trash2 size={14} /> Excluir
+                          </button>
+                        </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           )
@@ -534,11 +637,13 @@ export default function LotList() {
             <div className="modal-confirm-header">
               {showConfirmModal.type === 'fechar' ? (
                 <Lock size={24} className="icon-warning" />
+              ) : showConfirmModal.type === 'excluir' ? (
+                <Trash2 size={24} className="icon-danger" style={{color: '#ef4444'}} />
               ) : (
                 <Copy size={24} className="icon-info" />
               )}
               <h3>
-                {showConfirmModal.type === 'fechar' ? 'Fechar Grupo' : 'Duplicar Grupo'}
+                {showConfirmModal.type === 'fechar' ? 'Fechar Grupo' : showConfirmModal.type === 'excluir' ? 'Excluir Grupo' : 'Duplicar Grupo'}
               </h3>
             </div>
 
@@ -558,6 +663,11 @@ export default function LotList() {
                     <span>Enviar notificação WhatsApp para os clientes</span>
                   </label>
                 </>
+              ) : showConfirmModal.type === 'excluir' ? (
+                <>
+                  <p>Tem certeza que deseja excluir o grupo <strong>"{showConfirmModal.lot?.nome}"</strong>?</p>
+                  <p className="text-muted" style={{color: '#ef4444', fontWeight: 500}}>Esta ação é permanente e apagará o grupo inteiro.</p>
+                </>
               ) : (
                 <>
                   <p>Deseja duplicar o grupo <strong>"{showConfirmModal.lot?.nome}"</strong>?</p>
@@ -575,11 +685,15 @@ export default function LotList() {
                 Cancelar
               </button>
               <button
-                className={`btn ${showConfirmModal.type === 'fechar' ? 'btn-danger' : 'btn-primary'}`}
-                onClick={() => showConfirmModal.type === 'fechar' ? closeLot() : duplicateLot()}
+                className={`btn ${showConfirmModal.type === 'fechar' || showConfirmModal.type === 'excluir' ? 'btn-danger' : 'btn-primary'}`}
+                onClick={() => {
+                  if (showConfirmModal.type === 'fechar') closeLot()
+                  else if (showConfirmModal.type === 'excluir') deleteLot()
+                  else duplicateLot()
+                }}
                 disabled={processing}
               >
-                {processing ? 'Processando...' : showConfirmModal.type === 'fechar' ? 'Fechar Grupo' : 'Duplicar'}
+                {processing ? 'Processando...' : showConfirmModal.type === 'fechar' ? 'Fechar Grupo' : showConfirmModal.type === 'excluir' ? 'Excluir Grupo' : 'Duplicar'}
               </button>
             </div>
           </div>
@@ -728,82 +842,7 @@ export default function LotList() {
         </div>
       )}
 
-      {/* Dropdown Menu Fixo */}
-      {openDropdown && (
-        <div
-          className="dropdown-menu-fixed"
-          style={{ top: dropdownPos.top, left: dropdownPos.left }}
-        >
-          <button
-            className="dropdown-close-btn-top-right"
-            onClick={() => setOpenDropdown(null)}
-            aria-label="Fechar menu"
-          >
-            <X size={10} />
-          </button>
-          {openDropdown === 'toolbar' ? (
-            // Ações gerais (sem catálogo específico)
-            <div className="dropdown-content-scrollable">
-              <div className="dropdown-section">
-                <span className="dropdown-header">GESTÃO</span>
-                <button type="button" onMouseDown={(e) => { e.preventDefault(); navigate('/admin/lotes/novo'); }}>
-                  <Plus size={14} /> Novo Catálogo
-                </button>
-                <button type="button" onMouseDown={(e) => { e.preventDefault(); navigate('/admin/categorias'); }}>
-                  <Settings size={14} /> Configurações Gerais
-                </button>
-              </div>
 
-              <div className="dropdown-section">
-                <span className="dropdown-header">OPERAÇÃO</span>
-                <button type="button" onMouseDown={(e) => { e.preventDefault(); navigate('/admin/romaneios'); }}>
-                  <Package size={14} /> Romaneios
-                </button>
-                <button type="button" onMouseDown={(e) => { e.preventDefault(); navigate('/admin/separacao'); }}>
-                  <Scissors size={14} /> Separação
-                </button>
-              </div>
-
-              <div className="dropdown-section">
-                <span className="dropdown-header">RELATÓRIOS</span>
-                <button type="button" onMouseDown={(e) => { e.preventDefault(); navigate('/admin/relatorios?type=produtos'); }}>
-                  <FileText size={14} /> Relatório Produtos
-                </button>
-                <button type="button" onMouseDown={(e) => { e.preventDefault(); navigate('/admin/relatorios?type=financeiro'); }}>
-                  <Clock size={14} /> Relatório Financeiro
-                </button>
-              </div>
-            </div>
-          ) : (
-            // Ações específicas de um catálogo
-            <>
-              <div className="dropdown-catalog-header">
-                {lots.find(l => l.id === openDropdown)?.nome || 'Catálogo'}
-              </div>
-              <div className="dropdown-content-scrollable">
-                <button type="button" onMouseDown={(e) => { e.preventDefault(); handleAction('editar', lots.find(l => l.id === openDropdown)); }}>
-                  <Edit size={14} /> Editar
-                </button>
-                <button type="button" onMouseDown={(e) => { e.preventDefault(); handleAction('privacidade', lots.find(l => l.id === openDropdown)); }}>
-                  <Settings size={14} /> Privacidade
-                </button>
-                <button type="button" onMouseDown={(e) => { e.preventDefault(); handleAction('duplicar', lots.find(l => l.id === openDropdown)); }}>
-                  <Copy size={14} /> Duplicar
-                </button>
-                <button type="button" onMouseDown={(e) => { e.preventDefault(); handleAction('relatorio', lots.find(l => l.id === openDropdown)); }}>
-                  <FileText size={14} /> Relatório Produtos
-                </button>
-                <button type="button" onMouseDown={(e) => { e.preventDefault(); handleAction('romaneios', lots.find(l => l.id === openDropdown)); }}>
-                  <Package size={14} /> Romaneios
-                </button>
-                <button type="button" onMouseDown={(e) => { e.preventDefault(); handleAction('separacao', lots.find(l => l.id === openDropdown)); }}>
-                  <Scissors size={14} /> Separação
-                </button>
-              </div>
-            </>
-          )}
-        </div>
-      )}
 
       {/* Toast Notification */}
       {toast && (
