@@ -426,12 +426,144 @@
   display: block;
 }
 
-/* Dropdown Menu Fixo (fora da tabela) */
-/* Dropdown Menu Local (Substituto do Fixed) */
-.dropdown-container-root {
-  position: relative !important;
-  display: inline-block !important;
+/* Dropdown Menu Fixo - renderizado fora da tabela via position: fixed */
+.dropdown-menu-fixed {
+  position: fixed;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.18);
+  z-index: 99999;
+  min-width: 220px;
+  max-width: calc(100vw - 24px);
+  max-height: 80vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  animation: dropdownFade 0.15s ease-out;
 }
+
+.dropdown-menu-fixed .dropdown-close-btn-top-right {
+  position: absolute !important;
+  top: 4px !important;
+  right: 4px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 16px !important;
+  height: 16px !important;
+  padding: 0 !important;
+  background: #ef4444 !important;
+  border: none !important;
+  border-radius: 3px !important;
+  cursor: pointer !important;
+  color: white !important;
+  z-index: 1 !important;
+}
+
+.dropdown-menu-fixed .dropdown-close-btn-top-right:hover {
+  background: #dc2626 !important;
+}
+
+.dropdown-menu-fixed button:not(.dropdown-close-btn-top-right) {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  width: 100% !important;
+  padding: 11px 16px !important;
+  text-align: left !important;
+  font-size: 13px !important;
+  color: #374151 !important;
+  background: transparent !important;
+  border: none !important;
+  cursor: pointer !important;
+  transition: background-color 0.15s ease !important;
+  white-space: nowrap !important;
+}
+
+.dropdown-menu-fixed button:not(.dropdown-close-btn-top-right):hover {
+  background-color: #f3f4f6 !important;
+}
+
+.dropdown-menu-fixed button:not(.dropdown-close-btn-top-right) svg {
+  color: #6b7280 !important;
+  flex-shrink: 0 !important;
+}
+
+/* Mobile Cards */
+.mobile-lots-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mobile-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.mobile-card-header {
+  padding: 12px 14px 10px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.mobile-card-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.mobile-card-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  flex: 1;
+  line-height: 1.3;
+}
+
+.mobile-card-deadline {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.mobile-card-actions {
+  display: flex;
+  gap: 6px;
+  padding: 10px 12px;
+}
+
+.mobile-card-actions .btn-action {
+  flex: 1;
+  min-width: 0 !important;
+  max-width: none !important;
+  justify-content: center;
+  padding: 8px 6px;
+  font-size: 11px;
+}
+
+.mobile-empty-state {
+  text-align: center;
+  padding: 48px 24px;
+  color: var(--text-secondary);
+}
+
+.mobile-empty-state p {
+  margin-top: 12px;
+  font-size: 14px;
+}
+
+/* Dropdown container (just for the click-outside detection) */
+.dropdown-container {
+  position: relative;
+  display: inline-block;
+}
+
 
 .dropdown-menu-local {
   position: absolute !important;
@@ -645,10 +777,21 @@
   .toolbar {
     flex-direction: column;
     align-items: stretch;
+    gap: 12px;
+  }
+
+  .toolbar-left,
+  .toolbar-right {
+    width: 100%;
   }
 
   .search-box {
     max-width: none;
+    width: 100%;
+  }
+
+  .status-filter {
+    width: 100%;
   }
 
   .action-buttons {

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 import './PortalDropdown.css'
@@ -27,9 +27,15 @@ export default function PortalDropdown({
   const dropdownRef = useRef(null)
   const [position, setPosition] = useState({ top: 0, left: 0 })
   const [placement, setPlacement] = useState('bottom') // bottom ou top
+  const [ready, setReady] = useState(false)
 
-  // Calcular posição do dropdown
+  // Reset ready when dropdown closes
   useEffect(() => {
+    if (!isOpen) setReady(false)
+  }, [isOpen])
+
+  // Calcular posição do dropdown ANTES do paint (useLayoutEffect)
+  useLayoutEffect(() => {
     if (!isOpen || !triggerRef.current || !dropdownRef.current) return
 
     const calculatePosition = () => {
@@ -71,6 +77,7 @@ export default function PortalDropdown({
       top = Math.max(padding, Math.min(top, viewportHeight - dropdownRect.height - padding))
 
       setPosition({ top, left })
+      setReady(true)
     }
 
     calculatePosition()
@@ -134,6 +141,7 @@ export default function PortalDropdown({
             position: 'fixed',
             top: `${position.top}px`,
             left: `${position.left}px`,
+            visibility: ready ? 'visible' : 'hidden',
           }}
         >
           {showCloseButton && (

@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from 'react'
-import { Plus, Search, Bell, ChevronDown, Copy, ExternalLink, Link as LinkIcon, MoreVertical, Edit, Lock, FileText, Package, Scissors, X, Settings, AlertTriangle, CheckCircle, MessageSquare, Clock, Trash2 } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Plus, Search, ChevronDown, Copy, MoreVertical, Edit, Lock, FileText, Package, Scissors, X, Settings, AlertTriangle, CheckCircle, MessageSquare, Clock, Trash2 } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../../../lib/supabase'
 import { notifyCatalogClosed, sendRomaneiosAutomaticamente } from '../../../services/whatsapp'
@@ -11,11 +11,11 @@ export default function LotList() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('todos')
-  const [openDropdown, setOpenDropdown] = useState(null) // ID do lote ou 'toolbar'
-
+  const [openDropdown, setOpenDropdown] = useState(null)
+  const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0 })
 
   // Modal states
-  const [showConfirmModal, setShowConfirmModal] = useState(null) // { type: 'fechar' | 'duplicar', lot: object }
+  const [showConfirmModal, setShowConfirmModal] = useState(null) // { type: 'fechar' | 'duplicar' | 'excluir', lot: object }
   const [showConfigModal, setShowConfigModal] = useState(null) // lot object
   const [configData, setConfigData] = useState({})
   const [notifyOnClose, setNotifyOnClose] = useState(true)
@@ -55,20 +55,23 @@ export default function LotList() {
     }
   }, [openDropdown])
 
+  // Fechar dropdown ao fazer scroll
+  useEffect(() => {
+    if (!openDropdown) return
 
+    const handleScroll = () => setOpenDropdown(null)
+    window.addEventListener('scroll', handleScroll, true)
+    return () => window.removeEventListener('scroll', handleScroll, true)
+  }, [openDropdown])
 
   const fetchLots = async () => {
     try {
       const { data, error } = await supabase
         .from('lots')
-        .select(`
-          *,
-          lot_products:lot_products(count)
-        `)
+        .select(`*, lot_products:lot_products(count)`)
         .order('created_at', { ascending: false })
 
       if (error) throw error
-      console.log('DEBUG LOTS DATA:', data) // Debug solicitado
       setLots(data || [])
     } catch (error) {
       console.error('Erro ao carregar grupos:', error)
@@ -77,24 +80,32 @@ export default function LotList() {
     }
   }
 
-  // Fechar dropdown ao clicar fora
-  useEffect(() => {
-    if (!openDropdown) return
+  // Calcular posição do dropdown fixo
+  const calculateDropdownPosition = (buttonRect) => {
+    const dropdownWidth = 220
+    const padding = 4
 
-    const handleClickOutside = (event) => {
-      if (!event.target.closest('.dropdown-container-root')) {
-        setOpenDropdown(null)
-      }
+    const top = buttonRect.bottom + padding
+    let left = buttonRect.right - dropdownWidth
+
+    if (left < padding) left = padding
+
+    const viewportWidth = window.innerWidth
+    if (left + dropdownWidth > viewportWidth) {
+      left = viewportWidth - dropdownWidth - padding
     }
 
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [openDropdown])
+    return { top, left }
+  }
+
+  const openDropdownFor = (e, id) => {
+    const rect = e.currentTarget.getBoundingClientRect()
+    setDropdownPos(calculateDropdownPosition(rect))
+    setOpenDropdown(id)
+  }
 
   const getStatusBadge = (status) => {
-    // Garantir string
     const raw = String(status || '')
-    // Remover tudo que não é letra/número para chave (ex: ' fechado ' -> 'fechado')
     const key = raw.toLowerCase().replace(/[^a-z0-9]/g, '')
 
     const statusMap = {
@@ -123,13 +134,8 @@ export default function LotList() {
       'cancelado': { label: 'Cancelado', class: 'badge-red' },
     }
 
-    // Se a chave processada bater com o mapa, retorna
     if (statusMap[key]) return statusMap[key]
-
-    // Fallback Inteligente
     if (!key || key === 'null' || key === 'undefined') return { label: 'Aberto', class: 'badge-green' }
-
-    // Se tem valor mas não mapeou, mostra cinza
     return { label: raw, class: 'badge-gray' }
   }
 
@@ -137,7 +143,6 @@ export default function LotList() {
     if (!date) return '-'
     return new Date(date).toLocaleDateString('pt-BR')
   }
-
 
   const handleAction = (action, lot) => {
     setOpenDropdown(null)
@@ -148,7 +153,17 @@ export default function LotList() {
         break
       case 'privacidade':
         setShowConfigModal(lot)
-        setConfigData(lot)
+        setConfigData({
+          nome: lot.nome || '',
+          descricao: lot.descricao || '',
+          data_fim: lot.data_fim || '',
+          taxa_separacao: lot.taxa_separacao || 0,
+          requer_pacote_fechado: lot.requer_pacote_fechado || false,
+          chave_pix: lot.chave_pix || '',
+          nome_beneficiario: lot.nome_beneficiario || '',
+          mensagem_pagamento: lot.mensagem_pagamento || '',
+          telefone_financeiro: lot.telefone_financeiro || ''
+        })
         break
       case 'duplicar':
         setShowConfirmModal({ type: 'duplicar', lot })
@@ -168,21 +183,6 @@ export default function LotList() {
       default:
         break
     }
-  }
-
-  const openConfigModal = (lot) => {
-    setShowConfigModal(lot)
-    setConfigData({
-      nome: lot.nome || '',
-      descricao: lot.descricao || '',
-      data_fim: lot.data_fim || '',
-      taxa_separacao: lot.taxa_separacao || 0,
-      requer_pacote_fechado: lot.requer_pacote_fechado || false,
-      chave_pix: lot.chave_pix || '',
-      nome_beneficiario: lot.nome_beneficiario || '',
-      mensagem_pagamento: lot.mensagem_pagamento || '',
-      telefone_financeiro: lot.telefone_financeiro || ''
-    })
   }
 
   const saveConfig = async () => {
@@ -211,7 +211,6 @@ export default function LotList() {
     setProcessing(true)
 
     try {
-      // Buscar dados atualizados do lote antes de fechar
       const { data: lotData, error: lotError } = await supabase
         .from('lots')
         .select('*')
@@ -227,7 +226,6 @@ export default function LotList() {
 
       if (error) throw error
 
-      // Enviar notificação se marcado
       if (notifyOnClose) {
         const { data: clients } = await supabase
           .from('clients')
@@ -240,27 +238,18 @@ export default function LotList() {
         }
       }
 
-      // Enviar romaneios automaticamente se configurado
       if (lotData?.enviar_romaneio_automaticamente) {
         showToast('info', 'Enviando romaneios automaticamente...')
-        
         try {
-          const romaneiosResult = await sendRomaneiosAutomaticamente(
-            supabase, 
-            showConfirmModal.lot.id, 
-            lotData
-          )
-          
+          const romaneiosResult = await sendRomaneiosAutomaticamente(supabase, showConfirmModal.lot.id, lotData)
           if (romaneiosResult.success) {
-            showToast('success', `Romaneios enviados! ${romaneiosResult.sent} de ${romaneiosResult.total} enviado(s) com sucesso.`)
+            showToast('success', `Romaneios enviados! ${romaneiosResult.sent} de ${romaneiosResult.total} enviado(s).`)
           } else {
-            const errorMsg = romaneiosResult.error || 'Erro desconhecido'
-            const sentMsg = romaneiosResult.sent > 0 ? ` ${romaneiosResult.sent} enviado(s),` : ''
-            showToast('warning', `Envio parcial:${sentMsg} ${romaneiosResult.errors} erro(s). ${errorMsg}`)
+            showToast('warning', `Envio parcial: ${romaneiosResult.errors} erro(s).`)
           }
-        } catch (romaneiosError) {
-          console.error('Erro ao enviar romaneios:', romaneiosError)
-          showToast('warning', 'Erro ao enviar romaneios automaticamente. Você pode enviá-los manualmente.')
+        } catch (e) {
+          console.error(e)
+          showToast('warning', 'Erro ao enviar romaneios automaticamente.')
         }
       }
 
@@ -340,13 +329,17 @@ export default function LotList() {
     return <div className="page-container"><div className="loading-spinner" style={{ margin: '40px auto' }} /></div>
   }
 
+  // Encontrar o lote aberto no dropdown
+  const activeLot = openDropdown && openDropdown !== 'toolbar'
+    ? lots.find(l => l.id === openDropdown)
+    : null
+
   return (
     <div className="page-container grupo-compras-page">
       {/* Barra de busca e filtros */}
       <div className="toolbar">
         <div className="toolbar-left">
           <div className="search-box">
-            {/* ... search input ... */}
             <input
               type="text"
               placeholder="Buscar nome"
@@ -378,57 +371,21 @@ export default function LotList() {
           <Plus size={16} /> Catálogo
         </button>
 
-        <div className="dropdown-container-root">
+        <div className="dropdown-container">
           <button
             type="button"
             className="btn btn-dark"
-            onClick={() => setOpenDropdown(openDropdown === 'toolbar' ? null : 'toolbar')}
+            onClick={(e) => {
+              if (openDropdown === 'toolbar') {
+                setOpenDropdown(null)
+              } else {
+                openDropdownFor(e, 'toolbar')
+              }
+            }}
           >
             <Settings size={16} /> Ações Gerais <ChevronDown size={14} />
           </button>
-          
-          {openDropdown === 'toolbar' && (
-            <div className="dropdown-menu-local dropdown-menu-toolbar">
-              <button
-                className="dropdown-close-btn-top-right"
-                onClick={(e) => { e.stopPropagation(); setOpenDropdown(null); }}
-                aria-label="Fechar menu"
-              >
-                <X size={10} />
-              </button>
-              <div className="dropdown-content-scrollable">
-                <div className="dropdown-section">
-                  <span className="dropdown-header">GESTÃO</span>
-                  <button type="button" onClick={() => { setOpenDropdown(null); navigate('/admin/lotes/novo'); }}>
-                    <Plus size={14} /> Novo Catálogo
-                  </button>
-                  <button type="button" onClick={() => { setOpenDropdown(null); navigate('/admin/categorias'); }}>
-                    <Settings size={14} /> Configurações Gerais
-                  </button>
-                </div>
-                <div className="dropdown-section">
-                  <span className="dropdown-header">OPERAÇÃO</span>
-                  <button type="button" onClick={() => { setOpenDropdown(null); navigate('/admin/romaneios'); }}>
-                    <Package size={14} /> Romaneios
-                  </button>
-                  <button type="button" onClick={() => { setOpenDropdown(null); navigate('/admin/separacao'); }}>
-                    <Scissors size={14} /> Separação
-                  </button>
-                </div>
-                <div className="dropdown-section">
-                  <span className="dropdown-header">RELATÓRIOS</span>
-                  <button type="button" onClick={() => { setOpenDropdown(null); navigate('/admin/relatorios?type=produtos'); }}>
-                    <FileText size={14} /> Relatório Produtos
-                  </button>
-                  <button type="button" onClick={() => { setOpenDropdown(null); navigate('/admin/relatorios?type=financeiro'); }}>
-                    <Clock size={14} /> Relatório Financeiro
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
-
       </div>
 
       {/* Desktop: Tabela de grupos */}
@@ -444,7 +401,6 @@ export default function LotList() {
             </tr>
           </thead>
           <tbody>
-            {/* Lotes regulares */}
             {filteredLots.map((lot) => {
               const badgeInfo = getStatusBadge(lot.status)
               return (
@@ -466,53 +422,20 @@ export default function LotList() {
                       </Link>
                       <Link to={`/admin/romaneios?lot=${lot.id}`} className="btn-action btn-romaneios">Romaneios</Link>
                       <Link to={`/admin/separacao?lot=${lot.id}`} className="btn-action btn-separacao">Separação</Link>
-                      <div className="dropdown-container-root">
+                      <div className="dropdown-container">
                         <button
                           type="button"
                           className="btn-action btn-acoes"
-                          onClick={() => setOpenDropdown(openDropdown === lot.id ? null : lot.id)}
+                          onClick={(e) => {
+                            if (openDropdown === lot.id) {
+                              setOpenDropdown(null)
+                            } else {
+                              openDropdownFor(e, lot.id)
+                            }
+                          }}
                         >
                           Ações <ChevronDown size={12} />
                         </button>
-                        
-                        {openDropdown === lot.id && (
-                          <div className={`dropdown-menu-local ${index > filteredLots.length - 3 ? 'open-up' : ''}`}>
-                             <button
-                                className="dropdown-close-btn-top-right"
-                                onClick={(e) => { e.stopPropagation(); setOpenDropdown(null); }}
-                                aria-label="Fechar menu"
-                              >
-                                <X size={10} />
-                              </button>
-                             <div className="dropdown-catalog-header">
-                                {lot.nome || 'Catálogo'}
-                              </div>
-                              <div className="dropdown-content-scrollable">
-                                <button type="button" onClick={() => { setOpenDropdown(null); handleAction('editar', lot); }}>
-                                  <Edit size={14} /> Editar
-                                </button>
-                                <button type="button" onClick={() => { setOpenDropdown(null); handleAction('privacidade', lot); }}>
-                                  <Settings size={14} /> Privacidade
-                                </button>
-                                <button type="button" onClick={() => { setOpenDropdown(null); handleAction('duplicar', lot); }}>
-                                  <Copy size={14} /> Duplicar
-                                </button>
-                                <button type="button" onClick={() => { setOpenDropdown(null); handleAction('relatorio', lot); }}>
-                                  <FileText size={14} /> Relatório Produtos
-                                </button>
-                                <button type="button" onClick={() => { setOpenDropdown(null); handleAction('romaneios', lot); }}>
-                                  <Package size={14} /> Romaneios
-                                </button>
-                                <button type="button" onClick={() => { setOpenDropdown(null); handleAction('separacao', lot); }}>
-                                  <Scissors size={14} /> Separação
-                                </button>
-                                <div style={{ height: '1px', backgroundColor: '#e2e8f0', margin: '4px 0' }}></div>
-                                <button type="button" style={{color: '#ef4444'}} onClick={() => { setOpenDropdown(null); handleAction('excluir', lot); }}>
-                                  <Trash2 size={14} /> Excluir
-                                </button>
-                              </div>
-                          </div>
-                        )}
                       </div>
                     </div>
                   </td>
@@ -533,90 +456,41 @@ export default function LotList() {
 
       {/* Mobile: Cards */}
       <div className="show-mobile mobile-lots-container">
-        {/* Regular Lots Cards */}
         {filteredLots.map((lot) => {
           const badgeInfo = getStatusBadge(lot.status)
           return (
             <div key={lot.id} className="mobile-card">
               <div className="mobile-card-header">
-                <span className="mobile-card-title">{lot.nome}</span>
-                <span className={`status-badge ${badgeInfo.class}`}>
-                  {badgeInfo.label}
-                </span>
-              </div>
-              <div className="mobile-card-body">
-                <div className="mobile-card-row">
-                  <span className="mobile-card-label">Início:</span>
-                  <span className="mobile-card-value">{formatDate(lot.created_at)}</span>
+                <div className="mobile-card-title-row">
+                  <span className="mobile-card-title">{lot.nome}</span>
+                  <span className={`status-badge ${badgeInfo.class}`}>
+                    {badgeInfo.label}
+                  </span>
                 </div>
-                <div className="mobile-card-row">
-                  <span className="mobile-card-label">Encerramento:</span>
-                  <span className="mobile-card-value">{formatDate(lot.data_fim)}</span>
-                </div>
+                {lot.data_fim && (
+                  <span className="mobile-card-deadline">
+                    <Clock size={12} /> Encerra: {formatDate(lot.data_fim)}
+                  </span>
+                )}
               </div>
               <div className="mobile-card-actions">
-                <Link to={`/admin/lotes/${lot.id}`} className="btn btn-sm btn-primary">
-                  <Package size={14} /> Produtos
+                <Link to={`/admin/lotes/${lot.id}`} className="btn-action btn-produtos">
+                  Produtos
                 </Link>
-                <Link to={`/admin/romaneios?lot=${lot.id}`} className="btn btn-sm btn-secondary">
-                  <FileText size={14} /> Romaneios
+                <Link to={`/admin/romaneios?lot=${lot.id}`} className="btn-action btn-romaneios">
+                  Romaneios
                 </Link>
-                <Link to={`/admin/separacao?lot=${lot.id}`} className="btn btn-sm btn-secondary">
-                  <Scissors size={14} /> Separação
-                </Link>
-                <div className="dropdown-container-root">
-                  <button
-                    className="btn btn-sm btn-success"
-                    onClick={() => setOpenDropdown(openDropdown === lot.id ? null : lot.id)}
-                  >
-                    <MoreVertical size={14} /> Ações
-                  </button>
-                  
-                  {openDropdown === lot.id && (
-                    <div className="dropdown-menu-local dropdown-mobile">
-                        <button
-                          className="dropdown-close-btn-top-right"
-                          onClick={(e) => { e.stopPropagation(); setOpenDropdown(null); }}
-                          aria-label="Fechar menu"
-                        >
-                          <X size={10} />
-                        </button>
-                        <div className="dropdown-catalog-header">
-                          {lot.nome}
-                        </div>
-                        <div className="dropdown-content-scrollable">
-                          <button type="button" onClick={() => { setOpenDropdown(null); handleAction('editar', lot); }}>
-                            <Edit size={14} /> Editar
-                          </button>
-                          <button type="button" onClick={() => { setOpenDropdown(null); handleAction('privacidade', lot); }}>
-                            <Settings size={14} /> Privacidade
-                          </button>
-                          <button type="button" onClick={() => { setOpenDropdown(null); handleAction('duplicar', lot); }}>
-                            <Copy size={14} /> Duplicar
-                          </button>
-                          <button type="button" onClick={() => { setOpenDropdown(null); handleAction('relatorio', lot); }}>
-                            <FileText size={14} /> Relatório Produtos
-                          </button>
-                          <button type="button" onClick={() => { setOpenDropdown(null); handleAction('romaneios', lot); }}>
-                            <Package size={14} /> Romaneios
-                          </button>
-                          <button type="button" onClick={() => { setOpenDropdown(null); handleAction('separacao', lot); }}>
-                            <Scissors size={14} /> Separação
-                          </button>
-                          <div style={{ height: '1px', backgroundColor: '#e2e8f0', margin: '4px 0' }}></div>
-                          <button type="button" style={{color: '#ef4444'}} onClick={() => { setOpenDropdown(null); handleAction('excluir', lot); }}>
-                            <Trash2 size={14} /> Excluir
-                          </button>
-                        </div>
-                    </div>
-                  )}
-                </div>
+                <button
+                  className="btn-action btn-acoes"
+                  onClick={(e) => openDropdownFor(e, lot.id)}
+                >
+                  <MoreVertical size={14} /> Ações
+                </button>
               </div>
             </div>
           )
         })}
 
-        {/* Empty State */}
         {filteredLots.length === 0 && (
           <div className="mobile-empty-state">
             <AlertTriangle size={32} />
@@ -630,6 +504,83 @@ export default function LotList() {
         Página 1 / 1 - {filteredLots.length} resultados
       </div>
 
+      {/* Dropdown Menu Fixo - renderizado UMA VEZ fora da tabela */}
+      {openDropdown && (
+        <div
+          className="dropdown-menu-fixed"
+          style={{ top: dropdownPos.top, left: dropdownPos.left }}
+        >
+          <button
+            className="dropdown-close-btn-top-right"
+            onMouseDown={(e) => { e.preventDefault(); setOpenDropdown(null) }}
+            aria-label="Fechar menu"
+          >
+            <X size={10} />
+          </button>
+          {openDropdown === 'toolbar' ? (
+            <div className="dropdown-content-scrollable">
+              <div className="dropdown-section">
+                <span className="dropdown-header">GESTÃO</span>
+                <button type="button" onMouseDown={(e) => { e.preventDefault(); navigate('/admin/lotes/novo') }}>
+                  <Plus size={14} /> Novo Catálogo
+                </button>
+                <button type="button" onMouseDown={(e) => { e.preventDefault(); navigate('/admin/categorias') }}>
+                  <Settings size={14} /> Configurações Gerais
+                </button>
+              </div>
+              <div className="dropdown-section">
+                <span className="dropdown-header">OPERAÇÃO</span>
+                <button type="button" onMouseDown={(e) => { e.preventDefault(); navigate('/admin/romaneios') }}>
+                  <Package size={14} /> Romaneios
+                </button>
+                <button type="button" onMouseDown={(e) => { e.preventDefault(); navigate('/admin/separacao') }}>
+                  <Scissors size={14} /> Separação
+                </button>
+              </div>
+              <div className="dropdown-section">
+                <span className="dropdown-header">RELATÓRIOS</span>
+                <button type="button" onMouseDown={(e) => { e.preventDefault(); navigate('/admin/relatorios?type=produtos') }}>
+                  <FileText size={14} /> Relatório Produtos
+                </button>
+                <button type="button" onMouseDown={(e) => { e.preventDefault(); navigate('/admin/relatorios?type=financeiro') }}>
+                  <Clock size={14} /> Relatório Financeiro
+                </button>
+              </div>
+            </div>
+          ) : activeLot ? (
+            <>
+              <div className="dropdown-catalog-header">
+                {activeLot.nome || 'Catálogo'}
+              </div>
+              <div className="dropdown-content-scrollable">
+                <button type="button" onMouseDown={(e) => { e.preventDefault(); handleAction('editar', activeLot) }}>
+                  <Edit size={14} /> Editar
+                </button>
+                <button type="button" onMouseDown={(e) => { e.preventDefault(); handleAction('privacidade', activeLot) }}>
+                  <Settings size={14} /> Privacidade
+                </button>
+                <button type="button" onMouseDown={(e) => { e.preventDefault(); handleAction('duplicar', activeLot) }}>
+                  <Copy size={14} /> Duplicar
+                </button>
+                <button type="button" onMouseDown={(e) => { e.preventDefault(); handleAction('relatorio', activeLot) }}>
+                  <FileText size={14} /> Relatório Produtos
+                </button>
+                <button type="button" onMouseDown={(e) => { e.preventDefault(); handleAction('romaneios', activeLot) }}>
+                  <Package size={14} /> Romaneios
+                </button>
+                <button type="button" onMouseDown={(e) => { e.preventDefault(); handleAction('separacao', activeLot) }}>
+                  <Scissors size={14} /> Separação
+                </button>
+                <div style={{ height: '1px', backgroundColor: '#e2e8f0', margin: '4px 0' }}></div>
+                <button type="button" style={{ color: '#ef4444' }} onMouseDown={(e) => { e.preventDefault(); handleAction('excluir', activeLot) }}>
+                  <Trash2 size={14} /> Excluir
+                </button>
+              </div>
+            </>
+          ) : null}
+        </div>
+      )}
+
       {/* Modal de Confirmação */}
       {showConfirmModal && (
         <div className="modal-overlay" onClick={() => !processing && setShowConfirmModal(null)}>
@@ -638,12 +589,14 @@ export default function LotList() {
               {showConfirmModal.type === 'fechar' ? (
                 <Lock size={24} className="icon-warning" />
               ) : showConfirmModal.type === 'excluir' ? (
-                <Trash2 size={24} className="icon-danger" style={{color: '#ef4444'}} />
+                <Trash2 size={24} style={{ color: '#ef4444' }} />
               ) : (
                 <Copy size={24} className="icon-info" />
               )}
               <h3>
-                {showConfirmModal.type === 'fechar' ? 'Fechar Grupo' : showConfirmModal.type === 'excluir' ? 'Excluir Grupo' : 'Duplicar Grupo'}
+                {showConfirmModal.type === 'fechar' ? 'Fechar Grupo'
+                  : showConfirmModal.type === 'excluir' ? 'Excluir Grupo'
+                  : 'Duplicar Grupo'}
               </h3>
             </div>
 
@@ -652,7 +605,6 @@ export default function LotList() {
                 <>
                   <p>Tem certeza que deseja fechar o grupo <strong>"{showConfirmModal.lot?.nome}"</strong>?</p>
                   <p className="text-muted">Isso impedirá novas reservas neste grupo.</p>
-
                   <label className="checkbox-notify">
                     <input
                       type="checkbox"
@@ -666,7 +618,7 @@ export default function LotList() {
               ) : showConfirmModal.type === 'excluir' ? (
                 <>
                   <p>Tem certeza que deseja excluir o grupo <strong>"{showConfirmModal.lot?.nome}"</strong>?</p>
-                  <p className="text-muted" style={{color: '#ef4444', fontWeight: 500}}>Esta ação é permanente e apagará o grupo inteiro.</p>
+                  <p className="text-muted" style={{ color: '#ef4444', fontWeight: 500 }}>Esta ação é permanente e não pode ser desfeita.</p>
                 </>
               ) : (
                 <>
@@ -693,7 +645,10 @@ export default function LotList() {
                 }}
                 disabled={processing}
               >
-                {processing ? 'Processando...' : showConfirmModal.type === 'fechar' ? 'Fechar Grupo' : showConfirmModal.type === 'excluir' ? 'Excluir Grupo' : 'Duplicar'}
+                {processing ? 'Processando...'
+                  : showConfirmModal.type === 'fechar' ? 'Fechar Grupo'
+                  : showConfirmModal.type === 'excluir' ? 'Excluir Grupo'
+                  : 'Duplicar'}
               </button>
             </div>
           </div>
@@ -712,12 +667,8 @@ export default function LotList() {
             </div>
 
             <div className="modal-config-body-light">
-              {/* Seção: Informações Básicas */}
               <div className="config-section">
-                <h4 className="section-title">
-                  <FileText size={16} /> INFORMAÇÕES BÁSICAS
-                </h4>
-
+                <h4 className="section-title"><FileText size={16} /> INFORMAÇÕES BÁSICAS</h4>
                 <div className="form-group-light">
                   <label>Nome do Link</label>
                   <input
@@ -727,47 +678,32 @@ export default function LotList() {
                     placeholder="Ex: LINK 502 - Novidades"
                   />
                 </div>
-
                 <div className="form-group-light">
                   <label>Descrição</label>
                   <textarea
                     value={configData.descricao}
                     onChange={(e) => setConfigData({ ...configData, descricao: e.target.value })}
-                    rows={6}
+                    rows={4}
                     placeholder="Descrição para os clientes..."
                   />
                 </div>
               </div>
 
-              {/* Seção: Regras e Prazos */}
               <div className="config-section">
-                <h4 className="section-title">
-                  <Clock size={16} /> REGRAS E PRAZOS
-                </h4>
-
+                <h4 className="section-title"><Clock size={16} /> REGRAS E PRAZOS</h4>
                 <div className="form-group-light">
                   <label>Data/Hora de Encerramento</label>
                   <input
                     type="datetime-local"
                     value={configData.data_fim ? (() => {
-                      const d = new Date(configData.data_fim);
-                      const year = d.getFullYear();
-                      const month = String(d.getMonth() + 1).padStart(2, '0');
-                      const day = String(d.getDate()).padStart(2, '0');
-                      const hours = String(d.getHours()).padStart(2, '0');
-                      const minutes = String(d.getMinutes()).padStart(2, '0');
-                      return `${year}-${month}-${day}T${hours}:${minutes}`;
+                      const d = new Date(configData.data_fim)
+                      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
                     })() : ''}
-                    onChange={(e) => {
-                      // Salvar como string datetime mas adicionar segundos e manter local
-                      // Ex: "2026-02-06T00:00" -> "2026-02-06T00:00:00"
-                      setConfigData({ ...configData, data_fim: e.target.value ? e.target.value + ':00' : null });
-                    }}
+                    onChange={(e) => setConfigData({ ...configData, data_fim: e.target.value ? e.target.value + ':00' : null })}
                     onClick={(e) => e.target.showPicker()}
                     onKeyDown={(e) => e.preventDefault()}
                   />
                 </div>
-
                 <div className="form-row-light">
                   <div className="form-group-light">
                     <label>Taxa de Separação (R$)</label>
@@ -779,7 +715,6 @@ export default function LotList() {
                     />
                   </div>
                 </div>
-
                 <div className="checkbox-section">
                   <label className="checkbox-wrapper-light">
                     <input
@@ -789,16 +724,11 @@ export default function LotList() {
                     />
                     <span>Requer pacote fechado</span>
                   </label>
-                  <p className="checkbox-hint-light">Só permite fechar quando todos os pacotes estiverem completos</p>
                 </div>
               </div>
 
-              {/* Seção: Dados de Pagamento */}
               <div className="config-section">
-                <h4 className="section-title">
-                  <FileText size={16} /> DADOS DE PAGAMENTO
-                </h4>
-
+                <h4 className="section-title"><FileText size={16} /> DADOS DE PAGAMENTO</h4>
                 <div className="form-row-light">
                   <div className="form-group-light">
                     <label>Chave PIX</label>
@@ -823,26 +753,16 @@ export default function LotList() {
             </div>
 
             <div className="modal-config-footer-light">
-              <button
-                className="btn-cancel-light"
-                onClick={() => setShowConfigModal(null)}
-                disabled={processing}
-              >
+              <button className="btn-cancel-light" onClick={() => setShowConfigModal(null)} disabled={processing}>
                 Cancelar
               </button>
-              <button
-                className="btn-save-light"
-                onClick={saveConfig}
-                disabled={processing}
-              >
+              <button className="btn-save-light" onClick={saveConfig} disabled={processing}>
                 {processing ? 'Salvando...' : 'Salvar Configurações'}
               </button>
             </div>
           </div>
         </div>
       )}
-
-
 
       {/* Toast Notification */}
       {toast && (
