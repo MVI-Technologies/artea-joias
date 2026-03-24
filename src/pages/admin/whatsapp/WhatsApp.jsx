@@ -15,14 +15,16 @@ import {
   EyeOff,
   CheckSquare,
   Square,
-  User
+  User,
+  Upload
 } from 'lucide-react'
 import { supabase } from '../../../lib/supabase'
-import { sendWhatsAppMessage } from '../../../services/whatsapp'
+import { sendWhatsAppMessage, sendImageMessage } from '../../../services/whatsapp'
 import './WhatsApp.css'
 
 export default function WhatsApp() {
   const [message, setMessage] = useState('')
+  const [imageUrl, setImageUrl] = useState('')
   const [clients, setClients] = useState([])
   const [selectedClients, setSelectedClients] = useState([])
   const [history, setHistory] = useState([])
@@ -224,7 +226,16 @@ export default function WhatsApp() {
         // Personalizar mensagem
         const personalizedMessage = message.trim().replace(/%Nome%/gi, client.nome || 'Cliente')
 
-        const result = await sendWhatsAppMessage(client.telefone, personalizedMessage)
+        let result;
+        if (imageUrl.trim()) {
+          result = await sendImageMessage({
+            number: client.telefone,
+            imageUrl: imageUrl.trim(),
+            caption: personalizedMessage
+          })
+        } else {
+          result = await sendWhatsAppMessage(client.telefone, personalizedMessage)
+        }
 
         if (result.success) {
           successCount++
@@ -279,6 +290,12 @@ export default function WhatsApp() {
 
     setSending(false)
     setMessage('')
+    setImageUrl('')
+    
+    // Reset the file input if it exists
+    const fileInput = document.getElementById('image-upload')
+    if (fileInput) fileInput.value = ''
+    
     fetchHistory()
 
     // Mostrar resultado
@@ -486,6 +503,90 @@ export default function WhatsApp() {
             <Send size={20} />
             Enviar Mensagem
           </h2>
+
+          <div className="form-group">
+            <label>Imagem (Opcional)</label>
+            <div className="image-upload-container">
+              {!imageUrl ? (
+                <div className="image-upload-wrapper">
+                  <input
+                    id="image-upload"
+                    type="file"
+                    accept="image/*"
+                    disabled={sending}
+                    onChange={(e) => {
+                      const file = e.target.files[0]
+                      if (file) {
+                        if (file.size > 5 * 1024 * 1024) {
+                          showNotification('error', 'A imagem deve ter no máximo 5MB')
+                          e.target.value = ''
+                          return
+                        }
+                        const reader = new FileReader()
+                        reader.onloadend = () => {
+                          const img = new Image()
+                          img.onload = () => {
+                            const canvas = document.createElement('canvas')
+                            let width = img.width
+                            let height = img.height
+                            const maxDimension = 1200
+                            
+                            if (width > height) {
+                              if (width > maxDimension) {
+                                height = Math.round((height *= maxDimension / width))
+                                width = maxDimension
+                              }
+                            } else {
+                              if (height > maxDimension) {
+                                width = Math.round((width *= maxDimension / height))
+                                height = maxDimension
+                              }
+                            }
+                            
+                            canvas.width = width
+                            canvas.height = height
+                            const ctx = canvas.getContext('2d')
+                            ctx.drawImage(img, 0, 0, width, height)
+                            
+                            const compressedBase64 = canvas.toDataURL('image/jpeg', 0.8)
+                            setImageUrl(compressedBase64)
+                          }
+                          img.src = reader.result
+                        }
+                        reader.readAsDataURL(file)
+                      } else {
+                        setImageUrl('')
+                      }
+                    }}
+                  />
+                  <div className="upload-placeholder">
+                    <Upload size={32} className="upload-icon" />
+                    <span className="upload-text"><strong>Clique para selecionar</strong> ou arraste uma imagem</span>
+                    <span className="upload-hint">PNG, JPG, JPEG (Max. 5MB)</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="image-preview-container">
+                  <img src={imageUrl} alt="Preview" />
+                  <button 
+                    type="button" 
+                    className="remove-image-btn" 
+                    title="Remover Imagem"
+                    onClick={() => {
+                      setImageUrl('')
+                      const fileInput = document.getElementById('image-upload')
+                      if (fileInput) fileInput.value = ''
+                    }}
+                  >
+                    <XCircle size={16} />
+                  </button>
+                </div>
+              )}
+            </div>
+            <div className="message-help">
+              Se você selecionar um arquivo, ele será enviado para os clientes e o texto abaixo será a legenda da imagem. Limite: 5MB.
+            </div>
+          </div>
 
           <div className="form-group">
             <label>Mensagem</label>

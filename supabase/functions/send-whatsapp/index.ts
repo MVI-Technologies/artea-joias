@@ -132,6 +132,57 @@ async function sendSingleMessage(to: string, message: string) {
 }
 
 /**
+ * Envia uma mensagem de imagem via Evolution API
+ * Conforme requerido, suporta envio usando a rota /message/sendImage
+ */
+async function sendImageMessageToEvolution(
+  to: string,
+  media: string,
+  caption?: string,
+  mimetype: string = 'image/jpeg'
+) {
+  const formattedNumber = formatPhoneNumber(to);
+  console.log(`🖼️ Enviando imagem para: ${formattedNumber}`);
+
+  let cleanMedia = media;
+  if (media.includes('base64,')) {
+    cleanMedia = media.split('base64,')[1];
+  }
+
+  const payload = {
+    number: formattedNumber,
+    mediatype: "image",
+    caption: caption || '',
+    media: cleanMedia,
+    fileName: 'imagem.jpg'
+  };
+
+  const response = await fetch(`${EVOLUTION_API_URL}/message/sendMedia/${EVOLUTION_INSTANCE}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': EVOLUTION_API_TOKEN || ''
+    },
+    body: JSON.stringify(payload)
+  });
+
+  const responseText = await response.text();
+  
+  let data;
+  try {
+    data = JSON.parse(responseText);
+  } catch {
+    throw new Error(`Resposta inválida da API: ${responseText.substring(0, 100)}`);
+  }
+
+  if (!response.ok) {
+    throw new Error(data?.message || `Erro ${response.status}`);
+  }
+
+  return data;
+}
+
+/**
  * Envia um arquivo/documento via Evolution API
  * @param to - Número do destinatário
  * @param fileBase64 - Arquivo em base64
@@ -265,6 +316,32 @@ Deno.serve(async (req: Request) => {
       const result = await sendSingleMessage(to, finalMessage);
 
       console.log('✅ Mensagem individual enviada com sucesso');
+
+      return new Response(
+        JSON.stringify({ success: true, data: result }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // =====================================
+    // ENVIO DE IMAGEM
+    // =====================================
+    else if (action === 'sendImage') {
+      const { number, media, caption, mimetype } = body;
+
+      if (!number || !media) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: 'Parâmetros inválidos: "number" e "media" são obrigatórios'
+          }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const result = await sendImageMessageToEvolution(number, media, caption, mimetype);
+
+      console.log('✅ Imagem enviada com sucesso');
 
       return new Response(
         JSON.stringify({ success: true, data: result }),

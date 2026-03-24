@@ -417,3 +417,42 @@ Att, ${company?.nome_empresa || 'Artea Joias'}`
     }
   }
 }
+
+/**
+ * Enviar arquivo/PDF via WhatsApp
+ * (This is an example implementation using the sendImageMessage format requested)
+ * @param {Object} params
+ * @param {string} params.number - Recipient phone number in international format
+ * @param {string} params.imageUrl - Image URL (or base64) to send
+ * @param {string} params.caption - Formatted message text
+ */
+export async function sendImageMessage({ number, imageUrl, caption }) {
+  try {
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/send-whatsapp?action=sendImage`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        'apikey': SUPABASE_ANON_KEY
+      },
+      body: JSON.stringify({
+        number,
+        media: imageUrl,
+        mediatype: 'image',
+        mimetype: 'image/jpeg',
+        caption
+      })
+    })
+
+    const data = await response.json()
+
+    if (!response.ok || !data.success) {
+      throw new Error(data.error || 'Erro ao enviar imagem')
+    }
+
+    return { success: true, data: data.data }
+  } catch (error) {
+    console.error('Erro ao enviar imagem via WhatsApp:', error)
+    return { success: false, error: error.message }
+  }
+}
