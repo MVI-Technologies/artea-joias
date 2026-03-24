@@ -111,7 +111,8 @@ async function sendSingleMessage(to: string, message: string) {
     },
     body: JSON.stringify({
       number: formattedNumber,
-      text: message
+      text: message,
+      linkPreview: true
     })
   });
 
