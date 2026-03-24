@@ -351,6 +351,91 @@ Deno.serve(async (req: Request) => {
     }
 
     // =====================================
+    // ENVIO DE IMAGEM EM MASSA (COM PROTEÇÕES ANTI-BAN)
+    // Usado para enviar a capa do catálogo com legenda para vários clientes
+    // =====================================
+    else if (action === 'bulkImage') {
+      const { recipients, imageUrl, caption } = body;
+
+      if (!recipients || !imageUrl || recipients.length === 0) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: 'Parâmetros inválidos: "recipients" e "imageUrl" são obrigatórios'
+          }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const maxMessages = ANTI_BAN_CONFIG.MAX_MESSAGES_PER_EXECUTION;
+      let recipientsToProcess = recipients;
+
+      if (maxMessages > 0 && recipients.length > maxMessages) {
+        console.log(`⚠️ Limite de ${maxMessages} mensagens por execução. Processando apenas os primeiros.`);
+        recipientsToProcess = recipients.slice(0, maxMessages);
+      }
+
+      console.log(`📊 Total de destinatários (imagem): ${recipientsToProcess.length}`);
+
+      const results = {
+        successCount: 0,
+        errorCount: 0,
+        total: recipientsToProcess.length,
+        details: [] as Array<{ nome: string; success: boolean; error?: string }>
+      };
+
+      for (let i = 0; i < recipientsToProcess.length; i++) {
+        const recipient = recipientsToProcess[i];
+        const messageNumber = i + 1;
+
+        try {
+          // Personalizar legenda substituindo variável %Nome%
+          const personalizedCaption = (caption || '').replace(/%Nome%/gi, recipient.nome || 'Cliente');
+
+          console.log(`\n🖼️ [${messageNumber}/${recipientsToProcess.length}] Enviando imagem para: ${recipient.nome}`);
+
+          await sendImageMessageToEvolution(recipient.telefone, imageUrl, personalizedCaption);
+
+          results.successCount++;
+          results.details.push({ nome: recipient.nome, success: true });
+
+          console.log(`✅ [${messageNumber}] Imagem enviada com sucesso!`);
+
+        } catch (err: any) {
+          console.error(`❌ [${messageNumber}] Erro para ${recipient.nome}:`, err?.message);
+          results.errorCount++;
+          results.details.push({
+            nome: recipient.nome,
+            success: false,
+            error: err?.message || 'Erro desconhecido'
+          });
+        }
+
+        // Delay anti-ban entre envios
+        if (i < recipientsToProcess.length - 1) {
+          if ((i + 1) % ANTI_BAN_CONFIG.BATCH_SIZE === 0) {
+            const batchPause = getRandomDelay(ANTI_BAN_CONFIG.BATCH_PAUSE_MIN, ANTI_BAN_CONFIG.BATCH_PAUSE_MAX);
+            console.log(`\n⏸️ Pausa de lote: aguardando ${(batchPause / 1000).toFixed(1)} segundos...`);
+            await sleep(batchPause);
+          } else {
+            const delay = getRandomDelay(ANTI_BAN_CONFIG.MIN_DELAY, ANTI_BAN_CONFIG.MAX_DELAY);
+            console.log(`⏳ Aguardando ${(delay / 1000).toFixed(1)} segundos...`);
+            await sleep(delay);
+          }
+        }
+      }
+
+      console.log(`\n=== 📊 RESUMO DO ENVIO DE IMAGENS ===`);
+      console.log(`✅ Sucesso: ${results.successCount}`);
+      console.log(`❌ Erros: ${results.errorCount}`);
+
+      return new Response(
+        JSON.stringify({ success: true, data: results }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // =====================================
     // ENVIO DE ARQUIVO/DOCUMENTO
     // =====================================
     else if (action === 'file') {

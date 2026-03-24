@@ -75,6 +75,41 @@ export async function sendBulkWhatsAppMessage(recipients, message) {
 }
 
 /**
+ * Enviar imagem em massa para múltiplos destinatários via Evolution API
+ * @param {Array<{telefone: string, nome: string}>} recipients - Lista de destinatários
+ * @param {string} imageUrl - URL pública da imagem a enviar
+ * @param {string} caption - Legenda da imagem (suporta variável %Nome%)
+ */
+export async function sendBulkImageMessage(recipients, imageUrl, caption) {
+  try {
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/send-whatsapp?action=bulkImage`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        'apikey': SUPABASE_ANON_KEY
+      },
+      body: JSON.stringify({
+        recipients,
+        imageUrl,
+        caption
+      })
+    })
+
+    const data = await response.json()
+
+    if (!response.ok || !data.success) {
+      throw new Error(data.error || 'Erro ao enviar imagens em massa')
+    }
+
+    return { success: true, data: data.data }
+  } catch (error) {
+    console.error('Erro ao enviar imagens em massa via WhatsApp:', error)
+    return { success: false, error: error.message }
+  }
+}
+
+/**
  * Notificar abertura de novo lote
  */
 export async function notifyLotOpened(lot, clients) {
@@ -159,7 +194,6 @@ export async function notifyNewCatalog(catalog, clients, catalogUrl) {
   const linkNumber = catalog.numero_link || catalog.id?.slice(-4).toUpperCase() || Date.now().toString().slice(-4)
   const nomeLink = catalog.nome || 'Semijóias de Luxo no Precinho'
 
-  // Nome do link em negrito (WhatsApp: *texto*) e URL sozinha na linha para o WhatsApp exibir a capa (preview)
   const message = `🎉 *Novo Link Disponível!*
 
 *LINK ${linkNumber} - ${nomeLink}*
@@ -169,14 +203,19 @@ ${catalog.descricao || 'Acabamos de lançar um link repleto de novidades para vo
 🔗 Confira no link abaixo:
 ${catalogUrl}
 
-⏰ Não perca tempo! Garanta já suas peças favoritas.
+⏰ Não perca tempo! Garante já suas peças favoritas.
 
 _Att, Equipe ARTEA JOIAS_`
 
   const recipients = clients.map(c => ({ telefone: c.telefone, nome: c.nome }))
 
-  // Sempre enviar como mensagem de TEXTO (não como imagem com legenda) para o WhatsApp
-  // exibir a prévia do link (capa) ao detectar a URL na mensagem.
+  // Se o catálogo tiver imagem de capa, envia como IMAGEM com legenda.
+  // Isso garante que a foto apareça no WhatsApp independente de scraping de Open Graph.
+  // Se não houver capa, envia como texto simples (o próprio WhatsApp tentará gerar preview do link).
+  if (catalog.cover_image_url) {
+    return sendBulkImageMessage(recipients, catalog.cover_image_url, message)
+  }
+
   return sendBulkWhatsAppMessage(recipients, message)
 }
 
