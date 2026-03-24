@@ -37,10 +37,13 @@ export default function WhatsApp() {
   const [notification, setNotification] = useState(null)
   const [confirmModal, setConfirmModal] = useState(null)
   const [detailsModal, setDetailsModal] = useState(null) // Para mostrar detalhes do envio
+  const [catalogs, setCatalogs] = useState([])
+  const [showCatalogPicker, setShowCatalogPicker] = useState(false)
 
   useEffect(() => {
     fetchClients()
     fetchHistory()
+    fetchCatalogs()
   }, [])
 
   const showNotification = (type, message) => {
@@ -64,6 +67,37 @@ export default function WhatsApp() {
     const filtered = getFilteredClients()
     setSelectedClients(filtered.map(c => c.id))
   }, [filterDestination, clients])
+
+  const fetchCatalogs = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('lots')
+        .select('id, nome, link_compra, cover_image_url, status')
+        .not('cover_image_url', 'is', null)
+        .not('status', 'in', '("cancelado","finalizado")')
+        .order('created_at', { ascending: false })
+        .limit(30)
+        
+      if (error) throw error;
+      setCatalogs(data || [])
+    } catch (error) {
+      console.error('Erro ao carregar catálogos:', error)
+    }
+  }
+
+  const handleSelectCatalog = (catalog) => {
+    const catalogUrl = `https://www.grupoaadecomprascoletivas.site/catalogo/${catalog.link_compra || catalog.id}`
+    // Preenche a capa como imagem
+    setImageUrl(catalog.cover_image_url)
+    // Adiciona o link ao texto da mensagem
+    const linkLine = `\n\n🔗 Acesse: ${catalogUrl}`
+    setMessage(prev => {
+      if (prev.includes(catalogUrl)) return prev
+      return prev + linkLine
+    })
+    setShowCatalogPicker(false)
+    showNotification('success', `Capa do ${catalog.nome} adicionada!`)
+  }
 
   const fetchClients = async () => {
     try {
@@ -506,6 +540,35 @@ export default function WhatsApp() {
 
           <div className="form-group">
             <label>Imagem (Opcional)</label>
+            {/* Seletor rápido de capa de catálogo */}
+            <div className="catalog-cover-picker">
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={() => setShowCatalogPicker(!showCatalogPicker)}
+                disabled={sending}
+              >
+                📂 Usar capa de catálogo
+              </button>
+              {showCatalogPicker && (
+                <div className="catalog-picker-dropdown">
+                  {catalogs.length === 0 ? (
+                    <p className="no-catalogs">Nenhum catálogo aberto com capa disponível</p>
+                  ) : (
+                    catalogs.map(cat => (
+                      <div
+                        key={cat.id}
+                        className="catalog-picker-item"
+                        onClick={() => handleSelectCatalog(cat)}
+                      >
+                        <img src={cat.cover_image_url} alt={cat.nome} className="catalog-picker-thumb" />
+                        <span>{cat.nome}</span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
             <div className="image-upload-container">
               {!imageUrl ? (
                 <div className="image-upload-wrapper">

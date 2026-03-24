@@ -145,18 +145,24 @@ async function sendImageMessageToEvolution(
   const formattedNumber = formatPhoneNumber(to);
   console.log(`🖼️ Enviando imagem para: ${formattedNumber}`);
 
+  const isUrl = media.startsWith('http://') || media.startsWith('https://');
   let cleanMedia = media;
-  if (media.includes('base64,')) {
+
+  if (!isUrl && media.includes('base64,')) {
     cleanMedia = media.split('base64,')[1];
   }
 
-  const payload = {
+  const payload: Record<string, string> = {
     number: formattedNumber,
     mediatype: "image",
     caption: caption || '',
     media: cleanMedia,
-    fileName: 'imagem.jpg'
   };
+
+  // Quando for base64, é necessário enviar o fileName
+  if (!isUrl) {
+    payload.fileName = 'imagem.jpg';
+  }
 
   const response = await fetch(`${EVOLUTION_API_URL}/message/sendMedia/${EVOLUTION_INSTANCE}`, {
     method: 'POST',
@@ -182,6 +188,7 @@ async function sendImageMessageToEvolution(
 
   return data;
 }
+
 
 /**
  * Envia um arquivo/documento via Evolution API
