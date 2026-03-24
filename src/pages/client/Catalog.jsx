@@ -423,7 +423,7 @@ export default function Catalog() {
         .from('lot_products')
         .select(`
             *,
-            product:products (*)
+            product:products (*, preco, custo)
         `)
         .eq('lot_id', lotIdForProducts)
 
@@ -455,15 +455,32 @@ export default function Catalog() {
   }
 
   // Função para calcular o preço final do produto com taxas do lote
-  const calcularPrecoFinal = (precoBase) => {
+  const calcularPrecoFinal = (product) => {
+    // Aceita tanto um objeto produto quanto um preço direto (retrocompatibilidade)
+    let precoBase
+    if (product && typeof product === 'object') {
+      // Se product.preco for null (coluna GENERATED ALWAYS não retornada em joins),
+      // calcular a partir de custo + margem_pct como fallback
+      if (product.preco != null) {
+        precoBase = Number(product.preco)
+      } else if (product.custo != null) {
+        const margem = Number(product.margem_pct ?? 10)
+        precoBase = Number(product.custo) * (1 + margem / 100)
+      } else {
+        precoBase = 0
+      }
+    } else {
+      precoBase = Number(product) || 0
+    }
+
     if (!lot || !precoBase) return precoBase || 0
 
     // Aplicar adicional_por_produto primeiro
-    const adicional = lot.adicional_por_produto || 0
+    const adicional = Number(lot.adicional_por_produto) || 0
     const precoComAdicional = precoBase * (1 + adicional / 100)
 
     // Aplicar escritório sobre o preço com adicional
-    const escritorio = lot.escritorio_pct || 0
+    const escritorio = Number(lot.escritorio_pct) || 0
     const precoFinal = precoComAdicional * (1 + escritorio / 100)
 
     return Math.round(precoFinal * 100) / 100
@@ -653,7 +670,7 @@ export default function Catalog() {
       const cartKey = `cart_${lot?.id ?? id}`
       const currentCart = JSON.parse(localStorage.getItem(cartKey) || '[]')
 
-      const precoFinal = calcularPrecoFinal(product.preco)
+      const precoFinal = calcularPrecoFinal(product)
 
       const existingInfo = currentCart.find(
         item => item.id === product.id && (item.variacao ?? '') === variacaoNorm
@@ -915,7 +932,7 @@ export default function Catalog() {
                     {/* Bloco de Detalhes */}
                     <div className="info-details-block">
                       <div className="info-row">
-                        <span className="label">Valor Unitário:</span> R$ {calcularPrecoFinal(selectedProduct.preco).toFixed(2).replace('.', ',')}
+                        <span className="label">Valor Unitário:</span> R$ {calcularPrecoFinal(selectedProduct).toFixed(2).replace('.', ',')}
                       </div>
                       {selectedProduct.descricao && (
                         <div className="info-row">
