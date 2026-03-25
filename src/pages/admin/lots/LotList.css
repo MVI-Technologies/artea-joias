@@ -452,12 +452,16 @@
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
-  width: 16px !important;
-  height: 16px !important;
+  width: 24px !important;
+  height: 24px !important;
+  min-width: 24px !important;
+  min-height: 24px !important;
+  max-width: 24px !important;
+  max-height: 24px !important;
   padding: 0 !important;
   background: #ef4444 !important;
   border: none !important;
-  border-radius: 3px !important;
+  border-radius: 4px !important;
   cursor: pointer !important;
   color: white !important;
   z-index: 1 !important;
@@ -500,54 +504,156 @@
 }
 
 .mobile-card {
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: 10px;
-  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+  margin-bottom: 12px;
+  padding: 16px;
+  border: none;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  transition: opacity 0.2s ease;
+}
+
+.mobile-card.is-fechado {
+  opacity: 0.75;
+  border-left: 4px solid #EF4444; /* red */
+}
+
+.mobile-card.is-aberto {
+  border-left: 4px solid #10B981; /* green */
 }
 
 .mobile-card-header {
-  padding: 12px 14px 10px;
-  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 8px;
 }
 
-.mobile-card-title-row {
+.mobile-card-title-group {
   display: flex;
   align-items: flex-start;
-  justify-content: space-between;
   gap: 8px;
+  flex: 1;
+  min-width: 0;
+  flex-wrap: wrap;
 }
 
 .mobile-card-title {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
-  color: var(--text-primary);
-  flex: 1;
+  color: #111827;
   line-height: 1.3;
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
 }
 
-.mobile-card-deadline {
+.status-badge-pill {
+  padding: 4px 10px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  white-space: nowrap;
+  letter-spacing: 0.025em;
+}
+
+.pill-fechado {
+  background-color: #FEE2E2;
+  color: #991B1B;
+}
+
+.pill-aberto {
+  background-color: #D1FAE5;
+  color: #065F46;
+}
+
+.btn-icon-acoes {
+  background: transparent;
+  border: none;
+  color: #6B7280;
+  cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 4px;
-  margin-top: 6px;
-  font-size: 11px;
-  color: var(--text-secondary);
-}
-
-.mobile-card-actions {
-  display: flex;
-  gap: 6px;
-  padding: 10px 12px;
-}
-
-.mobile-card-actions .btn-action {
-  flex: 1;
-  min-width: 0 !important;
-  max-width: none !important;
   justify-content: center;
-  padding: 8px 6px;
-  font-size: 11px;
+  padding: 8px;
+  margin: -8px -8px -8px 0; /* increase hit area without shifting layout */
+  min-height: 44px;
+  min-width: 44px;
+  border-radius: 50%;
+}
+
+.mobile-card-metadata {
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+}
+
+.mobile-card-date {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #6B7280;
+}
+
+.mobile-card-actions-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mobile-card-actions-primary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.btn-mobile-primary {
+  background: #3B82F6;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  min-height: 44px; /* Acessibilidade touch target */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  text-align: center;
+  transition: opacity 0.2s;
+}
+
+.btn-mobile-primary:active {
+  opacity: 0.8;
+}
+
+.btn-mobile-secondary {
+  background: transparent;
+  color: #374151;
+  border: 1px solid #D1D5DB;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  min-height: 44px; /* Acessibilidade touch target */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  text-align: center;
+}
+
+.btn-mobile-secondary:active {
+  background: #F3F4F6;
 }
 
 .mobile-empty-state {
@@ -653,16 +759,16 @@
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
-  width: 16px !important;
-  height: 16px !important;
-  min-width: 16px !important;
-  min-height: 16px !important;
-  max-width: 16px !important;
-  max-height: 16px !important;
+  width: 24px !important;
+  height: 24px !important;
+  min-width: 24px !important;
+  min-height: 24px !important;
+  max-width: 24px !important;
+  max-height: 24px !important;
   padding: 0 !important;
   background: #ef4444 !important;
   border: none !important;
-  border-radius: 3px !important;
+  border-radius: 4px !important;
   cursor: pointer !important;
   transition: all 0.15s ease !important;
   color: white !important;
@@ -682,8 +788,8 @@
 
 .dropdown-menu-local .dropdown-close-btn-top-right svg {
   flex-shrink: 0 !important;
-  width: 10px !important;
-  height: 10px !important;
+  width: 12px !important;
+  height: 12px !important;
 }
 
 .dropdown-menu-local button:not(.dropdown-close-btn-top-right) {
@@ -1311,37 +1417,7 @@
   font-size: 14px;
 }
 
-  /* Override mobile.css mobile-card-actions for LotList */
-  @media (max-width: 768px) {
-    .mobile-lots-container .mobile-card-actions {
-      display: grid !important;
-      grid-template-columns: 1fr 1fr !important;
-      gap: 8px !important;
-    }
-
-    /* Target direct children buttons/links explicitly for uniform sizing */
-    .mobile-lots-container .mobile-card-actions .btn {
-      width: 100% !important;
-      height: 36px !important;
-      min-height: 36px !important;
-      max-height: 36px !important;
-      padding: 0 8px !important;
-      font-size: 12px !important;
-      display: flex !important;
-      align-items: center !important;
-      justify-content: center !important;
-      box-sizing: border-box !important;
-      margin: 0 !important;
-      min-width: 0 !important;
-    }
-
-    /* Ensure icons are properly sized */
-    .mobile-lots-container .mobile-card-actions .btn svg {
-      width: 14px !important;
-      height: 14px !important;
-      margin-right: 4px !important;
-    }
-  }
+  /* Removed duplicated mobile logic as it is now properly structured in main CSS */
 
 /* ===== MODAL OVERLAY (CONFIG) ===== */
 .modal-overlay-config {
@@ -1381,4 +1457,4 @@
     padding: 10px 8px !important;
     white-space: nowrap !important;
   }
-}
+}

@@ -458,34 +458,51 @@ export default function LotList() {
       <div className="show-mobile mobile-lots-container">
         {filteredLots.map((lot) => {
           const badgeInfo = getStatusBadge(lot.status)
+          const isFechado = lot.status === 'fechado' || lot.status === 'closed'
+          const cardClass = `mobile-card ${isFechado ? 'is-fechado' : 'is-aberto'}`
+          
           return (
-            <div key={lot.id} className="mobile-card">
+            <div key={lot.id} className={cardClass}>
               <div className="mobile-card-header">
-                <div className="mobile-card-title-row">
+                <div className="mobile-card-title-group">
                   <span className="mobile-card-title">{lot.nome}</span>
-                  <span className={`status-badge ${badgeInfo.class}`}>
+                  <span className={`status-badge-pill pill-${isFechado ? 'fechado' : 'aberto'}`}>
                     {badgeInfo.label}
                   </span>
                 </div>
-                {lot.data_fim && (
-                  <span className="mobile-card-deadline">
-                    <Clock size={12} /> Encerra: {formatDate(lot.data_fim)}
+                <button
+                  className="btn-icon-acoes"
+                  aria-label="Opções do lote"
+                  onClick={(e) => openDropdownFor(e, lot.id)}
+                >
+                  <MoreVertical size={20} />
+                </button>
+              </div>
+              
+              <div className="mobile-card-metadata">
+                {lot.data_fim ? (
+                  <span className="mobile-card-date">
+                    <Clock size={14} /> Encerra: {formatDate(lot.data_fim)}
+                  </span>
+                ) : (
+                  <span className="mobile-card-date">
+                    <Clock size={14} /> Criado em: {formatDate(lot.created_at)}
                   </span>
                 )}
               </div>
-              <div className="mobile-card-actions">
-                <Link to={`/admin/lotes/${lot.id}`} className="btn-action btn-produtos">
-                  Produtos
+
+              <div className="mobile-card-actions-group">
+                <div className="mobile-card-actions-primary">
+                  <Link to={`/admin/lotes/${lot.id}`} className="btn-mobile-primary">
+                    Produtos
+                  </Link>
+                  <Link to={`/admin/romaneios?lot=${lot.id}`} className="btn-mobile-primary">
+                    Romaneios
+                  </Link>
+                </div>
+                <Link to={`/admin/separacao?lot=${lot.id}`} className="btn-mobile-secondary">
+                  Separação
                 </Link>
-                <Link to={`/admin/romaneios?lot=${lot.id}`} className="btn-action btn-romaneios">
-                  Romaneios
-                </Link>
-                <button
-                  className="btn-action btn-acoes"
-                  onClick={(e) => openDropdownFor(e, lot.id)}
-                >
-                  <MoreVertical size={14} /> Ações
-                </button>
               </div>
             </div>
           )
