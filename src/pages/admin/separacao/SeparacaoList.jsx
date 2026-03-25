@@ -17,6 +17,7 @@ import {
   ArrowLeft
 } from 'lucide-react'
 import { supabase } from '../../../lib/supabase'
+import CenteredLoader from '../../../components/common/CenteredLoader'
 import './SeparacaoList.css'
 
 export default function SeparacaoList() {
@@ -209,7 +210,7 @@ export default function SeparacaoList() {
           <div className="sidebar-content">
             {loading ? (
               <div className="loading-state">
-                <div className="loading-spinner" />
+                <CenteredLoader />
               </div>
             ) : lots.length === 0 ? (
               <div className="empty-state-sm">
@@ -289,7 +290,7 @@ export default function SeparacaoList() {
               {/* Lista de Clientes para Separação */}
               {loadingReservas ? (
                 <div className="loading-state">
-                  <div className="loading-spinner" />
+                  <CenteredLoader />
                 </div>
               ) : filteredReservas.length === 0 ? (
                 <div className="empty-state">

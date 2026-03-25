@@ -42,6 +42,7 @@ import MyData from './pages/client/MyData'
 import ClientRomaneioDetail from './pages/client/RomaneioDetail'
 // Legacy imports mantidos caso precise referenciar, mas rotas apontarão para novos
 import Catalog from './pages/client/Catalog'
+import CenteredLoader from './components/common/CenteredLoader'
 
 import './styles/index.css'
 
@@ -50,11 +51,7 @@ function ProtectedRoute({ children, requireAdmin = false }) {
   const { user, isAdmin, loading, client } = useAuth()
 
   if (loading) {
-    return (
-      <div className="loading-overlay">
-        <div className="loading-spinner" style={{ width: 40, height: 40 }} />
-      </div>
-    )
+    return <CenteredLoader fullHeight />
   }
 
   if (!user) {
@@ -165,9 +162,7 @@ function AppRoutes() {
       {/* Root Redirect */}
       <Route path="/" element={
         loading ? (
-          <div className="loading-overlay">
-            <div className="loading-spinner" />
-          </div>
+          <CenteredLoader fullHeight />
         ) : user ? (
           isAdmin ? <Navigate to="/admin" replace /> : <Navigate to="/app" replace />
         ) : (

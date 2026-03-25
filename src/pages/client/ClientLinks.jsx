@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { ShoppingBag, ChevronRight, Clock, Lock } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useToast } from '../../components/common/Toast'
+import CenteredLoader from '../../components/common/CenteredLoader'
 import './ClientLinks.css' // Importando CSS customizado
 
 export default function ClientLinks() {
@@ -46,11 +47,7 @@ export default function ClientLinks() {
     }
   }
 
-  if (loading) return (
-      <div className="flex justify-center items-center min-h-[60vh]">
-          <div className="loading-spinner"></div>
-      </div>
-  )
+  if (loading) return <CenteredLoader fullHeight />
 
   return (
     <div className="client-page">

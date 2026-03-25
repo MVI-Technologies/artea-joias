@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Plus, Edit, Trash2, Palette } from 'lucide-react'
 import { supabase } from '../../../lib/supabase'
 import { useToast } from '../../../components/common/Toast'
+import CenteredLoader from '../../../components/common/CenteredLoader'
 
 export default function BanhoList() {
   const toast = useToast()
@@ -87,7 +88,7 @@ export default function BanhoList() {
   }
 
   if (loading) {
-    return <div className="page-container"><div className="loading-spinner" style={{ margin: '40px auto' }} /></div>
+    return <CenteredLoader fullHeight text="Carregando banhos..." />
   }
 
   return (

@@ -16,10 +16,13 @@ import {
   CheckSquare,
   Square,
   User,
-  Upload
+  Upload,
+  History
 } from 'lucide-react'
 import { supabase } from '../../../lib/supabase'
-import { sendWhatsAppMessage, sendImageMessage } from '../../../services/whatsapp'
+import { useToast, useConfirm } from '../../../components/common/Toast'
+import CenteredLoader from '../../../components/common/CenteredLoader'
+import { sendWhatsAppMessage, sendImageMessage } from '../../../utils/whatsappApi'
 import './WhatsApp.css'
 
 export default function WhatsApp() {
@@ -807,7 +810,7 @@ export default function WhatsApp() {
 
           {loadingHistory ? (
             <div className="loading-container">
-              <div className="loading-spinner" />
+              <CenteredLoader />
             </div>
           ) : history.length === 0 ? (
             <div className="empty-history">

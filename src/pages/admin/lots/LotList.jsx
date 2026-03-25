@@ -3,6 +3,7 @@ import { Plus, Search, ChevronDown, Copy, MoreVertical, Edit, Lock, FileText, Pa
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../../../lib/supabase'
 import { notifyCatalogClosed, sendRomaneiosAutomaticamente } from '../../../services/whatsapp'
+import CenteredLoader from '../../../components/common/CenteredLoader'
 import './LotList.css'
 
 export default function LotList() {
@@ -326,7 +327,7 @@ export default function LotList() {
   })
 
   if (loading) {
-    return <div className="page-container"><div className="loading-spinner" style={{ margin: '40px auto' }} /></div>
+    return <CenteredLoader fullHeight text="Carregando catálogos..." />
   }
 
   // Encontrar o lote aberto no dropdown

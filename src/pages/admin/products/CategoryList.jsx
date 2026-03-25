@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Plus, Search } from 'lucide-react'
 import { supabase } from '../../../lib/supabase'
 import { useToast } from '../../../components/common/Toast'
+import CenteredLoader from '../../../components/common/CenteredLoader'
 import './CategoryList.css'
 
 export default function CategoryList() {
@@ -98,7 +99,7 @@ export default function CategoryList() {
   )
 
   if (loading) {
-    return <div className="page-container"><div className="loading-spinner" style={{ margin: '40px auto' }} /></div>
+    return <CenteredLoader fullHeight text="Carregando categorias..." />
   }
 
   return (

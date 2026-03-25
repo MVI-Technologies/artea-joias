@@ -12,6 +12,7 @@ import {
 import { supabase } from '../../../lib/supabase'
 import { disponibilidadeLoteParaExibicao } from '../../../utils/lotAvailability'
 import { useToast } from '../../../components/common/Toast'
+import CenteredLoader from '../../../components/common/CenteredLoader'
 import './ProductList.css'
 
 export default function ProductList() {
@@ -154,9 +155,7 @@ export default function ProductList() {
 
       {/* Product Grid */}
       {loading ? (
-        <div className="text-center p-lg">
-          <div className="loading-spinner" style={{ width: 40, height: 40 }} />
-        </div>
+        <CenteredLoader fullHeight text="Carregando produtos..." />
       ) : filteredProducts.length === 0 ? (
         <div className="card">
           <div className="card-body text-center">

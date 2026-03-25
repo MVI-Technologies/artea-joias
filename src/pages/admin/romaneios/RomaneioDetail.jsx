@@ -15,8 +15,10 @@ import {
   Plus,
   Trash2,
   ChevronUp,
-  ChevronDown
+  ChevronDown,
+  Loader2
 } from 'lucide-react'
+import CenteredLoader from '../../../components/common/CenteredLoader'
 import { supabase } from '../../../lib/supabase'
 import './RomaneioDetail.css'
 import { useAuth } from '../../../contexts/AuthContext'
@@ -604,7 +606,7 @@ export default function RomaneioDetail() {
   }
 
   if (loading) {
-    return <div className="page-container"><div className="loading-spinner" style={{ margin: '40px auto' }} /></div>
+    return <CenteredLoader fullHeight text="Carregando romaneio..." />
   }
 
   if (!romaneio) {
@@ -781,8 +783,7 @@ export default function RomaneioDetail() {
 
             {loadingProducts ? (
               <div className="loading-container">
-                <div className="loading-spinner" />
-                <p>Carregando produtos...</p>
+                <CenteredLoader />
               </div>
             ) : availableProducts.length === 0 ? (
               <div className="empty-state">

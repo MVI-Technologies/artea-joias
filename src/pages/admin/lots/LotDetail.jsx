@@ -41,6 +41,7 @@ import { useToast } from '../../../components/common/Toast'
 import PortalDropdown from '../../../components/ui/PortalDropdown'
 import ConfirmationModal from '../../../components/common/ConfirmationModal'
 import { generateRelatorioFabricaPDF } from '../../../utils/pdfGenerator'
+import CenteredLoader from '../../../components/common/CenteredLoader'
 import './LotDetail.css'
 
 export default function LotDetail({ defaultTab }) {
@@ -981,7 +982,7 @@ export default function LotDetail({ defaultTab }) {
   }
 
   if (loading) {
-    return <div className="page-container"><div className="loading-spinner" style={{ margin: '40px auto' }} /></div>
+    return <CenteredLoader fullHeight text="Carregando detalhes do catálogo..." />
   }
 
   if (!lot) {

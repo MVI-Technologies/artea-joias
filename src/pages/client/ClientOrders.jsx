@@ -3,6 +3,7 @@ import { ShoppingBag, Package, Truck, CheckCircle, Clock, QrCode, X, Copy } from
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../components/common/Toast'
+import CenteredLoader from '../../components/common/CenteredLoader'
 import './ClientOrders.css'
 
 export default function ClientOrders() {
@@ -97,9 +98,7 @@ export default function ClientOrders() {
       </div>
 
       {loading ? (
-        <div className="loading-container">
-          <div className="loading-spinner" />
-        </div>
+        <CenteredLoader fullHeight />
       ) : filteredOrders.length === 0 ? (
         <div className="empty-state">
           <ShoppingBag size={48} />

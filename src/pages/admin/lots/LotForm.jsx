@@ -5,6 +5,7 @@ import { supabase } from '../../../lib/supabase'
 import { notifyNewCatalog, notifyCatalogClosed } from '../../../services/whatsapp'
 import { useToast } from '../../../components/common/Toast'
 import ImageUpload from '../../../components/common/ImageUpload'
+import CenteredLoader from '../../../components/common/CenteredLoader'
 import './LotForm.css'
 
 export default function LotForm() {
@@ -281,11 +282,7 @@ export default function LotForm() {
   }
 
   if (loading) {
-    return (
-      <div className="page-container">
-        <div className="loading-spinner" style={{ margin: '40px auto' }} />
-      </div>
-    )
+    return <CenteredLoader fullHeight text="Carregando formulário..." />
   }
 
   return (

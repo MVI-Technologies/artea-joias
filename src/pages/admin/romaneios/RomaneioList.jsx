@@ -19,6 +19,7 @@ import {
   Check
 } from 'lucide-react'
 import { supabase } from '../../../lib/supabase'
+import CenteredLoader from '../../../components/common/CenteredLoader'
 import './RomaneioList.css'
 
 export default function RomaneioList() {
@@ -175,7 +176,7 @@ export default function RomaneioList() {
           <div className="sidebar-content">
             {loading ? (
               <div className="loading-state">
-                <div className="loading-spinner" />
+                <CenteredLoader />
               </div>
             ) : lots.length === 0 ? (
               <div className="empty-state-sm">
@@ -258,7 +259,7 @@ export default function RomaneioList() {
               {/* Lista de Romaneios */}
               {loadingRomaneios ? (
                 <div className="loading-state">
-                  <div className="loading-spinner" />
+                  <CenteredLoader />
                 </div>
               ) : filteredRomaneios.length === 0 ? (
                 <div className="empty-state">

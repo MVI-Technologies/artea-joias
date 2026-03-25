@@ -4,6 +4,7 @@ import { ArrowLeft, Save, Users } from 'lucide-react'
 import { supabase } from '../../../lib/supabase'
 import { useToast } from '../../../components/common/Toast'
 import PasswordInput from '../../../components/ui/PasswordInput'
+import CenteredLoader from '../../../components/common/CenteredLoader'
 import './ClientForm.css'
 
 export default function ClientForm() {
@@ -175,11 +176,7 @@ export default function ClientForm() {
   }
 
   if (loading) {
-    return (
-      <div className="text-center p-lg">
-        <div className="loading-spinner" style={{ width: 40, height: 40 }} />
-      </div>
-    )
+    return <CenteredLoader fullHeight text="Carregando dados do cliente..." />
   }
 
   return (

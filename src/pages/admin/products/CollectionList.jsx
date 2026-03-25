@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Plus, Edit, Trash2, Calendar } from 'lucide-react'
 import { supabase } from '../../../lib/supabase'
 import { useToast } from '../../../components/common/Toast'
+import CenteredLoader from '../../../components/common/CenteredLoader'
 
 export default function CollectionList() {
   const toast = useToast()
@@ -81,7 +82,7 @@ export default function CollectionList() {
     }
   }
 
-  if (loading) return <div className="page-container"><div className="loading-spinner" style={{ margin: '40px auto' }} /></div>
+  if (loading) return <CenteredLoader fullHeight text="Carregando coleções..." />
 
   return (
     <div className="page-container">

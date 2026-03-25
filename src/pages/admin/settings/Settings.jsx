@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Settings as SettingsIcon, Save, Building, Phone, MapPin, Globe, Download, X, Loader2, ContactRound, Plug, FileSpreadsheet, CreditCard, Truck } from 'lucide-react'
 import { supabase } from '../../../lib/supabase'
 import { useToast } from '../../../components/common/Toast'
+import CenteredLoader from '../../../components/common/CenteredLoader'
 import MercadoPagoService from '../../../services/integrations/mercadopago'
 import CorreiosService from '../../../services/integrations/correios'
 import PixService from '../../../services/integrations/pix'
@@ -945,9 +946,7 @@ export default function Settings() {
         {/* Content */}
         <div className="card-body">
           {loading ? (
-            <div className="text-center p-lg">
-              <div className="loading-spinner" style={{ width: 40, height: 40 }} />
-            </div>
+            <CenteredLoader />
           ) : (
             renderTabContent()
           )}

@@ -22,6 +22,7 @@ import { supabase } from '../../../lib/supabase'
 import { useToast } from '../../../components/common/Toast'
 import './ClientList.css'
 import ConfirmationModal from '../../../components/common/ConfirmationModal'
+import CenteredLoader from '../../../components/common/CenteredLoader'
 
 export default function ClientList() {
   const navigate = useNavigate()
@@ -236,8 +237,8 @@ export default function ClientList() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan="6" className="text-center">
-                    <div className="loading-spinner" />
+                  <td colSpan="6">
+                    <CenteredLoader />
                   </td>
                 </tr>
               ) : filteredClients.length === 0 ? (

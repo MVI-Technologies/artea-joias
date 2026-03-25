@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { supabase } from '../../../lib/supabase'
 import { useToast } from '../../../components/common/Toast'
+import CenteredLoader from '../../../components/common/CenteredLoader'
 import './OrderList.css'
 
 /**
@@ -329,8 +330,8 @@ export default function OrderList() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan="11" className="text-center">
-                    <div className="loading-spinner" />
+                  <td colSpan="11">
+                    <CenteredLoader />
                   </td>
                 </tr>
               ) : filteredOrders.length === 0 ? (

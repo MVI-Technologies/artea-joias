@@ -4,6 +4,7 @@ import { User, Save, Lock, AlertCircle } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
 import { useToast } from '../../components/common/Toast'
+import CenteredLoader from '../../components/common/CenteredLoader'
 import './MyData.css'
 
 export default function MyData() {
@@ -102,13 +103,7 @@ export default function MyData() {
     }
   }
 
-  if (loading) return (
-      <div className="my-data-page">
-        <div className="flex justify-center items-center h-64">
-            <div className="loading-spinner"></div>
-        </div>
-      </div>
-  )
+  if (loading) return <CenteredLoader fullHeight />
 
   return (
     <div className="my-data-page">

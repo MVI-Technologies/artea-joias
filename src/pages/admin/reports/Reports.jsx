@@ -11,6 +11,7 @@ import {
   BookOpen
 } from 'lucide-react'
 import { supabase } from '../../../lib/supabase'
+import CenteredLoader from '../../../components/common/CenteredLoader'
 import './Reports.css'
 
 export default function Reports() {
@@ -609,7 +610,7 @@ export default function Reports() {
         <div className="table-container">
           {loading ? (
             <div className="loading-container">
-              <div className="loading-spinner" />
+              <CenteredLoader />
             </div>
           ) : data.length === 0 ? (
             <div className="empty-state">
