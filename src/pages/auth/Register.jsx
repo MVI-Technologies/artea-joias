@@ -16,6 +16,7 @@ export default function Register() {
     telefone: '',
     email: '',
     instagram: '',
+    cpfCnpj: '',
     dataNascimento: '',
     senha: '',
     confirmarSenha: ''
@@ -33,6 +34,14 @@ export default function Register() {
         return value && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(value) ? 'E-mail inválido.' : ''
       case 'instagram':
         return value.trim().length < 2 ? 'Instagram é obrigatório.' : ''
+      case 'cpfCnpj': {
+        const digits = value.replace(/\D/g, '')
+        if (digits.length === 0) return 'CPF ou CNPJ é obrigatório.'
+        if (digits.length !== 11 && digits.length !== 14) return 'CPF deve ter 11 dígitos ou CNPJ 14 dígitos.'
+        // Rejeita sequências inválidas (00000000000, 11111111111, etc.)
+        if (/^(\d)\1+$/.test(digits)) return 'CPF/CNPJ inválido (sequência repetida).'
+        return ''
+      }
       case 'dataNascimento':
         return !value ? 'Data de nascimento é obrigatória.' : ''
       case 'senha':
@@ -57,12 +66,29 @@ export default function Register() {
     return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7, 11)}`
   }
 
+  const formatCpfCnpj = (value) => {
+    const digits = value.replace(/\D/g, '').slice(0, 14)
+    if (digits.length <= 11) {
+      // CPF: 000.000.000-00
+      return digits
+        .replace(/(\d{3})(\d)/, '$1.$2')
+        .replace(/(\d{3})(\d)/, '$1.$2')
+        .replace(/(\d{3})(\d{1,2})$/, '$1-$2')
+    }
+    // CNPJ: 00.000.000/0000-00
+    return digits
+      .replace(/(\d{2})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d)/, '$1/$2')
+      .replace(/(\d{4})(\d{1,2})$/, '$1-$2')
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
 
     // Validate all fields
-    const fieldsToValidate = ['nome', 'telefone', 'email', 'instagram', 'dataNascimento', 'senha', 'confirmarSenha']
+    const fieldsToValidate = ['nome', 'telefone', 'email', 'instagram', 'cpfCnpj', 'dataNascimento', 'senha', 'confirmarSenha']
     const newErrors = {}
     for (const field of fieldsToValidate) {
       const err = validateField(field, formData[field] || '')
@@ -91,8 +117,9 @@ export default function Register() {
           data: {
             nome: formData.nome,
             telefone: formData.telefone.replace(/\D/g, ''),
-            email_real: formData.email, // Email real (agora obrigatório)
+            email_real: formData.email,
             instagram: instagramValue,
+            cpf_cnpj: formData.cpfCnpj.replace(/\D/g, ''),
             data_nascimento: formData.dataNascimento,
             role: 'cliente' // ✅ CRÍTICO: Armazenar role no metadata para persistência
           }
@@ -236,6 +263,21 @@ export default function Register() {
               required
             />
             {formErrors.instagram && <span className="field-error">{formErrors.instagram}</span>}
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">CPF ou CNPJ *</label>
+            <input
+              type="text"
+              className={`form-input ${formErrors.cpfCnpj ? 'input-error' : ''}`}
+              placeholder="000.000.000-00 ou 00.000.000/0000-00"
+              value={formData.cpfCnpj}
+              onChange={(e) => handleFieldChange('cpfCnpj', formatCpfCnpj(e.target.value))}
+              maxLength={18}
+              inputMode="numeric"
+              required
+            />
+            {formErrors.cpfCnpj && <span className="field-error">{formErrors.cpfCnpj}</span>}
           </div>
 
           <div className="form-group">
