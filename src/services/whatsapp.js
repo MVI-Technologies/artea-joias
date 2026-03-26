@@ -149,6 +149,12 @@ _Artea Joias - Compras Coletivas_`
  * Notificar confirmação de pagamento
  */
 export async function notifyPaymentConfirmed(order, client) {
+  const valorProdutos = Number(order.valor_produtos ?? 0)
+  let taxaSep = Number(order.taxa_separacao ?? 0)
+  if (taxaSep <= 0 && valorProdutos >= 1) taxaSep = valorProdutos <= 80 ? 15 : 25
+  const totalComTaxa = valorProdutos + taxaSep + (order.valor_frete || 0) - (order.desconto_credito || 0)
+  const valorTotalExib = (Number(order.valor_total ?? 0) <= valorProdutos && taxaSep > 0) ? totalComTaxa : (order.valor_total ?? 0)
+
   const message = `💚 *Pagamento Confirmado!*
 
 Olá ${client.nome}!
@@ -156,7 +162,7 @@ Olá ${client.nome}!
 Seu pagamento foi confirmado com sucesso.
 
 📦 Pedido: #${order.id?.slice(-6)}
-💰 Valor: R$ ${order.valor_total?.toFixed(2)}
+💰 Valor: R$ ${valorTotalExib.toFixed(2)}
 
 Em breve seu pedido será preparado e enviado.
 

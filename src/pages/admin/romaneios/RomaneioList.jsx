@@ -125,13 +125,19 @@ export default function RomaneioList() {
 
   const openWhatsApp = (romaneio) => {
     if (!romaneio.client?.telefone) return
+
+    const valorProdutos = Number(romaneio.valor_produtos ?? 0)
+    let taxaSep = Number(romaneio.taxa_separacao ?? 0)
+    if (taxaSep <= 0 && valorProdutos >= 1) taxaSep = valorProdutos <= 80 ? 15 : 25
+    const totalComTaxa = valorProdutos + taxaSep + (romaneio.valor_frete || 0) - (romaneio.desconto_credito || 0)
+    const valorTotalExib = (Number(romaneio.valor_total ?? 0) <= valorProdutos && taxaSep > 0) ? totalComTaxa : (romaneio.valor_total ?? 0)
     
     const phone = romaneio.client.telefone.replace(/\D/g, '')
     const message = encodeURIComponent(
       `Olá ${romaneio.client.nome}! 🌟\n\n` +
       `Seu romaneio do *${(selectedLot?.nome || '').trim() || 'Link'}* está pronto!\n\n` +
       `📋 Pedido: ${romaneio.numero_pedido}\n` +
-      `💰 Valor Total: R$ ${romaneio.valor_total?.toFixed(2)}\n\n` +
+      `💰 Valor Total: R$ ${valorTotalExib.toFixed(2)}\n\n` +
       `Pedimos a gentileza de conferir as peças relacionadas neste romaneio e, em seguida, realizar o pagamento de acordo com os dados anexos.\n\n` +
       `Qualquer dúvida, estamos à disposição! 💎`
     )
@@ -272,6 +278,12 @@ export default function RomaneioList() {
                     const statusBadge = getStatusBadge(romaneio.status_pagamento)
                     const StatusIcon = statusBadge.icon
                     
+                    const valorProdutos = Number(romaneio.valor_produtos ?? 0)
+                    let taxaSep = Number(romaneio.taxa_separacao ?? 0)
+                    if (taxaSep <= 0 && valorProdutos >= 1) taxaSep = valorProdutos <= 80 ? 15 : 25
+                    const totalComTaxa = valorProdutos + taxaSep + (romaneio.valor_frete || 0) - (romaneio.desconto_credito || 0)
+                    const valorTotalExib = (Number(romaneio.valor_total ?? 0) <= valorProdutos && taxaSep > 0) ? totalComTaxa : (romaneio.valor_total ?? 0)
+
                     return (
                       <div key={romaneio.id} className="romaneio-card">
                         <div className="romaneio-card-header">
@@ -303,11 +315,11 @@ export default function RomaneioList() {
                           </div>
                           <div className="info-row">
                             <span className="label">Taxa:</span>
-                            <span className="value">R$ {(romaneio.taxa_separacao || 0).toFixed(2)}</span>
+                            <span className="value">R$ {taxaSep.toFixed(2)}</span>
                           </div>
                           <div className="info-row total">
                             <span className="label">Total:</span>
-                            <span className="value">R$ {(romaneio.valor_total || 0).toFixed(2)}</span>
+                            <span className="value">R$ {valorTotalExib.toFixed(2)}</span>
                           </div>
                         </div>
 

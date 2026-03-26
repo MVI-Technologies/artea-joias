@@ -410,6 +410,12 @@ export default function RomaneioDetail() {
       const lotName = (lot?.nome || 'Link').trim()
       console.log('📝 Nome do lote usado:', lotName)
 
+      const valorProdutos = Number(romaneio.valor_produtos ?? 0)
+      let taxaSep = Number(romaneio.taxa_separacao ?? 0)
+      if (taxaSep <= 0 && valorProdutos >= 1) taxaSep = valorProdutos <= 80 ? 15 : 25
+      const totalComTaxa = valorProdutos + taxaSep + (romaneio.valor_frete || 0) - (romaneio.desconto_credito || 0)
+      const valorTotalExib = (Number(romaneio.valor_total ?? 0) <= valorProdutos && taxaSep > 0) ? totalComTaxa : (romaneio.valor_total ?? 0)
+
       let message = `Olá ${client.nome}! 🌟\n\n`
       message += `Seu romaneio do *${lotName}* foi atualizado!\n\n`
 
@@ -426,10 +432,10 @@ export default function RomaneioDetail() {
           message += `• ${item.product?.nome || 'Produto'} - Qtd: ${item.quantidade}\n`
         })
 
-        message += `\n💰 *Valor Total Atualizado:* R$ ${romaneio.valor_total?.toFixed(2)}\n\n`
+        message += `\n💰 *Valor Total Atualizado:* R$ ${valorTotalExib.toFixed(2)}\n\n`
       } else {
         message += `📋 Pedido: ${romaneio.numero_romaneio || romaneio.numero_pedido}\n`
-        message += `💰 Valor Total: R$ ${romaneio.valor_total?.toFixed(2)}\n\n`
+        message += `💰 Valor Total: R$ ${valorTotalExib.toFixed(2)}\n\n`
       }
 
       message += `Pedimos a gentileza de conferir as peças relacionadas neste romaneio e, em seguida, realizar o pagamento de acordo com os dados anexos.\n\n`
@@ -576,12 +582,18 @@ export default function RomaneioDetail() {
   const openWhatsApp = () => {
     if (!client?.telefone) return
 
+    const valorProdutos = Number(romaneio.valor_produtos ?? 0)
+    let taxaSep = Number(romaneio.taxa_separacao ?? 0)
+    if (taxaSep <= 0 && valorProdutos >= 1) taxaSep = valorProdutos <= 80 ? 15 : 25
+    const totalComTaxa = valorProdutos + taxaSep + (romaneio.valor_frete || 0) - (romaneio.desconto_credito || 0)
+    const valorTotalExib = (Number(romaneio.valor_total ?? 0) <= valorProdutos && taxaSep > 0) ? totalComTaxa : (romaneio.valor_total ?? 0)
+
     const phone = client.telefone.replace(/\D/g, '')
     const message = encodeURIComponent(
       `Olá ${client.nome}! 🌟\n\n` +
       `Seu romaneio do *${(lot?.nome || 'Link').trim()}* está pronto!\n\n` +
       `📋 Pedido: ${romaneio?.numero_romaneio || romaneio?.numero_pedido}\n` +
-      `💰 Valor Total: R$ ${romaneio?.valor_total?.toFixed(2)}\n\n` +
+      `💰 Valor Total: R$ ${valorTotalExib.toFixed(2)}\n\n` +
       `Pedimos a gentileza de conferir as peças relacionadas neste romaneio e, em seguida, realizar o pagamento de acordo com os dados anexos.\n\n` +
       `Qualquer dúvida, estamos à disposição! 💎`
     )
