@@ -327,7 +327,7 @@ export default function LotDetail({ defaultTab }) {
   }
 
   const copyLink = () => {
-    const link = `${window.location.origin}/catalogo/${lot?.link_compra || id}`
+    const link = `${window.location.origin}/app/catalogo/${lot?.id || id}`
     navigator.clipboard.writeText(link)
     showNotification('success', 'Link copiado para a área de transferência!')
   }
@@ -1138,7 +1138,7 @@ export default function LotDetail({ defaultTab }) {
         <div className="link-info">
           <span className="link-label">Link para compartilhar:</span>
           <span className="link-url">
-            {window.location.origin}/app/catalogo/{lot.link_compra || lot.id}
+            {window.location.origin}/app/catalogo/{lot?.id || id}
           </span>
         </div>
         <div className="link-actions">

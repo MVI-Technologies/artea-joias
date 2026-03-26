@@ -16,13 +16,12 @@ import {
   CheckSquare,
   Square,
   User,
-  Upload,
-  History
+  Upload
 } from 'lucide-react'
 import { supabase } from '../../../lib/supabase'
-import { useToast, useConfirm } from '../../../components/common/Toast'
+import { useToast } from '../../../components/common/Toast'
 import CenteredLoader from '../../../components/common/CenteredLoader'
-import { sendWhatsAppMessage, sendImageMessage } from '../../../utils/whatsappApi'
+import { sendWhatsAppMessage, sendImageMessage } from '../../../services/whatsapp'
 import './WhatsApp.css'
 
 export default function WhatsApp() {
@@ -89,7 +88,7 @@ export default function WhatsApp() {
   }
 
   const handleSelectCatalog = (catalog) => {
-    const catalogUrl = `https://www.grupoaadecomprascoletivas.site/catalogo/${catalog.link_compra || catalog.id}`
+    const catalogUrl = `https://www.grupoaadecomprascoletivas.site/app/catalogo/${catalog.id}`
     // Preenche a capa como imagem
     setImageUrl(catalog.cover_image_url)
     // Adiciona o link ao texto da mensagem

@@ -37,11 +37,10 @@ export default function RomaneioList() {
 
   const fetchLots = async () => {
     try {
-      // Apenas links já fechados: romaneios aparecem para o admin só após fechar o link
+      // Todos os links: romaneios aparecem independentes do status
       const { data, error } = await supabase
         .from('lots')
         .select('*')
-        .neq('status', 'aberto')
         .order('updated_at', { ascending: false })
 
       if (error) throw error
@@ -180,7 +179,7 @@ export default function RomaneioList() {
               </div>
             ) : lots.length === 0 ? (
               <div className="empty-state-sm">
-                <p>Nenhum link fechado</p>
+                <p>Nenhum link encontrado</p>
               </div>
             ) : (
               <ul className="lot-list">

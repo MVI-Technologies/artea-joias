@@ -191,7 +191,7 @@ export default function LotForm() {
 
             if (shouldNotifyNewCatalog) {
               // Notificação de novo catálogo
-              const catalogUrl = `https://www.grupoaadecomprascoletivas.site/catalogo/${savedCatalog.link_compra}`
+              const catalogUrl = `https://www.grupoaadecomprascoletivas.site/app/catalogo/${savedCatalog.id}`
               result = await notifyNewCatalog(savedCatalog, clients, catalogUrl)
             } else {
               // Notificação de fechamento
