@@ -10,10 +10,11 @@ export default function ClientLinks() {
   const toast = useToast()
   const [links, setLinks] = useState([])
   const [loading, setLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState('aberto') // 'aberto' ou 'fechado'
 
   useEffect(() => {
     loadLinks()
-  }, [])
+  }, [activeTab])
 
   const loadLinks = async () => {
     setLoading(true)
@@ -26,8 +27,14 @@ export default function ClientLinks() {
                 quantidade_pedidos
             )
         `)
-        .eq('status', 'aberto')
-        .order('created_at', { ascending: false })
+      
+      if (activeTab === 'aberto') {
+        query = query.in('status', ['aberto', 'pronto_e_aberto'])
+      } else {
+        query = query.in('status', ['fechado', 'fechado_e_bloqueado'])
+      }
+
+      query = query.order('created_at', { ascending: false })
 
       const { data, error } = await query
 
@@ -54,7 +61,26 @@ export default function ClientLinks() {
       <div className="client-page-header">
         <h1 className="client-title">Grupos de Compra</h1>
         <div className="header-actions">
-           <p className="client-subtitle">Participe dos grupos abertos e garanta preços de atacado.</p>
+           <p className="client-subtitle">
+            {activeTab === 'aberto' 
+              ? 'Participe dos grupos abertos e garanta preços de fábrica.' 
+              : 'Visualize os grupos que já foram encerrados.'}
+           </p>
+           
+           <div className="tab-container">
+             <button 
+               className={`btn-toggle-links ${activeTab === 'aberto' ? 'active' : ''}`}
+               onClick={() => setActiveTab('aberto')}
+             >
+               Abertos
+             </button>
+             <button 
+               className={`btn-toggle-links ${activeTab === 'fechado' ? 'active' : ''}`}
+               onClick={() => setActiveTab('fechado')}
+             >
+               Encerrados
+             </button>
+           </div>
         </div>
       </div>
 

@@ -2133,7 +2133,7 @@ export default function LotDetail({ defaultTab }) {
                     <div className="product-core-info">
                       <div className="form-row-custom">
                         <div className="form-group sm-width">
-                          <label>Preço Unitário (R$)</label>
+                          <label>Preço de Venda (R$) <span style={{ fontSize: '11px', color: '#6b7280', fontWeight: 400 }}>— valor para o cliente</span></label>
                           <input
                             type="number"
                             step="0.01"
@@ -2142,6 +2142,12 @@ export default function LotDetail({ defaultTab }) {
                             onChange={(e) => setProductForm({ ...productForm, preco: e.target.value })}
                             placeholder="0.00"
                           />
+                          {productForm.preco && parseFloat(productForm.preco) > 0 && (
+                            <span style={{ fontSize: '11px', color: '#6b7280', marginTop: '4px', display: 'block' }}>
+                              Custo estimado: R$ {(parseFloat(productForm.preco) / (1 + (editingProduct?.margem_pct || 10) / 100)).toFixed(2)}
+                              {' '}(markup {editingProduct?.margem_pct || 10}%)
+                            </span>
+                          )}
                         </div>
                         <div className="form-group md-width">
                           <label>Categoria</label>

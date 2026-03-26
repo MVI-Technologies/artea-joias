@@ -59,15 +59,12 @@
 }
 
 .header-container {
-  max-width: 100%; /* Ensure no overflow */
-  width: 100%;    /* Keep full width preference */
-  margin: 0 auto;
-  padding: 0 var(--container-padding-mobile) 0 var(--container-padding-mobile);
-  padding-right: var(--container-padding-mobile);
+  width: 100%;
   height: 100%;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  /* flex-start + margin-left:auto on header-actions is more reliable than space-between */
+  padding: 0 var(--container-padding-mobile);
   overflow: visible;
   position: relative;
   box-sizing: border-box;
@@ -79,28 +76,38 @@
   }
 }
 
+/* Brand link — never compress on mobile */
+.brand-area {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  text-decoration: none;
+}
+
 .brand-text {
   font-family: var(--font-brand);
   font-weight: 600;
-  font-size: 20px !important; /* Cinzel é larga, 24px é bom */
+  font-size: 18px; /* Fits on 375px phones without wrapping */
   color: #ffffff;
-  letter-spacing: 0.1em; /* Mais espaçamento para elegância */
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  display: flex;
-  align-items: center;
+  white-space: nowrap; /* GRUPO AA stays on one line always */
   text-shadow: 0 2px 4px rgba(0,0,0,0.3);
 }
 
 @media (min-width: 768px) {
-    .brand-text {
-        font-size: 32px;
-    }
+  .brand-text {
+    font-size: 28px;
+  }
 }
 
-/* Desktop Nav */
+/* Desktop Nav — flex:1 keeps logo|nav|actions layout on desktop;
+   display:none on mobile removes it so margin-left:auto on actions works */
 .desktop-nav {
+  flex: 1;
   display: none;
   gap: 8px;
+  justify-content: center;
 }
 
 @media (min-width: 768px) {
@@ -142,6 +149,8 @@
   display: flex;
   align-items: center;
   gap: 12px;
+  flex-shrink: 0;    /* Never compress */
+  margin-left: auto; /* Push to far right — works on mobile (nav hidden) and desktop */
   overflow: visible;
   position: relative;
 }
