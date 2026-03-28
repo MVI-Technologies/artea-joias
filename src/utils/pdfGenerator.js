@@ -503,7 +503,7 @@ export const generateRelatorioFabricaPDF = async ({ lot, items, company }) => {
 
   doc.setFontSize(9)
   doc.setFont('helvetica', 'normal')
-  doc.text('Relatório Final de Romaneios — Detalhado por Cliente', centerX, 21, { align: 'center' })
+  doc.text('Pedido para Fábrica — Lista Consolidada', centerX, 21, { align: 'center' })
 
     doc.setLineWidth(0.5)
     doc.line(15, 27, doc.internal.pageSize.width - 15, 27)
@@ -520,17 +520,13 @@ export const generateRelatorioFabricaPDF = async ({ lot, items, company }) => {
     for (const item of items) {
         tableRows.push([
             '',
-            item.cliente || '—',
             item.product?.descricao || item.product?.nome || '—',
             item.variacao || '—',
-            formatCurrency(item.preco_unitario),
-            String(item.quantidade),
-            formatCurrency(item.valor_total)
+            String(item.quantidade)
         ])
     }
 
     const totalQtd = items.reduce((s, r) => s + r.quantidade, 0)
-    const totalValor = items.reduce((s, r) => s + r.valor_total, 0)
 
     // Pre-load images
     const imageMap = {}
@@ -544,12 +540,12 @@ export const generateRelatorioFabricaPDF = async ({ lot, items, company }) => {
 
     autoTable(doc, {
         startY: 44,
-        head: [['', 'CLIENTE', 'DESCRIÇÃO', 'VARIAÇÃO', 'VLR UNIT.', 'QTD', 'TOTAL']],
+        head: [['', 'DESCRIÇÃO COMPLETA', 'VARIAÇÃO', 'QTD']],
         body: tableRows,
         theme: 'grid',
         styles: {
-            fontSize: 8,
-            cellPadding: 2.5,
+            fontSize: 9,
+            cellPadding: 3,
             valign: 'middle',
             halign: 'center',
             minCellHeight: 22,
@@ -557,13 +553,10 @@ export const generateRelatorioFabricaPDF = async ({ lot, items, company }) => {
             lineWidth: 0.1
         },
         columnStyles: {
-            0: { cellWidth: 20 },
-            1: { cellWidth: 35, halign: 'left', fontStyle: 'bold' },
-            2: { halign: 'left', cellPadding: { left: 3 } },
-            3: { cellWidth: 24 },
-            4: { cellWidth: 24 },
-            5: { cellWidth: 14 },
-            6: { cellWidth: 24 }
+            0: { cellWidth: 25 },
+            1: { halign: 'left', cellPadding: { left: 4 } },
+            2: { cellWidth: 35 },
+            3: { cellWidth: 25, fontStyle: 'bold', fontSize: 11 }
         },
         headStyles: {
             fillColor: [245, 245, 245],
@@ -571,7 +564,7 @@ export const generateRelatorioFabricaPDF = async ({ lot, items, company }) => {
             lineWidth: 0.1,
             lineColor: [221, 221, 221],
             fontStyle: 'bold',
-            fontSize: 7,
+            fontSize: 8,
             halign: 'center'
         },
         bodyStyles: {
@@ -596,9 +589,9 @@ export const generateRelatorioFabricaPDF = async ({ lot, items, company }) => {
     })
 
     // --- Totals (text, after table) ---
-    let finalY = doc.lastAutoTable.finalY + 8
+    let finalY = doc.lastAutoTable.finalY + 10
 
-    if (finalY > doc.internal.pageSize.height - 40) {
+    if (finalY > doc.internal.pageSize.height - 30) {
         doc.addPage()
         finalY = 20
     }
@@ -606,15 +599,11 @@ export const generateRelatorioFabricaPDF = async ({ lot, items, company }) => {
     doc.setLineWidth(0.5)
     doc.setDrawColor(0, 0, 0)
     doc.line(15, finalY, doc.internal.pageSize.width - 15, finalY)
-    finalY += 7
+    finalY += 8
 
-    doc.setFontSize(11)
+    doc.setFontSize(12)
     doc.setFont('helvetica', 'bold')
-    doc.text(`• Total de Peças: ${totalQtd}`, 18, finalY)
-    finalY += 6
-
-    doc.setFontSize(11)
-    doc.text(`• Valor Total: ${formatCurrency(totalValor)}`, 18, finalY)
+    doc.text(`• TOTAL DE PEÇAS PARA PRODUÇÃO: ${totalQtd}`, 18, finalY)
 
     // --- Page footer ---
     const pageHeight = doc.internal.pageSize.height

@@ -581,30 +581,36 @@ export default function LotDetail({ defaultTab }) {
     }
   }
 
-  // Construir relatório final de itens (detalhado por cliente)
+  // Construir relatório final de itens (agrupado para o fabricante)
   const buildRelatorio = () => {
-    const list = []
+    const grouped = {}
+
     reservas.forEach(clientReserva => {
       clientReserva.items.forEach(item => {
-        const preco = item.valor_unitario || item.preco_unitario || item.product?.preco || 0
-        list.push({
-          product: item.product,
-          variacao: (item.variacao || '').trim() || '—',
-          cliente: clientReserva.client?.nome || '—',
-          preco_unitario: preco,
-          quantidade: Number(item.quantidade),
-          valor_total: Number(item.valor_total || (item.quantidade * preco))
-        })
+        const prodId = item.product?.id
+        if (!prodId) return
+
+        const variacao = (item.variacao || '').trim() || '—'
+        const key = `${prodId}-${variacao}`
+
+        if (!grouped[key]) {
+          grouped[key] = {
+            product: item.product,
+            variacao: variacao,
+            quantidade: 0
+          }
+        }
+
+        grouped[key].quantidade += Number(item.quantidade)
       })
     })
 
-    // Ordenar primeiro por Cliente, depois por Nome do Produto
+    const list = Object.values(grouped)
+
+    // Ordenar por Descrição/Nome do Produto
     list.sort((a, b) => {
-      if (a.cliente !== b.cliente) {
-        return a.cliente.localeCompare(b.cliente, 'pt-BR')
-      }
-      const nameA = a.product?.nome || ''
-      const nameB = b.product?.nome || ''
+      const nameA = a.product?.descricao || a.product?.nome || ''
+      const nameB = b.product?.descricao || b.product?.nome || ''
       return nameA.localeCompare(nameB, 'pt-BR')
     })
 
@@ -1587,10 +1593,9 @@ export default function LotDetail({ defaultTab }) {
         <div className="tab-content">
           <div className="fabrica-header">
             <div>
-              <h3 style={{ margin: 0 }}>Relatório Final de Romaneios — {lot.nome}</h3>
+              <h3 style={{ margin: 0 }}>Pedido para Fábrica — {lot.nome}</h3>
               <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: '0.875rem' }}>
-                Lista detalhada de todos os produtos comprados por cliente ({relatorio.reduce((s, r) => s + r.quantidade, 0)} peças •
-                R$ {relatorio.reduce((s, r) => s + r.valor_total, 0).toFixed(2).replace('.', ',')} total)
+                Lista consolidada de produtos para produção ({relatorio.reduce((s, r) => s + r.quantidade, 0)} peças no total)
               </p>
             </div>
             <button
@@ -1614,12 +1619,9 @@ export default function LotDetail({ defaultTab }) {
                 <thead>
                   <tr>
                     <th>Foto</th>
-                    <th>Cliente</th>
-                    <th>Descrição</th>
+                    <th>Descrição Completa</th>
                     <th>Variação</th>
-                    <th style={{ textAlign: 'right' }}>Vlr Unit.</th>
                     <th style={{ textAlign: 'right' }}>Qtd Total</th>
-                    <th style={{ textAlign: 'right' }}>Total</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1631,27 +1633,19 @@ export default function LotDetail({ defaultTab }) {
                           : <div style={{ width: 48, height: 48, background: '#f1f5f9', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Package size={20} /></div>
                         }
                       </td>
-                      <td>
-                        <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>{row.cliente}</span>
-                      </td>
-                      <td style={{ maxWidth: 280 }}>
-                        <span style={{ fontSize: '0.85rem' }}>{row.product?.descricao || row.product?.nome || '—'}</span>
+                      <td style={{ maxWidth: 400 }}>
+                        <span style={{ fontSize: '0.85rem', fontWeight: 500 }}>{row.product?.descricao || row.product?.nome || '—'}</span>
                       </td>
                       <td>{row.variacao || '—'}</td>
-                      <td style={{ textAlign: 'right' }}>R$ {row.preco_unitario.toFixed(2).replace('.', ',')}</td>
-                      <td style={{ textAlign: 'right', fontWeight: 700 }}>{row.quantidade}</td>
-                      <td style={{ textAlign: 'right', fontWeight: 600 }}>R$ {row.valor_total.toFixed(2).replace('.', ',')}</td>
+                      <td style={{ textAlign: 'right', fontWeight: 700, fontSize: '1.1rem' }}>{row.quantidade}</td>
                     </tr>
                   ))}
                 </tbody>
                 <tfoot>
                   <tr className="fabrica-totals">
-                    <td colSpan={5} style={{ textAlign: 'right', fontWeight: 700 }}>TOTAL GERAL</td>
-                    <td style={{ textAlign: 'right', fontWeight: 700 }}>
-                      {relatorio.reduce((s, r) => s + r.quantidade, 0)} peças
-                    </td>
-                    <td style={{ textAlign: 'right', fontWeight: 700 }}>
-                      R$ {relatorio.reduce((s, r) => s + r.valor_total, 0).toFixed(2).replace('.', ',')}
+                    <td colSpan={3} style={{ textAlign: 'right', fontWeight: 700 }}>TOTAL DE PEÇAS</td>
+                    <td style={{ textAlign: 'right', fontWeight: 800, fontSize: '1.2rem' }}>
+                      {relatorio.reduce((s, r) => s + r.quantidade, 0)}
                     </td>
                   </tr>
                 </tfoot>
