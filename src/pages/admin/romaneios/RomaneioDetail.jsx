@@ -99,7 +99,7 @@ export default function RomaneioDetail() {
       console.log('🔍 Buscando lote com ID:', romaneioData.lot_id)
       const { data: lotData } = await supabase
         .from('lots')
-        .select('id, nome, updated_at, requer_pacote_fechado, prazo_pagamento_horas')
+        .select('id, nome, updated_at, requer_pacote_fechado, prazo_pagamento_horas, adicional_por_produto, escritorio_pct')
         .eq('id', romaneioData.lot_id)
         .single()
 
@@ -235,17 +235,26 @@ export default function RomaneioDetail() {
   }
 
   const addProductToRomaneio = (product, quantity = 1, variacao = '') => {
+    const precoBase = product.preco || 0
+    // Aplicar porcentagens do lote (mesma lógica do catálogo do cliente)
+    const adicional = Number(lot?.adicional_por_produto) || 0
+    const escritorio = Number(lot?.escritorio_pct) || 0
+    const precoComPct = adicional > 0 || escritorio > 0
+      ? precoBase * (1 + adicional / 100) * (1 + escritorio / 100)
+      : precoBase
+    const precoArredondado = Math.round(precoComPct * 100) / 100
+
     const newItem = {
       id: `temp-${Date.now()}`,
       romaneio_id: id,
       product_id: product.id,
       product: product,
       quantidade: quantity,
-      valor_unitario: product.preco,
-      preco_unitario: product.preco,
-      valor_total: product.preco * quantity,
+      valor_unitario: precoBase,
+      preco_unitario: precoBase,
+      valor_total: precoArredondado * quantity,
       variacao: (variacao || '').trim() || null,
-      valor_recalculado: null,
+      valor_recalculado: (adicional > 0 || escritorio > 0) ? precoArredondado * quantity : null,
       isNew: true // Flag to identify new items
     }
 
@@ -939,7 +948,26 @@ export default function RomaneioDetail() {
                   <td className="col-cat">{item.product?.category?.nome || '-'}</td>
                   <td className="col-desc">{item.product?.descricao || item.product?.nome}</td>
                   <td className="col-var">{item.variacao || '-'}</td>
-                  <td className="col-val">R$ {(item.valor_unitario || item.preco_unitario || item.product?.preco || 0).toFixed(2)}</td>
+                  <td className="col-val">
+                    {(() => {
+                      const precoBase = (item.valor_unitario || item.preco_unitario || item.product?.preco || 0)
+                      const adicional = Number(lot?.adicional_por_produto) || 0
+                      const escritorio = Number(lot?.escritorio_pct) || 0
+                      if ((adicional > 0 || escritorio > 0) && editMode) {
+                        const precoCliente = precoBase * (1 + adicional / 100) * (1 + escritorio / 100)
+                        return (
+                          <span title={`Seu preço: R$ ${precoBase.toFixed(2)} | Porcentagem aplicada sobre o produto | Cliente vê: R$ ${precoCliente.toFixed(2)}`}>
+                            R$ {precoBase.toFixed(2)}
+                            <br/>
+                            <small style={{ color: '#059669', fontSize: '10px', fontWeight: 600 }}>
+                              cliente: R$ {(Math.round(precoCliente * 100) / 100).toFixed(2)}
+                            </small>
+                          </span>
+                        )
+                      }
+                      return <>R$ {precoBase.toFixed(2)}</>
+                    })()}
+                  </td>
                   <td className="col-qty">
                     {editMode ? (
                       <div className="romaneio-qty-control">

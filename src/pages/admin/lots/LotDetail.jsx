@@ -2127,7 +2127,7 @@ export default function LotDetail({ defaultTab }) {
                     <div className="product-core-info">
                       <div className="form-row-custom">
                         <div className="form-group sm-width">
-                          <label>Preço de Venda (R$) <span style={{ fontSize: '11px', color: '#6b7280', fontWeight: 400 }}>— valor para o cliente</span></label>
+                          <label>Preço de Venda (R$)</label>
                           <input
                             type="number"
                             step="0.01"
@@ -2136,12 +2136,24 @@ export default function LotDetail({ defaultTab }) {
                             onChange={(e) => setProductForm({ ...productForm, preco: e.target.value })}
                             placeholder="0.00"
                           />
-                          {productForm.preco && parseFloat(productForm.preco) > 0 && (
-                            <span style={{ fontSize: '11px', color: '#6b7280', marginTop: '4px', display: 'block' }}>
-                              Custo estimado: R$ {(parseFloat(productForm.preco) / (1 + (editingProduct?.margem_pct || 10) / 100)).toFixed(2)}
-                              {' '}(markup {editingProduct?.margem_pct || 10}%)
-                            </span>
-                          )}
+                          {productForm.preco && parseFloat(productForm.preco) > 0 && (() => {
+                            const adicional = Number(lot?.adicional_por_produto) || 0
+                            const escritorio = Number(lot?.escritorio_pct) || 0
+                            const totalPct = adicional + escritorio + (adicional * escritorio / 100)
+                            if (totalPct <= 0) return null
+                            const precoBase = parseFloat(productForm.preco)
+                            const precoCliente = precoBase * (1 + adicional / 100) * (1 + escritorio / 100)
+                            return (
+                              <span style={{ fontSize: '11px', color: '#059669', marginTop: '4px', display: 'block', fontWeight: 500 }}>
+                                {adicional > 0 && escritorio > 0
+                                  ? `Adicional: ${adicional}% + escritório: ${escritorio}%`
+                                  : adicional > 0
+                                    ? `Adicional: ${adicional}%`
+                                    : `Escritório: ${escritorio}%`
+                                }{' — '}cliente verá: R$ {precoCliente.toFixed(2)}
+                              </span>
+                            )
+                          })()}
                         </div>
                         <div className="form-group md-width">
                           <label>Categoria</label>
