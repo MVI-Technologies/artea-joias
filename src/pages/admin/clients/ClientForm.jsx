@@ -140,10 +140,13 @@ export default function ClientForm() {
       }
 
       if (isEditing) {
-        const { error } = await supabase
-          .from('clients')
-          .update(clientData)
-          .eq('id', id)
+        // Use updated-user Edge Function to keep Auth and Client record in sync
+        const { error } = await supabase.functions.invoke('update-user', {
+          body: {
+              id,
+              ...clientData
+          }
+        });
 
         if (error) throw error
       } else {

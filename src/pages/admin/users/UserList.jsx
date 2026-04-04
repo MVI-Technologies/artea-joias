@@ -110,12 +110,13 @@ export default function UserList() {
         
         await ensureUserAuth({ ...selectedUser, ...formData })
 
-        // Atualizar apenas colunas que existem na tabela clients (não enviar password)
-        const { password: _p, ...payload } = formData
-        const { error } = await supabase
-          .from('clients')
-          .update(payload)
-          .eq('id', selectedUser.id)
+        // Update via Edge Function to ensure Auth + Client sync
+        const { error } = await supabase.functions.invoke('update-user', {
+          body: {
+            id: selectedUser.id,
+            ...formData
+          }
+        })
         if (error) throw error
       } else {
         // Create user via Edge Function to ensure Auth + Client sync
