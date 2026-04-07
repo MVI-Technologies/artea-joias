@@ -188,10 +188,9 @@ export default function RomaneioDetail() {
 
         if (error) throw error
 
-        // Filter out products that are already in the romaneio
-        const existingProductIds = items.map(item => item.product_id)
+        // Mostrar todos os produtos do lote (incluindo os que já estão no romaneio)
+        // pois o mesmo produto pode ser adicionado com variações diferentes
         const available = lotProducts
-          .filter(lp => !existingProductIds.includes(lp.product_id))
           .map(lp => lp.product)
           .filter(p => p !== null)
 
@@ -260,10 +259,9 @@ export default function RomaneioDetail() {
 
     setEditedItems(prev => [...prev, newItem])
 
-    // Remove from available products
-    setAvailableProducts(prev => prev.filter(p => p.id !== product.id))
-
-    toast.success(`${product.nome} adicionado ao romaneio`)
+    // Não remove o produto da lista — apenas fecha o modal
+    // O mesmo produto pode ser adicionado com outra variação
+    toast.success(`${product.nome}${variacao ? ` (${variacao})` : ''} adicionado ao romaneio`)
     setShowAddProductModal(false)
   }
 
@@ -668,7 +666,7 @@ export default function RomaneioDetail() {
               <button
                 className="btn btn-primary"
                 onClick={() => setShowAddProductModal(true)}
-                disabled={loadingProducts || availableProducts.length === 0}
+                disabled={loadingProducts}
               >
                 <Plus size={16} /> Adicionar Produto
               </button>
@@ -808,13 +806,25 @@ export default function RomaneioDetail() {
               </div>
             ) : availableProducts.length === 0 ? (
               <div className="empty-state">
-                <p>Todos os produtos do catálogo já estão no romaneio.</p>
+                <p>Nenhum produto encontrado no catálogo deste romaneio.</p>
               </div>
             ) : (
               <div className="romaneio-product-grid">
                 {availableProducts.map(product => {
                   const variacoesList = product.variacoes ? String(product.variacoes).split(',').map(s => s.trim()).filter(Boolean) : []
                   const selectedVar = addVariacaoByProduct[product.id] ?? (variacoesList[0] ?? '')
+
+                  // Verificar quais combinações produto+variação já estão no romaneio
+                  const jaNoRomaneio = (variacao) => editedItems.some(
+                    i => i.product_id === product.id && (i.variacao ?? '') === (variacao ?? '')
+                  )
+
+                  // Se o produto não tem variações, checar se já foi adicionado (sem variação)
+                  const semVariacao = variacoesList.length === 0
+                  const jaAdicionadoSemVariacao = semVariacao && jaNoRomaneio('')
+                  const variacaoSelecionadaJaAdicionada = !semVariacao && jaNoRomaneio(selectedVar)
+                  const desabilitarBotao = semVariacao ? jaAdicionadoSemVariacao : variacaoSelecionadaJaAdicionada
+
                   return (
                   <div key={product.id} className="romaneio-product-card">
                     {product.imagem1 ? (
@@ -849,18 +859,25 @@ export default function RomaneioDetail() {
                             style={{ marginTop: 4, padding: '4px 8px', width: '100%', borderRadius: 4 }}
                           >
                             {variacoesList.map(opt => (
-                              <option key={opt} value={opt}>{opt}</option>
+                              <option key={opt} value={opt}>
+                                {opt}{jaNoRomaneio(opt) ? ' ✓ já adicionado' : ''}
+                              </option>
                             ))}
                           </select>
                         </div>
+                      )}
+                      {jaAdicionadoSemVariacao && (
+                        <p style={{ fontSize: 12, color: '#059669', marginTop: 4, fontWeight: 600 }}>✓ Já no romaneio</p>
                       )}
                     </div>
                     <button
                       className="btn btn-primary btn-sm"
                       onClick={() => addProductToRomaneio(product, 1, selectedVar)}
                       style={{ width: '100%' }}
+                      disabled={desabilitarBotao}
+                      title={desabilitarBotao ? 'Esta variação já está no romaneio' : 'Adicionar ao romaneio'}
                     >
-                      <Plus size={14} /> Adicionar
+                      <Plus size={14} /> {desabilitarBotao ? 'Já Adicionado' : 'Adicionar'}
                     </button>
                   </div>
                   )
