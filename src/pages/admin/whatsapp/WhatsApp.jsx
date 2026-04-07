@@ -66,8 +66,10 @@ export default function WhatsApp() {
 
   // Atualizar seleção quando muda o filtro
   useEffect(() => {
-    const filtered = getFilteredClients()
-    setSelectedClients(filtered.map(c => c.id))
+    if (filterDestination !== 'selecionados') {
+      const filtered = getFilteredClients()
+      setSelectedClients(filtered.map(c => c.id))
+    }
   }, [filterDestination, clients])
 
   const fetchCatalogs = async () => {
@@ -674,7 +676,13 @@ export default function WhatsApp() {
             <select
               className="form-select"
               value={filterDestination}
-              onChange={(e) => setFilterDestination(e.target.value)}
+              onChange={(e) => {
+                if (e.target.value === 'selecionados') {
+                  setSelectedClients([])
+                  setShowClientList(true)
+                }
+                setFilterDestination(e.target.value)
+              }}
               disabled={sending}
             >
               <option value="todos">Todos os clientes ({clients.length})</option>
