@@ -17,9 +17,26 @@ const formatCurrency = (value) => {
     return `R$ ${parseFloat(value || 0).toFixed(2).replace('.', ',')}`
 }
 
-const formatCPF = (cpf) => {
-    if (!cpf) return '-'
-    return cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')
+const formatCpfCnpj = (value) => {
+    if (!value) return '-'
+    const cleaned = value.replace(/\D/g, '')
+    if (cleaned.length === 11) {
+        return cleaned.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')
+    } else if (cleaned.length === 14) {
+        return cleaned.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5')
+    }
+    return value
+}
+
+const formatPhoneGlobal = (phone) => {
+    if (!phone) return '-'
+    const cleaned = phone.replace(/\D/g, '')
+    if (cleaned.length === 11) {
+        return `(${cleaned.slice(0, 2)}) ${cleaned.slice(2, 7)}-${cleaned.slice(7)}`
+    } else if (cleaned.length === 10) {
+        return `(${cleaned.slice(0, 2)}) ${cleaned.slice(2, 6)}-${cleaned.slice(6)}`
+    }
+    return phone
 }
 
 // Convert image URL to Base64
@@ -134,17 +151,7 @@ export const generateRomaneioPDF = async ({ romaneio, lot, client, items, compan
 
     if (companyPhone) {
         // Format phone number
-        const formatPhone = (phone) => {
-            const cleaned = phone.replace(/\D/g, '')
-            if (cleaned.length === 11) {
-                return `(${cleaned.slice(0, 2)}) ${cleaned.slice(2, 7)}-${cleaned.slice(7)}`
-            } else if (cleaned.length === 10) {
-                return `(${cleaned.slice(0, 2)}) ${cleaned.slice(2, 6)}-${cleaned.slice(6)}`
-            }
-            return phone
-        }
-
-        const formattedPhone = formatPhone(companyPhone)
+        const formattedPhone = formatPhoneGlobal(companyPhone)
         doc.setFontSize(9)
         doc.setFont('helvetica', 'normal')
         doc.text(`WhatsApp: ${formattedPhone}`, centerX, 21, { align: 'center' })
@@ -211,9 +218,9 @@ export const generateRomaneioPDF = async ({ romaneio, lot, client, items, compan
 
     drawLabelValue('Cliente:', client?.nome, currentY)
     currentY += lineHeight
-    drawLabelValue('CPF/CNPJ:', formatCPF(client?.cpf), currentY)
+    drawLabelValue('CPF/CNPJ:', formatCpfCnpj(client?.cpf), currentY)
     currentY += lineHeight
-    drawLabelValue('WhatsApp:', client?.telefone, currentY)
+    drawLabelValue('WhatsApp:', formatPhoneGlobal(client?.telefone), currentY)
     currentY += lineHeight
     drawLabelValue('E-mail:', client?.email, currentY)
     currentY += lineHeight
@@ -385,11 +392,16 @@ export const generateRomaneioPDF = async ({ romaneio, lot, client, items, compan
 
     doc.setFont('helvetica', 'normal')
     if (pixConfig?.chave) {
+        const isCpf = pixConfig.chave.replace(/\D/g, '').length === 11;
+        const isCnpj = pixConfig.chave.replace(/\D/g, '').length === 14;
+        const labelText = isCpf ? 'Chave Pix (CPF): ' : (isCnpj ? 'Chave Pix (CNPJ): ' : 'Chave Pix: ');
+        const formattedPix = (isCpf || isCnpj) ? formatCpfCnpj(pixConfig.chave) : pixConfig.chave;
+
         doc.setFont('helvetica', 'bold')
-        doc.text('Chave Pix CNPJ: ', 18, finalY)
-        const labelWidth = doc.getTextWidth('Chave Pix CNPJ: ')
+        doc.text(labelText, 18, finalY)
+        const labelWidth = doc.getTextWidth(labelText)
         doc.setFont('helvetica', 'normal')
-        doc.text(pixConfig.chave, 18 + labelWidth, finalY)
+        doc.text(formattedPix, 18 + labelWidth, finalY)
         finalY += 5
     }
     if (pixConfig?.nome_beneficiario) {

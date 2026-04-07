@@ -619,9 +619,26 @@ export default function RomaneioDetail() {
     })
   }
 
-  const formatCPF = (cpf) => {
-    if (!cpf) return '-'
-    return cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')
+  const formatCpfCnpj = (value) => {
+    if (!value) return '-'
+    const cleaned = value.replace(/\D/g, '')
+    if (cleaned.length === 11) {
+      return cleaned.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')
+    } else if (cleaned.length === 14) {
+      return cleaned.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5')
+    }
+    return value
+  }
+
+  const formatPhone = (phone) => {
+    if (!phone) return '-'
+    const cleaned = phone.replace(/\D/g, '')
+    if (cleaned.length === 11) {
+      return `(${cleaned.slice(0, 2)}) ${cleaned.slice(2, 7)}-${cleaned.slice(7)}`
+    } else if (cleaned.length === 10) {
+      return `(${cleaned.slice(0, 2)}) ${cleaned.slice(2, 6)}-${cleaned.slice(6)}`
+    }
+    return phone
   }
 
   if (loading) {
@@ -930,8 +947,8 @@ export default function RomaneioDetail() {
         {/* Dados do Cliente */}
         <div className="cliente-info-box">
           <p><strong>Cliente:</strong> {client?.nome}</p>
-          <p><strong>CPF/CNPJ:</strong> {formatCPF(client?.cpf)}</p>
-          <p><strong>WhatsApp:</strong> {client?.telefone}</p>
+          <p><strong>CPF/CNPJ:</strong> {formatCpfCnpj(client?.cpf)}</p>
+          <p><strong>WhatsApp:</strong> {formatPhone(client?.telefone)}</p>
           <p><strong>E-mail:</strong> {client?.email || '-'}</p>
           <p><strong>Data Fechamento:</strong> {formatDate(lot?.updated_at)}</p>
         </div>
@@ -1085,7 +1102,18 @@ export default function RomaneioDetail() {
           <h4>Dados para o pagamento:</h4>
           <p><strong>PAGAMENTO VIA PIX OU CARTÃO DE CRÉDITO.</strong></p>
           {pixConfig?.chave && (
-            <p><strong>Chave Pix CNPJ:</strong> {pixConfig.chave}</p>
+            <p>
+              <strong>
+                {pixConfig.chave.replace(/\D/g, '').length === 11 
+                  ? 'Chave Pix (CPF): ' 
+                  : pixConfig.chave.replace(/\D/g, '').length === 14 
+                    ? 'Chave Pix (CNPJ): ' 
+                    : 'Chave Pix: '}
+              </strong>
+              {pixConfig.chave.replace(/\D/g, '').length === 11 || pixConfig.chave.replace(/\D/g, '').length === 14
+                ? formatCpfCnpj(pixConfig.chave)
+                : pixConfig.chave}
+            </p>
           )}
           {pixConfig?.nome_beneficiario && (
             <p><strong>Beneficiário:</strong> {pixConfig.nome_beneficiario}</p>
