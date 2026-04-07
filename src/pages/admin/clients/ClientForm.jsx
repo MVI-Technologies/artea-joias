@@ -172,7 +172,16 @@ export default function ClientForm() {
       navigate('/admin/clientes')
     } catch (error) {
       console.error('Erro ao salvar cliente:', error)
-      toast.error('Erro ao salvar cliente')
+      let errorMsg = 'Erro ao salvar cliente'
+      if (error?.context) {
+        try {
+          const body = await error.context.json()
+          if (body?.error) errorMsg = body.error
+        } catch (_) { /* ignore */ }
+      } else if (error?.message) {
+        errorMsg = error.message
+      }
+      toast.error(errorMsg)
     } finally {
       setSaving(false)
     }

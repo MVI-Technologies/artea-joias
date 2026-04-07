@@ -119,7 +119,7 @@ export default function Register() {
             telefone: formData.telefone.replace(/\D/g, ''),
             email_real: formData.email,
             instagram: instagramValue,
-            cpf_cnpj: formData.cpfCnpj.replace(/\D/g, ''),
+            cpf: formData.cpfCnpj.replace(/\D/g, ''),
             data_nascimento: formData.dataNascimento,
             role: 'cliente' // ✅ CRÍTICO: Armazenar role no metadata para persistência
           }

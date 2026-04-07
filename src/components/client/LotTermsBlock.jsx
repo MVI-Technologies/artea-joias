@@ -55,7 +55,7 @@ export default function LotTermsBlock({ lot }) {
       )}
 
       {lot.adicional_por_produto > 0 && (
-        <p><strong>Adicional por produto:</strong> {lot.adicional_por_produto}% sobre cada produto</p>
+        <p><strong>Adicional por produto (Já incluso no valor das peças):</strong> {lot.adicional_por_produto}% sobre cada produto</p>
       )}
 
       {lot.percentual_entrada > 0 && (

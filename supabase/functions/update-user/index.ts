@@ -17,7 +17,7 @@ Deno.serve(async (req: Request) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { id, nome, telefone, email, role, ...otherData } = await req.json();
+    const { id, nome, telefone, email, role, instagram, cpf, aniversario, grupo, approved, cadastro_status, enderecos } = await req.json();
 
     if (!id || !nome || !telefone) {
       return new Response(
@@ -83,9 +83,15 @@ Deno.serve(async (req: Request) => {
       .update({
         nome,
         telefone: newTelefoneDigits,
-        email,
+        email: email || null,
         role: role || 'cliente',
-        ...otherData
+        instagram: instagram !== undefined ? (instagram || null) : undefined,
+        cpf: cpf !== undefined ? (cpf || null) : undefined,
+        aniversario: aniversario !== undefined ? (aniversario || null) : undefined,
+        grupo: grupo || undefined,
+        approved: approved !== undefined ? approved : undefined,
+        cadastro_status: cadastro_status || undefined,
+        enderecos: enderecos !== undefined ? enderecos : undefined
       })
       .eq('id', id);
 

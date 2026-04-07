@@ -20,18 +20,22 @@ Deno.serve(async (req: Request) => {
 
     const { email, password, nome, telefone, role, instagram, cpf, aniversario, grupo, approved, cadastro_status, enderecos } = await req.json();
 
-    if (!email || !password || !nome) {
+    if (!password || !nome || !telefone) {
         return new Response(
-            JSON.stringify({ error: 'Email, password and name are required' }),
+            JSON.stringify({ error: 'Nome, telefone e senha são obrigatórios' }),
             { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
     }
 
     // 0. Validation: Check if email or phone already exists in clients
-    const { data: existingClients, error: checkError } = await supabase
+    let dupQuery = supabase
       .from('clients')
-      .select('id, email, telefone, auth_id')
-      .or(`email.eq.${email},telefone.eq.${telefone}`);
+      .select('id, email, telefone, auth_id');
+    // Build OR filter: always filter by phone; add email only when provided
+    const orParts = [`telefone.eq.${telefone}`];
+    if (email) orParts.push(`email.eq.${email}`);
+    dupQuery = dupQuery.or(orParts.join(','));
+    const { data: existingClients } = await dupQuery;
 
     let clientToUpdateId = null;
 
@@ -101,14 +105,12 @@ Deno.serve(async (req: Request) => {
           
         clientError = error;
     } else {
-        // Insert new client
-        // We set both id and auth_id to userId for consistency (legacy behavior preference)
+        // Insert new client — let DB generate its own UUID to avoid conflicts with the handle_new_user trigger
         const { error } = await supabase
           .from('clients')
           .insert({
-            id: userId,
             auth_id: userId,
-            email, // Store the REAL email here
+            email: email || null, // email is optional
             nome,
             telefone,
             role: role || 'cliente',
@@ -116,8 +118,8 @@ Deno.serve(async (req: Request) => {
             cpf: cpf || null,
             aniversario: aniversario || null,
             grupo: grupo || 'Grupo Compras',
-            cadastro_status: cadastro_status || 'completo', 
-            approved: approved !== undefined ? approved : true,
+            cadastro_status: cadastro_status || 'pendente',
+            approved: approved !== undefined ? approved : false,
             enderecos: enderecos || []
           });
           
