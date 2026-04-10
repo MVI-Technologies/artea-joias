@@ -1,0 +1,18 @@
+export const COUNTRIES = [
+  { code: '+55', label: '🇧🇷 Brasil (+55)' },
+  { code: '+1', label: '🇺🇸 Estados Unidos (+1)' },
+  { code: '+351', label: '🇵🇹 Portugal (+351)' },
+  { code: '+54', label: '🇦🇷 Argentina (+54)' },
+  { code: '+56', label: '🇨🇱 Chile (+56)' },
+  { code: '+57', label: '🇨🇴 Colômbia (+57)' },
+  { code: '+598', label: '🇺🇾 Uruguai (+598)' },
+  { code: '+52', label: '🇲🇽 México (+52)' },
+  { code: '+34', label: '🇪🇸 Espanha (+34)' },
+  { code: '+39', label: '🇮🇹 Itália (+39)' },
+  { code: '+44', label: '🇬🇧 Reino Unido (+44)' },
+  { code: '+49', label: '🇩🇪 Alemanha (+49)' },
+  { code: '+33', label: '🇫🇷 França (+33)' },
+  { code: '+81', label: '🇯🇵 Japão (+81)' },
+  { code: '+86', label: '🇨🇳 China (+86)' },
+  { code: '+91', label: '🇮🇳 Índia (+91)' },
+]

@@ -3,6 +3,7 @@ import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { LogIn } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import PasswordInput from '../../components/ui/PasswordInput'
+import PhoneInput from '../../components/ui/PhoneInput'
 import './Login.css'
 
 export default function Login() {
@@ -27,15 +28,8 @@ export default function Login() {
     }
   }, [user, isAdmin, authLoading, navigate])
 
-  const formatTelefone = (value) => {
-    const numbers = value.replace(/\D/g, '')
-    if (numbers.length <= 2) return numbers
-    if (numbers.length <= 7) return `(${numbers.slice(0, 2)}) ${numbers.slice(2)}`
-    return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7, 11)}`
-  }
-
-  const handleTelefoneChange = (e) => {
-    setTelefone(formatTelefone(e.target.value))
+  const handleTelefoneChange = (val) => {
+    setTelefone(val)
   }
 
   const handleSubmit = async (e) => {
@@ -112,13 +106,10 @@ export default function Login() {
 
           <div className="form-group">
             <label className="form-label">Telefone</label>
-            <input
-              type="tel"
+            <PhoneInput
               className="form-input"
-              placeholder="(00) 00000-0000"
               value={telefone}
               onChange={handleTelefoneChange}
-              maxLength={15}
               required
             />
           </div>

@@ -4,6 +4,7 @@ import { ArrowLeft, Save, Users } from 'lucide-react'
 import { supabase } from '../../../lib/supabase'
 import { useToast } from '../../../components/common/Toast'
 import PasswordInput from '../../../components/ui/PasswordInput'
+import PhoneInput from '../../../components/ui/PhoneInput'
 import CenteredLoader from '../../../components/common/CenteredLoader'
 import './ClientForm.css'
 
@@ -55,7 +56,7 @@ export default function ClientForm() {
       const endereco = data.enderecos?.[0] || {}
       setFormData({
         nome: data.nome || '',
-        telefone: data.telefone ? formatTelefone(data.telefone) : '',
+        telefone: data.telefone || '',
         email: data.email || '',
         instagram: data.instagram || '',
         cpf: data.cpf ? formatCpfCnpj(data.cpf) : '',
@@ -98,13 +99,6 @@ export default function ClientForm() {
     }
   }
 
-  // Função para formatar telefone
-  const formatTelefone = (value) => {
-    const numbers = value.replace(/\D/g, '')
-    if (numbers.length <= 2) return numbers
-    if (numbers.length <= 7) return `(${numbers.slice(0, 2)}) ${numbers.slice(2)}`
-    return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7, 11)}`
-  }
 
   // Função para detectar tipo de pessoa
   const getTipoPessoa = () => {
@@ -120,7 +114,7 @@ export default function ClientForm() {
     try {
       const clientData = {
         nome: formData.nome,
-        telefone: formData.telefone.replace(/\D/g, ''), // Remove formatação
+        telefone: formData.telefone.replace(/[^\d+]/g, ''), // Remove formatação mas mantém +
         email: formData.email,
         instagram: formData.instagram,
         cpf: formData.cpf.replace(/\D/g, ''), // Remove formatação
@@ -218,13 +212,10 @@ export default function ClientForm() {
 
               <div className="form-group">
                 <label className="form-label">Telefone/WhatsApp *</label>
-                <input
-                  type="tel"
+                <PhoneInput
                   className="form-input"
-                  placeholder="(00) 00000-0000"
                   value={formData.telefone}
-                  onChange={e => setFormData({ ...formData, telefone: formatTelefone(e.target.value) })}
-                  maxLength={15}
+                  onChange={val => setFormData({ ...formData, telefone: val })}
                   required
                 />
               </div>

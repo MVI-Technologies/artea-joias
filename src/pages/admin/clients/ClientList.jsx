@@ -138,6 +138,9 @@ export default function ClientList() {
 
   const formatTelefone = (value) => {
     if (!value) return '-'
+    if (value.startsWith('+')) {
+      return '+' + value.substring(1).replace(/[^\d\s\-\(\)]/g, '')
+    }
     const numbers = value.replace(/\D/g, '')
     if (numbers.length <= 2) return numbers
     if (numbers.length <= 7) return `(${numbers.slice(0, 2)}) ${numbers.slice(2)}`

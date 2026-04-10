@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { UserPlus, ArrowLeft } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import PasswordInput from '../../components/ui/PasswordInput'
+import PhoneInput from '../../components/ui/PhoneInput'
 import './Register.css'
 
 export default function Register() {
@@ -28,7 +29,7 @@ export default function Register() {
         return value.trim().length < 3 ? 'Nome deve ter pelo menos 3 caracteres.' : ''
       case 'telefone': {
         const digits = value.replace(/\D/g, '')
-        return digits.length < 10 ? 'Telefone inválido. Use (XX) XXXXX-XXXX.' : ''
+        return digits.length < 10 ? 'Telefone inválido. Verifique o número digitado.' : ''
       }
       case 'email':
         return value && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(value) ? 'E-mail inválido.' : ''
@@ -59,12 +60,6 @@ export default function Register() {
     setFormErrors(prev => ({ ...prev, [name]: fieldError }))
   }
 
-  const formatTelefone = (value) => {
-    const numbers = value.replace(/\D/g, '')
-    if (numbers.length <= 2) return numbers
-    if (numbers.length <= 7) return `(${numbers.slice(0, 2)}) ${numbers.slice(2)}`
-    return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7, 11)}`
-  }
 
   const formatCpfCnpj = (value) => {
     const digits = value.replace(/\D/g, '').slice(0, 14)
@@ -103,8 +98,9 @@ export default function Register() {
     setLoading(true)
 
     try {
-      // Converter telefone para email fake (mesmo esquema do login)
-      const emailFake = `${formData.telefone.replace(/\D/g, '')}@artea.local`
+      // Converter telefone para email fake (mesmo esquema do login, mantendo o + se houver)
+      const emailFormated = formData.telefone.replace(/[^\d+]/g, '')
+      const emailFake = `${emailFormated.replace(/\+/g, '')}@artea.local`
       
       // Preparar dados para metadados
       const instagramValue = formData.instagram.trim().replace(/^@/, '')
@@ -116,7 +112,7 @@ export default function Register() {
         options: {
           data: {
             nome: formData.nome,
-            telefone: formData.telefone.replace(/\D/g, ''),
+            telefone: formData.telefone.replace(/[^\d+]/g, ''),
             email_real: formData.email,
             instagram: instagramValue,
             cpf: formData.cpfCnpj.replace(/\D/g, ''),
@@ -227,13 +223,10 @@ export default function Register() {
 
           <div className="form-group">
             <label className="form-label">Telefone/WhatsApp *</label>
-            <input
-              type="tel"
+            <PhoneInput
               className={`form-input ${formErrors.telefone ? 'input-error' : ''}`}
-              placeholder="(00) 00000-0000"
               value={formData.telefone}
-              onChange={(e) => handleFieldChange('telefone', formatTelefone(e.target.value))}
-              maxLength={15}
+              onChange={(val) => handleFieldChange('telefone', val)}
               required
             />
             {formErrors.telefone && <span className="field-error">{formErrors.telefone}</span>}

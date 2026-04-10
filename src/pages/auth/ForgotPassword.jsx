@@ -4,6 +4,7 @@ import { Mail, ArrowLeft } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { sendWhatsAppMessage } from '../../services/whatsapp'
 import { useToast } from '../../components/common/Toast'
+import PhoneInput from '../../components/ui/PhoneInput'
 import './ForgotPassword.css'
 
 export default function ForgotPassword() {
@@ -13,12 +14,6 @@ export default function ForgotPassword() {
   const [sent, setSent] = useState(false)
   const [loading, setLoading] = useState(false)
 
-  const formatTelefone = (value) => {
-    const numbers = value.replace(/\D/g, '')
-    if (numbers.length <= 2) return numbers
-    if (numbers.length <= 7) return `(${numbers.slice(0, 2)}) ${numbers.slice(2)}`
-    return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7, 11)}`
-  }
 
   const generateResetCode = () => {
     // Gerar código de 6 dígitos
@@ -30,7 +25,7 @@ export default function ForgotPassword() {
     setLoading(true)
 
     try {
-      const telefoneLimpo = telefone.replace(/\D/g, '')
+      const telefoneLimpo = telefone.replace(/[^\d+]/g, '')
 
       // Verificar se o cliente existe
       const { data: clientData, error: clientError } = await supabase
@@ -131,13 +126,10 @@ _Grupo AA de Semijoias - Sistema de Compras Coletivas_`
             <form className="auth-form" onSubmit={handleSubmit}>
               <div className="form-group">
                 <label className="form-label">Telefone</label>
-                <input
-                  type="tel"
+                <PhoneInput
                   className="form-input"
-                  placeholder="(00) 00000-0000"
                   value={telefone}
-                  onChange={(e) => setTelefone(formatTelefone(e.target.value))}
-                  maxLength={15}
+                  onChange={(val) => setTelefone(val)}
                   required
                 />
               </div>

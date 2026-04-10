@@ -161,15 +161,17 @@ export function AuthProvider({ children }) {
       console.log('📞 Tentando login com telefone:', telefone)
       
       // Remover formatação do telefone (parênteses, espaços, hífens)
-      const telefoneLimpo = telefone.replace(/\D/g, '')
+      // Remover formatação do telefone mas manter +
+      const telefoneLimpo = telefone.replace(/[^\d+]/g, '')
+      const emailBase = telefoneLimpo.replace(/\+/g, '')
       console.log('📞 Telefone limpo:', telefoneLimpo)
       
       // Tentar diferentes variações do email
       const emailVariations = [
-        `${telefoneLimpo}@artea.local`,           // Formato padrão
-        `+55${telefoneLimpo}@artea.local`,        // Com código do país
-        `55${telefoneLimpo}@artea.local`,         // Com código sem +
-        telefoneLimpo.length === 11 ? `${telefoneLimpo.slice(0, 2)}${telefoneLimpo.slice(2)}@artea.local` : null, // Com DDD separado
+        `${emailBase}@artea.local`,           // Formato padrão
+        `+55${emailBase}@artea.local`,        // Com código do país
+        `55${emailBase}@artea.local`,         // Com código sem +
+        emailBase.length === 11 ? `${emailBase.slice(0, 2)}${emailBase.slice(2)}@artea.local` : null, // Com DDD separado
       ].filter(Boolean)
       
       console.log('📧 Tentando emails:', emailVariations)
@@ -211,7 +213,7 @@ export function AuthProvider({ children }) {
           const { data: clientData } = await supabase
             .from('clients')
             .select('telefone, auth_id')
-            .or(`telefone.eq.${telefoneLimpo},telefone.eq.${telefoneLimpo.slice(2)},telefone.eq.+55${telefoneLimpo}`)
+            .or(`telefone.eq.${telefoneLimpo},telefone.eq.${telefoneLimpo.replace('+', '')},telefone.eq.${emailBase.slice(2)},telefone.eq.+55${emailBase}`)
             .limit(1)
           
           if (clientData && clientData.length > 0) {
@@ -242,7 +244,8 @@ export function AuthProvider({ children }) {
 
   const signUp = async (telefone, senha, nome) => {
     try {
-      const email = `${telefone.replace(/\D/g, '')}@artea.local`
+      const emailFormated = telefone.replace(/[^\d+]/g, '')
+      const email = `${emailFormated.replace(/\+/g, '')}@artea.local`
       
       // Criar usuário no Auth
       const { data: authData, error: authError } = await supabase.auth.signUp({

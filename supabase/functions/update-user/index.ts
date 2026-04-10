@@ -39,12 +39,12 @@ Deno.serve(async (req: Request) => {
 
     const authId = client.auth_id;
     const oldTelefone = client.telefone;
-    const newTelefoneDigits = telefone.replace(/\D/g, '');
-    const oldTelefoneDigits = oldTelefone ? oldTelefone.replace(/\D/g, '') : '';
+    const newTelefoneFormated = telefone.replace(/[^\d+]/g, '');
+    const oldTelefoneFormated = oldTelefone ? oldTelefone.replace(/[^\d+]/g, '') : '';
 
     // 2. Update Auth User if phone changed
-    if (authId && newTelefoneDigits !== oldTelefoneDigits) {
-      const newAuthEmail = `${newTelefoneDigits}@artea.local`;
+    if (authId && newTelefoneFormated !== oldTelefoneFormated) {
+      const newAuthEmail = `${newTelefoneFormated.replace(/\+/g, '')}@artea.local`;
       
       const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(
         authId,
@@ -82,7 +82,7 @@ Deno.serve(async (req: Request) => {
       .from('clients')
       .update({
         nome,
-        telefone: newTelefoneDigits,
+        telefone: newTelefoneFormated,
         email: email || null,
         role: role || 'cliente',
         instagram: instagram !== undefined ? (instagram || null) : undefined,
