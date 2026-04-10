@@ -160,18 +160,25 @@ export function AuthProvider({ children }) {
     try {
       console.log('📞 Tentando login com telefone:', telefone)
       
-      // Remover formatação do telefone (parênteses, espaços, hífens)
-      // Remover formatação do telefone mas manter +
+      // Remover formatação mas manter +
       const telefoneLimpo = telefone.replace(/[^\d+]/g, '')
       const emailBase = telefoneLimpo.replace(/\+/g, '')
-      console.log('📞 Telefone limpo:', telefoneLimpo)
-      
+      console.log('📞 Telefone limpo:', telefoneLimpo, '| emailBase:', emailBase)
+
+      // Derivação sem prefixo do país para compatibilidade com contas legadas.
+      // Ex: usuário seleciona +55 e digita (44) 99982-9082
+      // → emailBase = "5544999829082" mas o email no Auth é "44999829082@artea.local"
+      const stripCountryPrefix = (digits) => {
+        if (digits.startsWith('55') && (digits.length === 13 || digits.length === 12)) return digits.slice(2)
+        if (digits.startsWith('1') && digits.length === 11) return digits.slice(1)
+        return null
+      }
+      const semPrefixo = stripCountryPrefix(emailBase)
+
       // Tentar diferentes variações do email
       const emailVariations = [
-        `${emailBase}@artea.local`,           // Formato padrão
-        `+55${emailBase}@artea.local`,        // Com código do país
-        `55${emailBase}@artea.local`,         // Com código sem +
-        emailBase.length === 11 ? `${emailBase.slice(0, 2)}${emailBase.slice(2)}@artea.local` : null, // Com DDD separado
+        `${emailBase}@artea.local`,                        // Ex: 5544999829082@artea.local (novo)
+        semPrefixo ? `${semPrefixo}@artea.local` : null,  // Ex: 44999829082@artea.local (legado)
       ].filter(Boolean)
       
       console.log('📧 Tentando emails:', emailVariations)
