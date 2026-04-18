@@ -116,6 +116,10 @@ export default function LotDetail({ defaultTab }) {
   const [togglingManualSoldOutId, setTogglingManualSoldOutId] = useState(null)
   const [relatorio, setRelatorio] = useState([])
   const [exportingPDF, setExportingPDF] = useState(false)
+  const [showFabricaProductModal, setShowFabricaProductModal] = useState(false)
+  const [fabricaProductSelected, setFabricaProductSelected] = useState(null)
+  const [fabricaVariacaoSelected, setFabricaVariacaoSelected] = useState('')
+  const [fabricaQtdSelected, setFabricaQtdSelected] = useState(1)
 
   useEffect(() => {
     fetchData()
@@ -629,18 +633,28 @@ export default function LotDetail({ defaultTab }) {
     });
   }
 
-  const handleAddCustomRelatorioItem = () => {
+  const openFabricaProductModal = () => {
+    setFabricaProductSelected(null)
+    setFabricaVariacaoSelected('')
+    setFabricaQtdSelected(1)
+    setShowFabricaProductModal(true)
+  }
+
+  const handleConfirmFabricaProduct = () => {
+    if (!fabricaProductSelected) return
+    const variacao = fabricaVariacaoSelected.trim() || '—'
     setRelatorio(prev => [
       ...prev,
       {
         id: `custom-${Date.now()}`,
-        product: null,
-        descricao_custom: '',
-        variacao: '',
-        quantidade: 1,
+        product: fabricaProductSelected,
+        descricao_custom: fabricaProductSelected.descricao || fabricaProductSelected.nome || '',
+        variacao,
+        quantidade: fabricaQtdSelected || 1,
         isCustom: true
       }
-    ]);
+    ])
+    setShowFabricaProductModal(false)
   }
 
   const handleRemoveRelatorioItem = (index) => {
@@ -1647,28 +1661,28 @@ export default function LotDetail({ defaultTab }) {
               <table className="fabrica-table">
                 <thead>
                   <tr>
-                    <th>Foto</th>
+                    <th style={{ width: 56 }}>Foto</th>
                     <th>Descrição Completa</th>
-                    <th>Variação</th>
-                    <th style={{ textAlign: 'right' }}>Qtd Total</th>
+                    <th style={{ width: '25%', minWidth: 100 }}>Variação</th>
+                    <th style={{ width: 80, textAlign: 'center' }}>Qtd</th>
+                    <th style={{ width: 44 }}></th>
                   </tr>
                 </thead>
                 <tbody>
                   {relatorio.map((row, idx) => (
                     <tr key={idx}>
-                      <td>
+                      <td style={{ width: 56 }}>
                         {row.product?.imagem1
-                          ? <img src={row.product.imagem1} alt="" style={{ width: 48, height: 48, objectFit: 'cover', borderRadius: 6 }} />
-                          : <div style={{ width: 48, height: 48, background: '#f1f5f9', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Package size={20} /></div>
+                          ? <img src={row.product.imagem1} alt="" style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 6, display: 'block' }} />
+                          : <div style={{ width: 44, height: 44, background: '#f1f5f9', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Package size={18} /></div>
                         }
                       </td>
-                      <td style={{ maxWidth: 400 }}>
+                      <td>
                         <input
                           type="text"
                           value={row.descricao_custom}
                           onChange={(e) => handleUpdateRelatorioItem(idx, 'descricao_custom', e.target.value)}
-                          className="input-bordered"
-                          style={{ width: '100%', fontSize: '0.85rem' }}
+                          className="input-bordered fabrica-input"
                         />
                       </td>
                       <td>
@@ -1676,23 +1690,23 @@ export default function LotDetail({ defaultTab }) {
                           type="text"
                           value={row.variacao}
                           onChange={(e) => handleUpdateRelatorioItem(idx, 'variacao', e.target.value)}
-                          className="input-bordered"
-                          style={{ width: '100%', fontSize: '0.85rem' }}
+                          className="input-bordered fabrica-input"
                         />
                       </td>
-                      <td style={{ textAlign: 'right', fontWeight: 700, fontSize: '1.1rem', whiteSpace: 'nowrap' }}>
+                      <td style={{ textAlign: 'center' }}>
                         <input
                           type="number"
                           value={row.quantidade}
                           onChange={(e) => handleUpdateRelatorioItem(idx, 'quantidade', parseInt(e.target.value) || 0)}
-                          className="input-bordered"
-                          style={{ width: '60px', textAlign: 'center', fontSize: '1rem', marginRight: '8px' }}
+                          className="input-bordered fabrica-qty-input"
                           min="0"
                         />
+                      </td>
+                      <td style={{ textAlign: 'center' }}>
                         <button
                           className="btn-mobile-delete"
                           onClick={() => handleRemoveRelatorioItem(idx)}
-                          style={{ padding: '6px' }}
+                          style={{ padding: '6px', margin: '0 auto', display: 'flex' }}
                           title="Remover Item"
                         >
                           <Trash2 size={16} />
@@ -1703,20 +1717,110 @@ export default function LotDetail({ defaultTab }) {
                 </tbody>
                 <tfoot>
                   <tr className="fabrica-totals">
-                    <td colSpan={3} style={{ textAlign: 'right', fontWeight: 700 }}>TOTAL DE PEÇAS</td>
-                    <td style={{ textAlign: 'center', fontWeight: 800, fontSize: '1.2rem', paddingRight: '40px' }}>
+                    <td colSpan={4} style={{ textAlign: 'right', fontWeight: 700 }}>TOTAL DE PEÇAS</td>
+                    <td style={{ textAlign: 'center', fontWeight: 800, fontSize: '1.2rem' }}>
                       {relatorio.reduce((s, r) => s + r.quantidade, 0)}
                     </td>
                   </tr>
                 </tfoot>
               </table>
-              <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'flex-start' }}>
-                <button className="btn btn-outline" onClick={handleAddCustomRelatorioItem}>
+              <div style={{ padding: '16px 16px 16px' }}>
+                <button className="btn btn-outline" onClick={openFabricaProductModal}>
                   <Plus size={16} /> Adicionar Produto Extra
                 </button>
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Modal: Adicionar Produto Extra ao Relatório de Fábrica */}
+      {showFabricaProductModal && (
+        <div className="modal-overlay" onClick={() => setShowFabricaProductModal(false)}>
+          <div className="modal-content modal-lg" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 560 }}>
+            <div className="modal-header">
+              <h2>Adicionar Produto Extra</h2>
+              <button className="modal-close" onClick={() => setShowFabricaProductModal(false)}><X size={20} /></button>
+            </div>
+            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div>
+                <label style={{ fontWeight: 600, display: 'block', marginBottom: 6, fontSize: '0.875rem' }}>Produto</label>
+                <select
+                  className="form-control"
+                  value={fabricaProductSelected?.id || ''}
+                  onChange={(e) => {
+                    const prod = products.find(lp => lp.product?.id === e.target.value)?.product
+                    setFabricaProductSelected(prod || null)
+                    setFabricaVariacaoSelected('')
+                  }}
+                >
+                  <option value="">Selecione um produto...</option>
+                  {products.map(lp => lp.product && (
+                    <option key={lp.product.id} value={lp.product.id}>{lp.product.nome}</option>
+                  ))}
+                </select>
+              </div>
+              {fabricaProductSelected && (() => {
+                const opts = fabricaProductSelected.variacoes
+                  ? String(fabricaProductSelected.variacoes).split(',').map(s => s.trim()).filter(Boolean)
+                  : []
+                return opts.length > 0 ? (
+                  <div>
+                    <label style={{ fontWeight: 600, display: 'block', marginBottom: 6, fontSize: '0.875rem' }}>Variação</label>
+                    <select
+                      className="form-control"
+                      value={fabricaVariacaoSelected}
+                      onChange={(e) => setFabricaVariacaoSelected(e.target.value)}
+                    >
+                      <option value="">— Sem variação —</option>
+                      {opts.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                    </select>
+                  </div>
+                ) : (
+                  <div>
+                    <label style={{ fontWeight: 600, display: 'block', marginBottom: 6, fontSize: '0.875rem' }}>Variação (texto livre)</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={fabricaVariacaoSelected}
+                      onChange={(e) => setFabricaVariacaoSelected(e.target.value)}
+                      placeholder="Ex: 18k Dourado"
+                    />
+                  </div>
+                )
+              })()}
+              <div>
+                <label style={{ fontWeight: 600, display: 'block', marginBottom: 6, fontSize: '0.875rem' }}>Quantidade</label>
+                <input
+                  type="number"
+                  className="form-control"
+                  value={fabricaQtdSelected}
+                  min={1}
+                  onChange={(e) => setFabricaQtdSelected(parseInt(e.target.value) || 1)}
+                  style={{ maxWidth: 120 }}
+                />
+              </div>
+              {fabricaProductSelected && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                  {fabricaProductSelected.imagem1 && <img src={fabricaProductSelected.imagem1} alt="" style={{ width: 48, height: 48, borderRadius: 6, objectFit: 'cover' }} />}
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: '0.875rem' }}>{fabricaProductSelected.nome}</div>
+                    {fabricaVariacaoSelected && <div style={{ fontSize: '0.8rem', color: '#64748b' }}>{fabricaVariacaoSelected}</div>}
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-outline" onClick={() => setShowFabricaProductModal(false)}>Cancelar</button>
+              <button
+                className="btn btn-primary"
+                onClick={handleConfirmFabricaProduct}
+                disabled={!fabricaProductSelected}
+              >
+                <Plus size={16} /> Adicionar ao Relatório
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

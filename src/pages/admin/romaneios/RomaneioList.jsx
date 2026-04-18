@@ -16,7 +16,8 @@ import {
   ArrowLeft,
   Package,
   Truck,
-  Check
+  Check,
+  Trash2
 } from 'lucide-react'
 import { supabase } from '../../../lib/supabase'
 import CenteredLoader from '../../../components/common/CenteredLoader'
@@ -31,6 +32,7 @@ export default function RomaneioList() {
   const [loadingRomaneios, setLoadingRomaneios] = useState(false)
   const [statusFilter, setStatusFilter] = useState('todos')
   const [romaneioToDelete, setRomaneioToDelete] = useState(null)
+  const [deletingRomaneio, setDeletingRomaneio] = useState(false)
   
   useEffect(() => {
     fetchLots()
@@ -92,7 +94,7 @@ export default function RomaneioList() {
       'pendente': { label: 'Pendente', class: 'status-pendente', icon: Clock },
       'aguardando': { label: 'Aguardando', class: 'status-aguardando', icon: Clock },
       'aguardando_pagamento': { label: 'Aguardando Pagamento', class: 'status-aguardando', icon: Clock },
-      'pago_50_pct': { label: 'Pago 50%', class: 'status-aguardando', icon: DollarSign },
+      'pago_50_pct_s_frete': { label: 'Pago 50% Sem Frete', class: 'status-aguardando', icon: DollarSign },
       'pago': { label: 'Pago sem frete', class: 'status-pago-sem-frete', icon: CheckCircle },
       'pago_frete_incluso': { label: 'Pago com frete', class: 'status-pago-com-frete', icon: CheckCircle },
       'em_separacao': { label: 'Em Separação', class: 'status-em_separacao', icon: Package },
@@ -139,7 +141,7 @@ export default function RomaneioList() {
       `Olá ${romaneio.client.nome}! 🌟\n\n` +
       `Seu romaneio do *${(selectedLot?.nome || '').trim() || 'Link'}* está pronto!\n\n` +
       `📋 Pedido: ${romaneio.numero_pedido}\n` +
-      `💰 Valor ${romaneio.status_pagamento === 'pago_50_pct' ? 'Restante (50%)' : 'Total'}: R$ ${(romaneio.status_pagamento === 'pago_50_pct' ? valorTotalExib / 2 : valorTotalExib).toFixed(2)}\n\n` +
+      `💰 Valor ${romaneio.status_pagamento === 'pago_50_pct_s_frete' ? 'Restante (50%)' : 'Total'}: R$ ${(romaneio.status_pagamento === 'pago_50_pct_s_frete' ? valorTotalExib / 2 : valorTotalExib).toFixed(2)}\n\n` +
       `Pedimos a gentileza de conferir as peças relacionadas neste romaneio e, em seguida, realizar o pagamento de acordo com os dados anexos.\n\n` +
       `Qualquer dúvida, estamos à disposição! 💎`
     )
@@ -154,7 +156,7 @@ export default function RomaneioList() {
     if (!romaneioToDelete) return
     
     try {
-      setLoadingRomaneios(true)
+      setDeletingRomaneio(true)
       const { error } = await supabase.from('romaneios').delete().eq('id', romaneioToDelete.id)
       if (error) throw error
       setRomaneios(prev => prev.filter(r => r.id !== romaneioToDelete.id))
@@ -162,7 +164,8 @@ export default function RomaneioList() {
     } catch (error) {
       console.error('Erro ao excluir romaneio:', error)
       alert('Erro ao excluir. Tente novamente.')
-      setLoadingRomaneios(false)
+    } finally {
+      setDeletingRomaneio(false)
     }
   }
 
@@ -273,7 +276,7 @@ export default function RomaneioList() {
                 >
                   <option value="todos">Todos os status</option>
                   <option value="aguardando_pagamento">⏳ Aguardando Pagamento</option>
-                  <option value="pago_50_pct">💸 Pago 50%</option>
+                  <option value="pago_50_pct_s_frete">💸 Pago 50% Sem Frete</option>
                   <option value="pago">🟠 Pago sem frete</option>
                   <option value="pago_frete_incluso">✅ Pago com frete</option>
                   <option value="em_separacao">📦 Em Separação</option>
@@ -342,32 +345,33 @@ export default function RomaneioList() {
                           </div>
                           <div className="info-row total">
                             <span className="label">Total:</span>
-                            <span className="value">R$ {(romaneio.status_pagamento === 'pago_50_pct' ? valorTotalExib / 2 : valorTotalExib).toFixed(2)}</span>
+                            <span className="value">R$ {(romaneio.status_pagamento === 'pago_50_pct_s_frete' ? valorTotalExib / 2 : valorTotalExib).toFixed(2)}</span>
                           </div>
                         </div>
 
                         <div className="romaneio-card-footer">
-                          <button 
-                            className="btn btn-mobile-delete"
-                            onClick={() => confirmDeleteRomaneio(romaneio)}
-                            title="Excluir Romaneio"
-                          >
-                            <Trash2 size={16} />
-                          </button>
                           <div style={{ display: 'flex', gap: '8px' }}>
                             <button 
                               className="btn btn-sm btn-outline"
                               onClick={() => openWhatsApp(romaneio)}
+                              title="Enviar WhatsApp"
                             >
                               <MessageCircle size={14} />
                             </button>
-                            <Link 
-                              to={`/admin/romaneios/${romaneio.id}`}
-                              className="btn btn-sm btn-primary"
+                            <button 
+                              className="btn btn-sm btn-outline btn-delete-romaneio"
+                              onClick={() => confirmDeleteRomaneio(romaneio)}
+                              title="Excluir Romaneio"
                             >
-                              <Eye size={14} /> Ver
-                            </Link>
+                              <Trash2 size={14} />
+                            </button>
                           </div>
+                          <Link 
+                            to={`/admin/romaneios/${romaneio.id}`}
+                            className="btn btn-sm btn-primary"
+                          >
+                            <Eye size={14} /> Ver
+                          </Link>
                         </div>
                       </div>
                     )
@@ -394,17 +398,17 @@ export default function RomaneioList() {
               <button
                 className="btn btn-outline"
                 onClick={() => setRomaneioToDelete(null)}
-                disabled={loadingRomaneios}
+                disabled={deletingRomaneio}
               >
                 Cancelar
               </button>
               <button
                 className="btn btn-danger"
                 onClick={handleDeleteRomaneio}
-                disabled={loadingRomaneios}
+                disabled={deletingRomaneio}
                 style={{ backgroundColor: '#dc3545', color: 'white', borderColor: '#dc3545' }}
               >
-                {loadingRomaneios ? 'Excluindo...' : 'Sim, Excluir'}
+                {deletingRomaneio ? 'Excluindo...' : 'Sim, Excluir'}
               </button>
             </div>
           </div>

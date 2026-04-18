@@ -238,6 +238,13 @@
   color: rgb(220, 38, 38);
 }
 
+.cart-item-remove.disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+
 /* Group Footer */
 .cart-group-footer {
   background: var(--bg-secondary);

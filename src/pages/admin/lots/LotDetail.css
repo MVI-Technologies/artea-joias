@@ -1,4 +1,4 @@
-/* LotDetail Premium Styles */
+ï»¿/* LotDetail Premium Styles */
 /* Design System: 8px grid, refined shadows, elegant transitions */
 
 .lot-detail {
@@ -2656,7 +2656,7 @@
     justify-content: center;
   }
 }
-/* Relatório Final Responsivo */
+/* Relatï¿½rio Final Responsivo */
 .fabrica-table-container {
   width: 100%;
   overflow-x: auto;
@@ -2677,12 +2677,29 @@
   }
 }
 
+/* Inputs dentro da tabela fabrica */
 .fabrica-table th, .fabrica-table td {
-  white-space: nowrap;
-}
-.fabrica-table td:nth-child(3) { /* Descricao */
   white-space: normal;
-  min-width: 200px;
+}
+.fabrica-input {
+  width: 100%;
+  font-size: 0.85rem;
+  padding: 6px 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  box-sizing: border-box;
+  min-width: 0;
+}
+.fabrica-qty-input {
+  width: 60px;
+  text-align: center;
+  font-size: 1rem;
+  font-weight: 700;
+  padding: 6px 4px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  display: block;
+  margin: 0 auto;
 }
 
 

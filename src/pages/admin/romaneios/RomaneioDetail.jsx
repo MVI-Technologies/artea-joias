@@ -27,7 +27,7 @@ import { generateRomaneioPDF } from '../../../utils/pdfGenerator'
 
 const STATUS_OPTIONS = [
   { value: 'aguardando_pagamento', label: 'Aguardando Pagamento', color: 'warning' },
-  { value: 'pago_50_pct', label: 'Pago 50%', color: 'warning' },
+  { value: 'pago_50_pct_s_frete', label: 'Pago 50% Sem Frete', color: 'warning' },
   { value: 'pago', label: 'Pago sem frete', color: 'warning' },
   { value: 'pago_frete_incluso', label: 'Pago com frete', color: 'success' },
   { value: 'em_separacao', label: 'Em Separação', color: 'info' },
@@ -567,7 +567,7 @@ export default function RomaneioDetail() {
       // Mensagem personalizada baseada no status
       const statusMessages = {
         'cancelado': '❌ Pedido cancelado com sucesso!',
-        'pago_50_pct': '💸 Marcado como Pago 50%!',
+        'pago_50_pct_s_frete': '💸 Marcado como Pago 50% Sem Frete!',
         'pago': '🟠 Marcado como Pago sem frete!',
         'pago_frete_incluso': '✅ Marcado como Pago com frete!',
         'em_separacao': '📦 Pedido em separação!',
@@ -1072,7 +1072,7 @@ export default function RomaneioDetail() {
           const valorTotalExib = (Number(romaneio.valor_total ?? 0) <= valorProdutos && taxaSep > 0) ? totalComTaxa : (romaneio.valor_total ?? 0)
           return (
         <div className="resumo-financeiro">
-          <h3>• Valor {romaneio.status_pagamento === 'pago_50_pct' ? 'Restante (50%)' : 'Total'} da Compra: R$ {(romaneio.status_pagamento === 'pago_50_pct' ? valorTotalExib / 2 : valorTotalExib).toFixed(2)}</h3>
+          <h3>• Valor {romaneio.status_pagamento === 'pago_50_pct_s_frete' ? 'Restante (50%)' : 'Total'} da Compra: R$ {(romaneio.status_pagamento === 'pago_50_pct_s_frete' ? valorTotalExib / 2 : valorTotalExib).toFixed(2)}</h3>
           <ul>
             <li>• Valor Produtos: R$ {valorProdutos.toFixed(2)}</li>
             {romaneio.total_bruto > 0 && romaneio.total_bruto !== romaneio.valor_total && (

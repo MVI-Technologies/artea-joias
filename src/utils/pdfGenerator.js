@@ -360,7 +360,7 @@ export const generateRomaneioPDF = async ({ romaneio, lot, client, items, compan
     const valorTotalCompra = valorProdutos + taxaSeparacao
     
     // Calcula os 50% caso aplicável
-    const pago50Pct = romaneio.status_pagamento === 'pago_50_pct'
+    const pago50Pct = romaneio.status_pagamento === 'pago_50_pct_s_frete'
     const valorExibir = pago50Pct ? valorTotalCompra / 2 : valorTotalCompra
     const labelTotal = pago50Pct ? '• Valor Restante da Compra (50%): ' : '• Valor Total da Compra: '
 

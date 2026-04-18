@@ -695,7 +695,7 @@ export default function Cart() {
                                                               e.stopPropagation()
                                                               removeItem(lotId, lineKey)
                                                             }}
-                                                            className={`cart-item-remove ${!lotAberto || !podeExcluir ? 'opacity-50' : ''}`}
+                                                            className={`cart-item-remove ${!lotAberto || !podeExcluir ? 'disabled' : ''}`}
                                                             title={!podeExcluir ? 'A regra deste catálogo não permite remover itens do carrinho' : 'Remover item'}
                                                         >
                                                             <Trash2 size={18} />

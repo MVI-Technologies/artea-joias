@@ -664,6 +664,16 @@ export default function Catalog() {
       return false
     }
 
+    // Avisar cliente sobre restrição de remoção (uma vez por sessão por lote)
+    const permitirMod = lot?.permitir_modificacao_produtos
+    if (permitirMod === 'nao_permitir' || permitirMod === 'permitir_reduzir_nao_excluir') {
+      const warnKey = `cart_warn_nodeletion_${lot?.id ?? id}`
+      if (!sessionStorage.getItem(warnKey)) {
+        sessionStorage.setItem(warnKey, '1')
+        toast.warning('Atenção: produtos adicionados a este catálogo não poderão ser removidos. Certifique-se antes de adicionar.')
+      }
+    }
+
     setModalAddError(null)
     setAddingToCart(product.id)
     try {
