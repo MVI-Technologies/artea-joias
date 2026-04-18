@@ -1704,10 +1704,10 @@ export default function LotDetail({ defaultTab }) {
                       </td>
                       <td style={{ textAlign: 'center' }}>
                         <button
-                          className="btn-mobile-delete"
+                          className="btn-fabrica-delete"
                           onClick={() => handleRemoveRelatorioItem(idx)}
-                          style={{ padding: '6px', margin: '0 auto', display: 'flex' }}
                           title="Remover Item"
+                          style={{ margin: '0 auto' }}
                         >
                           <Trash2 size={16} />
                         </button>
@@ -1744,23 +1744,38 @@ export default function LotDetail({ defaultTab }) {
             </div>
             <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div>
-                <label style={{ fontWeight: 600, display: 'block', marginBottom: 6, fontSize: '0.875rem' }}>Produto</label>
-                <select
-                  className="form-control"
-                  value={fabricaProductSelected?.id || ''}
-                  onChange={(e) => {
-                    const prod = products.find(lp => lp.product?.id === e.target.value)?.product
-                    setFabricaProductSelected(prod || null)
-                    setFabricaVariacaoSelected('')
-                  }}
-                >
-                  <option value="">Selecione um produto...</option>
+                <label style={{ fontWeight: 600, display: 'block', marginBottom: 12, fontSize: '0.875rem' }}>Selecione o Produto</label>
+                <div className="products-select-grid fabrica-grid-scroll">
                   {products.map(lp => lp.product && (
-                    <option key={lp.product.id} value={lp.product.id}>{lp.product.nome}</option>
+                    <label key={lp.product.id} className="product-select-item" style={{ cursor: 'pointer', border: fabricaProductSelected?.id === lp.product.id ? '2px solid #3b82f6' : '1px solid #e2e8f0', margin: 0 }}>
+                      <input
+                        type="radio"
+                        name="fabrica_product_selection"
+                        value={lp.product.id}
+                        checked={fabricaProductSelected?.id === lp.product.id}
+                        onChange={() => {
+                          setFabricaProductSelected(lp.product)
+                          setFabricaVariacaoSelected('')
+                        }}
+                        style={{ display: 'none' }}
+                      />
+                      <div className="product-select-image" style={{ width: 40, height: 40 }}>
+                        {lp.product.imagem1 ? (
+                          <img src={lp.product.imagem1} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : (
+                          <div className="no-image-sm" style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#e2e8f0' }}><Package size={16} /></div>
+                        )}
+                      </div>
+                      <div className="product-select-info">
+                        <span className="product-name" style={{ fontSize: '0.8rem', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                          {lp.product.descricao || lp.product.nome}
+                        </span>
+                      </div>
+                    </label>
                   ))}
-                </select>
+                </div>
               </div>
-              {fabricaProductSelected && (() => {
+              {fabricaProductSelected ? (() => {
                 const opts = fabricaProductSelected.variacoes
                   ? String(fabricaProductSelected.variacoes).split(',').map(s => s.trim()).filter(Boolean)
                   : []
@@ -1788,7 +1803,12 @@ export default function LotDetail({ defaultTab }) {
                     />
                   </div>
                 )
-              })()}
+              })() : (
+                <div style={{ opacity: 0.5 }}>
+                  <label style={{ fontWeight: 600, display: 'block', marginBottom: 6, fontSize: '0.875rem' }}>Variação</label>
+                  <input type="text" className="form-control" disabled placeholder="Selecione um produto primeiro" />
+                </div>
+              )}
               <div>
                 <label style={{ fontWeight: 600, display: 'block', marginBottom: 6, fontSize: '0.875rem' }}>Quantidade</label>
                 <input
@@ -1804,7 +1824,7 @@ export default function LotDetail({ defaultTab }) {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
                   {fabricaProductSelected.imagem1 && <img src={fabricaProductSelected.imagem1} alt="" style={{ width: 48, height: 48, borderRadius: 6, objectFit: 'cover' }} />}
                   <div>
-                    <div style={{ fontWeight: 600, fontSize: '0.875rem' }}>{fabricaProductSelected.nome}</div>
+                    <div style={{ fontWeight: 600, fontSize: '0.875rem' }}>{fabricaProductSelected.descricao || fabricaProductSelected.nome}</div>
                     {fabricaVariacaoSelected && <div style={{ fontSize: '0.8rem', color: '#64748b' }}>{fabricaVariacaoSelected}</div>}
                   </div>
                 </div>

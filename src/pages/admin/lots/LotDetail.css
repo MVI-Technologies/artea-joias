@@ -2748,3 +2748,40 @@
 
 
 @media (max-width: 768px) { .fabrica-table-container { overflow-x: auto; -webkit-overflow-scrolling: touch; } .fabrica-table { min-width: 600px; } }
+
+
+/* Fabrica Scroll Grid in Modal */
+.fabrica-grid-scroll {
+  max-height: 250px;
+  overflow-y: auto;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 8px;
+  background: #f8fafc;
+}
+
+@media (max-width: 640px) {
+  .fabrica-grid-scroll {
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 8px;
+    max-height: 300px;
+  }
+}
+
+.btn-fabrica-delete {
+  background: transparent;
+  color: #ef4444;
+  border: 1px solid #fee2e2;
+  border-radius: 6px;
+  padding: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.btn-fabrica-delete:hover {
+  background: #fee2e2;
+  color: #dc2626;
+}
