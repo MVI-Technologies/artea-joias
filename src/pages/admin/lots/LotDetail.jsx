@@ -585,6 +585,7 @@ export default function LotDetail({ defaultTab }) {
   const buildRelatorio = () => {
     const grouped = {}
 
+    reservas.forEach(clientReserva => {
       clientReserva.items.forEach(item => {
         const prodId = item.product?.id || `custom-${Math.random()}`
         if (!prodId && !item.isCustom) return
