@@ -30,7 +30,8 @@ export default function RomaneioList() {
   const [loading, setLoading] = useState(true)
   const [loadingRomaneios, setLoadingRomaneios] = useState(false)
   const [statusFilter, setStatusFilter] = useState('todos')
-
+  const [romaneioToDelete, setRomaneioToDelete] = useState(null)
+  
   useEffect(() => {
     fetchLots()
   }, [])
@@ -145,15 +146,19 @@ export default function RomaneioList() {
     window.open(`https://wa.me/55${phone}?text=${message}`, '_blank')
   }
 
-  const handleDeleteRomaneio = async (romaneioId) => {
-    if (!window.confirm('Tem certeza que deseja excluir este romaneio permanentemente? O cliente não poderá acessá-lo. Esta ação não pode ser desfeita.')) return
+  const confirmDeleteRomaneio = (romaneio) => {
+    setRomaneioToDelete(romaneio)
+  }
+
+  const handleDeleteRomaneio = async () => {
+    if (!romaneioToDelete) return
     
     try {
       setLoadingRomaneios(true)
-      const { error } = await supabase.from('romaneios').delete().eq('id', romaneioId)
+      const { error } = await supabase.from('romaneios').delete().eq('id', romaneioToDelete.id)
       if (error) throw error
-      setRomaneios(prev => prev.filter(r => r.id !== romaneioId))
-      alert('Romaneio excluído com sucesso.')
+      setRomaneios(prev => prev.filter(r => r.id !== romaneioToDelete.id))
+      setRomaneioToDelete(null)
     } catch (error) {
       console.error('Erro ao excluir romaneio:', error)
       alert('Erro ao excluir. Tente novamente.')
@@ -344,7 +349,7 @@ export default function RomaneioList() {
                         <div className="romaneio-card-footer">
                           <button 
                             className="btn btn-mobile-delete"
-                            onClick={() => handleDeleteRomaneio(romaneio.id)}
+                            onClick={() => confirmDeleteRomaneio(romaneio)}
                             title="Excluir Romaneio"
                           >
                             <Trash2 size={16} />
@@ -373,6 +378,39 @@ export default function RomaneioList() {
           )}
         </div>
       </div>
+
+      {/* Modal de Exclusão */}
+      {romaneioToDelete && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <h3>Confirmar Exclusão</h3>
+            <p>
+              Tem certeza que deseja excluir o romaneio do cliente <strong>{romaneioToDelete.client?.nome || 'Selecionado'}</strong>?
+            </p>
+            <p style={{ fontSize: '0.85rem', color: '#666', marginTop: '8px' }}>
+              Esta ação é permanente e não poderá ser desfeita. O cliente perderá acesso a este documento.
+            </p>
+            <div className="modal-actions" style={{ marginTop: '24px' }}>
+              <button
+                className="btn btn-outline"
+                onClick={() => setRomaneioToDelete(null)}
+                disabled={loadingRomaneios}
+              >
+                Cancelar
+              </button>
+              <button
+                className="btn btn-danger"
+                onClick={handleDeleteRomaneio}
+                disabled={loadingRomaneios}
+                style={{ backgroundColor: '#dc3545', color: 'white', borderColor: '#dc3545' }}
+              >
+                {loadingRomaneios ? 'Excluindo...' : 'Sim, Excluir'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   )
 }
