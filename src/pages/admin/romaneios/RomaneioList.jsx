@@ -91,6 +91,7 @@ export default function RomaneioList() {
       'pendente': { label: 'Pendente', class: 'status-pendente', icon: Clock },
       'aguardando': { label: 'Aguardando', class: 'status-aguardando', icon: Clock },
       'aguardando_pagamento': { label: 'Aguardando Pagamento', class: 'status-aguardando', icon: Clock },
+      'pago_50_pct': { label: 'Pago 50%', class: 'status-aguardando', icon: DollarSign },
       'pago': { label: 'Pago sem frete', class: 'status-pago-sem-frete', icon: CheckCircle },
       'pago_frete_incluso': { label: 'Pago com frete', class: 'status-pago-com-frete', icon: CheckCircle },
       'em_separacao': { label: 'Em Separação', class: 'status-em_separacao', icon: Package },
@@ -137,11 +138,27 @@ export default function RomaneioList() {
       `Olá ${romaneio.client.nome}! 🌟\n\n` +
       `Seu romaneio do *${(selectedLot?.nome || '').trim() || 'Link'}* está pronto!\n\n` +
       `📋 Pedido: ${romaneio.numero_pedido}\n` +
-      `💰 Valor Total: R$ ${valorTotalExib.toFixed(2)}\n\n` +
+      `💰 Valor ${romaneio.status_pagamento === 'pago_50_pct' ? 'Restante (50%)' : 'Total'}: R$ ${(romaneio.status_pagamento === 'pago_50_pct' ? valorTotalExib / 2 : valorTotalExib).toFixed(2)}\n\n` +
       `Pedimos a gentileza de conferir as peças relacionadas neste romaneio e, em seguida, realizar o pagamento de acordo com os dados anexos.\n\n` +
       `Qualquer dúvida, estamos à disposição! 💎`
     )
     window.open(`https://wa.me/55${phone}?text=${message}`, '_blank')
+  }
+
+  const handleDeleteRomaneio = async (romaneioId) => {
+    if (!window.confirm('Tem certeza que deseja excluir este romaneio permanentemente? O cliente não poderá acessá-lo. Esta ação não pode ser desfeita.')) return
+    
+    try {
+      setLoadingRomaneios(true)
+      const { error } = await supabase.from('romaneios').delete().eq('id', romaneioId)
+      if (error) throw error
+      setRomaneios(prev => prev.filter(r => r.id !== romaneioId))
+      alert('Romaneio excluído com sucesso.')
+    } catch (error) {
+      console.error('Erro ao excluir romaneio:', error)
+      alert('Erro ao excluir. Tente novamente.')
+      setLoadingRomaneios(false)
+    }
   }
 
   const filteredRomaneios = romaneios.filter(r => {
@@ -251,6 +268,7 @@ export default function RomaneioList() {
                 >
                   <option value="todos">Todos os status</option>
                   <option value="aguardando_pagamento">⏳ Aguardando Pagamento</option>
+                  <option value="pago_50_pct">💸 Pago 50%</option>
                   <option value="pago">🟠 Pago sem frete</option>
                   <option value="pago_frete_incluso">✅ Pago com frete</option>
                   <option value="em_separacao">📦 Em Separação</option>
@@ -319,23 +337,32 @@ export default function RomaneioList() {
                           </div>
                           <div className="info-row total">
                             <span className="label">Total:</span>
-                            <span className="value">R$ {valorTotalExib.toFixed(2)}</span>
+                            <span className="value">R$ {(romaneio.status_pagamento === 'pago_50_pct' ? valorTotalExib / 2 : valorTotalExib).toFixed(2)}</span>
                           </div>
                         </div>
 
                         <div className="romaneio-card-footer">
                           <button 
-                            className="btn btn-sm btn-outline"
-                            onClick={() => openWhatsApp(romaneio)}
+                            className="btn btn-mobile-delete"
+                            onClick={() => handleDeleteRomaneio(romaneio.id)}
+                            title="Excluir Romaneio"
                           >
-                            <MessageCircle size={14} />
+                            <Trash2 size={16} />
                           </button>
-                          <Link 
-                            to={`/admin/romaneios/${romaneio.id}`}
-                            className="btn btn-sm btn-primary"
-                          >
-                            <Eye size={14} /> Ver
-                          </Link>
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <button 
+                              className="btn btn-sm btn-outline"
+                              onClick={() => openWhatsApp(romaneio)}
+                            >
+                              <MessageCircle size={14} />
+                            </button>
+                            <Link 
+                              to={`/admin/romaneios/${romaneio.id}`}
+                              className="btn btn-sm btn-primary"
+                            >
+                              <Eye size={14} /> Ver
+                            </Link>
+                          </div>
                         </div>
                       </div>
                     )

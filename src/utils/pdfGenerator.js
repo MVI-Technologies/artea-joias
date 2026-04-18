@@ -358,10 +358,15 @@ export const generateRomaneioPDF = async ({ romaneio, lot, client, items, compan
     }
     // Sempre exibir total = produtos + taxa (evita romaneios com valor_total só de produtos)
     const valorTotalCompra = valorProdutos + taxaSeparacao
+    
+    // Calcula os 50% caso aplicável
+    const pago50Pct = romaneio.status_pagamento === 'pago_50_pct'
+    const valorExibir = pago50Pct ? valorTotalCompra / 2 : valorTotalCompra
+    const labelTotal = pago50Pct ? '• Valor Restante da Compra (50%): ' : '• Valor Total da Compra: '
 
     doc.setFontSize(11)
     doc.setFont('helvetica', 'bold')
-    doc.text(`• Valor Total da Compra: ${formatCurrency(valorTotalCompra)}`, 18, finalY)
+    doc.text(`${labelTotal}${formatCurrency(valorExibir)}`, 18, finalY)
 
     finalY += 6
     doc.setFontSize(9)
@@ -376,6 +381,11 @@ export const generateRomaneioPDF = async ({ romaneio, lot, client, items, compan
     addTotalLine('Valor Produtos', formatCurrency(valorProdutos))
     if (taxaSeparacao > 0) addTotalLine('Custo Separação', formatCurrency(taxaSeparacao))
     addTotalLine('Quantidade Total de Produtos', romaneio.quantidade_itens)
+    if (pago50Pct) {
+        doc.setFont('helvetica', 'bold')
+        doc.setTextColor(0, 100, 0)
+        addTotalLine('Status do Romaneio', 'Pago 50%')
+    }
 
     doc.setTextColor(0, 0, 0) // Reset to black
 
@@ -532,7 +542,7 @@ export const generateRelatorioFabricaPDF = async ({ lot, items, company }) => {
     for (const item of items) {
         tableRows.push([
             '',
-            item.product?.descricao || item.product?.nome || '—',
+            item.descricao_custom || item.product?.descricao || item.product?.nome || '—',
             item.variacao || '—',
             String(item.quantidade)
         ])

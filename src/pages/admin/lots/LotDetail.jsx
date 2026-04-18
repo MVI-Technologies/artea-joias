@@ -168,7 +168,7 @@ export default function LotDetail({ defaultTab }) {
           .from('romaneio_items')
           .select(`
             *,
-            product:products(id, nome, preco, imagem1)
+            product:products(id, nome, descricao, preco, imagem1)
           `)
           .in('romaneio_id', romaneioIds)
 
@@ -585,19 +585,21 @@ export default function LotDetail({ defaultTab }) {
   const buildRelatorio = () => {
     const grouped = {}
 
-    reservas.forEach(clientReserva => {
       clientReserva.items.forEach(item => {
-        const prodId = item.product?.id
-        if (!prodId) return
+        const prodId = item.product?.id || `custom-${Math.random()}`
+        if (!prodId && !item.isCustom) return
 
         const variacao = (item.variacao || '').trim() || '—'
         const key = `${prodId}-${variacao}`
 
         if (!grouped[key]) {
           grouped[key] = {
+            id: key,
             product: item.product,
+            descricao_custom: item.product?.descricao || item.product?.nome || '',
             variacao: variacao,
-            quantidade: 0
+            quantidade: 0,
+            isCustom: false
           }
         }
 
@@ -609,13 +611,39 @@ export default function LotDetail({ defaultTab }) {
 
     // Ordenar por Descrição/Nome do Produto
     list.sort((a, b) => {
-      const nameA = a.product?.descricao || a.product?.nome || ''
-      const nameB = b.product?.descricao || b.product?.nome || ''
+      const nameA = a.descricao_custom || ''
+      const nameB = b.descricao_custom || ''
       return nameA.localeCompare(nameB, 'pt-BR')
     })
 
     setRelatorio(list)
     setActiveTab('fabrica')
+  }
+
+  const handleUpdateRelatorioItem = (index, field, value) => {
+    setRelatorio(prev => {
+      const newList = [...prev];
+      newList[index] = { ...newList[index], [field]: value };
+      return newList;
+    });
+  }
+
+  const handleAddCustomRelatorioItem = () => {
+    setRelatorio(prev => [
+      ...prev,
+      {
+        id: `custom-${Date.now()}`,
+        product: null,
+        descricao_custom: '',
+        variacao: '',
+        quantidade: 1,
+        isCustom: true
+      }
+    ]);
+  }
+
+  const handleRemoveRelatorioItem = (index) => {
+    setRelatorio(prev => prev.filter((_, i) => i !== index));
   }
 
   const handleExportFabricaPDF = async () => {
@@ -1634,22 +1662,58 @@ export default function LotDetail({ defaultTab }) {
                         }
                       </td>
                       <td style={{ maxWidth: 400 }}>
-                        <span style={{ fontSize: '0.85rem', fontWeight: 500 }}>{row.product?.descricao || row.product?.nome || '—'}</span>
+                        <input
+                          type="text"
+                          value={row.descricao_custom}
+                          onChange={(e) => handleUpdateRelatorioItem(idx, 'descricao_custom', e.target.value)}
+                          className="input-bordered"
+                          style={{ width: '100%', fontSize: '0.85rem' }}
+                        />
                       </td>
-                      <td>{row.variacao || '—'}</td>
-                      <td style={{ textAlign: 'right', fontWeight: 700, fontSize: '1.1rem' }}>{row.quantidade}</td>
+                      <td>
+                        <input
+                          type="text"
+                          value={row.variacao}
+                          onChange={(e) => handleUpdateRelatorioItem(idx, 'variacao', e.target.value)}
+                          className="input-bordered"
+                          style={{ width: '100%', fontSize: '0.85rem' }}
+                        />
+                      </td>
+                      <td style={{ textAlign: 'right', fontWeight: 700, fontSize: '1.1rem', whiteSpace: 'nowrap' }}>
+                        <input
+                          type="number"
+                          value={row.quantidade}
+                          onChange={(e) => handleUpdateRelatorioItem(idx, 'quantidade', parseInt(e.target.value) || 0)}
+                          className="input-bordered"
+                          style={{ width: '60px', textAlign: 'center', fontSize: '1rem', marginRight: '8px' }}
+                          min="0"
+                        />
+                        <button
+                          className="btn-mobile-delete"
+                          onClick={() => handleRemoveRelatorioItem(idx)}
+                          style={{ padding: '6px' }}
+                          title="Remover Item"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
                 <tfoot>
                   <tr className="fabrica-totals">
                     <td colSpan={3} style={{ textAlign: 'right', fontWeight: 700 }}>TOTAL DE PEÇAS</td>
-                    <td style={{ textAlign: 'right', fontWeight: 800, fontSize: '1.2rem' }}>
+                    <td style={{ textAlign: 'center', fontWeight: 800, fontSize: '1.2rem', paddingRight: '40px' }}>
                       {relatorio.reduce((s, r) => s + r.quantidade, 0)}
                     </td>
                   </tr>
                 </tfoot>
               </table>
+              <div style={{ marginTop: '16px', display: 'flex', justifyContent: 'flex-start' }}>
+                <button className="btn btn-outline" onClick={handleAddCustomRelatorioItem}>
+                  <Plus size={16} /> Adicionar Produto Extra
+                </button>
+              </div>
             </div>
           )}
         </div>
