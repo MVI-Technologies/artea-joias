@@ -1642,7 +1642,7 @@ export default function LotDetail({ defaultTab }) {
               <p>Ainda não há reservas neste link, ou os dados ainda não carregaram.</p>
             </div>
           ) : (
-            <div className="fabrica-table-container">
+            <div className="table-responsive fabrica-table-responsive" style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '0' }}>
               <table className="fabrica-table">
                 <thead>
                   <tr>

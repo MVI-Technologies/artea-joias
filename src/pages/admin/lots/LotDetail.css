@@ -2723,3 +2723,11 @@
 .btn-mobile-delete:hover {
   background: #dc2626 !important;
 }
+
+
+.btn-mobile-delete { background: transparent; color: #ef4444; border: 1px solid #fee2e2; border-radius: 6px; padding: 6px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; transition: all 0.2s; }
+.btn-mobile-delete:hover { background: #fee2e2; }
+@media (max-width: 768px) { .fabrica-table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; } .input-bordered { padding: 8px; border: 1px solid #d1d5db; border-radius: 6px; } }
+
+
+@media (max-width: 768px) { .fabrica-table-container { overflow-x: auto; -webkit-overflow-scrolling: touch; } .fabrica-table { min-width: 600px; } }

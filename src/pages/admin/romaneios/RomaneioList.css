@@ -470,3 +470,74 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Modal and Delete button */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 16px;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  max-width: 500px;
+  width: 100%;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+.modal-content h3 {
+  margin-top: 0;
+  font-size: 1.2rem;
+  color: #1f2937;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.btn-danger {
+  background: #ef4444;
+  color: white;
+}
+
+.btn-danger:hover {
+  background: #dc2626;
+}
+
+.btn-mobile-delete {
+  background: transparent;
+  color: #ef4444;
+  border: 1px solid #fee2e2;
+  border-radius: 6px;
+  padding: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.btn-mobile-delete:hover {
+  background: #fee2e2;
+}
+
+@media (max-width: 600px) {
+  .modal-actions {
+    flex-direction: column;
+  }
+  .modal-actions button {
+    width: 100%;
+  }
+}
