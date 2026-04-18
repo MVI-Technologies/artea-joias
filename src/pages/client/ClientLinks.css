@@ -125,10 +125,26 @@
 }
 
 .status-aberto { background-color: #22c55e; } /* Verde */
-.status-pronto_e_aberto { background-color: #8b5cf6; } /* Roxo (conforme print) */
-.status-fechado { background-color: #ef4444; } /* Vermelho */
+.status-pronto_e_aberto { background-color: #8b5cf6; } /* Roxo */
+.status-fechado,
+.status-fechado_e_bloqueado { background-color: #ef4444; } /* Vermelho */
+.status-preparacao,
 .status-em_preparacao { background-color: #f59e0b; } /* Laranja */
-.status-concluido { background-color: #64748b; } /* Cinza */
+.status-em_fabricacao { background-color: #d97706; } /* Laranja escuro */
+.status-fornecedor_separando { background-color: #ea580c; } /* Laranja queimado */
+.status-verificando_estoque { background-color: #0891b2; } /* Ciano */
+.status-organizando_valores { background-color: #7c3aed; } /* Roxo */
+.status-aguardando_pagamentos { background-color: #ca8a04; } /* Amarelo escuro */
+.status-em_transito,
+.status-em_transito_internacional { background-color: #2563eb; } /* Azul */
+.status-em_separacao { background-color: #3b82f6; } /* Azul médio */
+.status-envio_liberado { background-color: #059669; } /* Verde escuro */
+.status-envio_parcial_liberado { background-color: #10b981; } /* Verde médio */
+.status-pago { background-color: #16a34a; } /* Verde pago */
+.status-enviado { background-color: #2563eb; } /* Azul enviado */
+.status-concluido,
+.status-finalizado { background-color: #64748b; } /* Cinza */
+.status-cancelado { background-color: #dc2626; } /* Vermelho escuro */
 
 /* Button */
 .btn-access-products {
@@ -168,13 +184,6 @@
 /* Link card com lote fechado */
 .link-card.link-closed {
   opacity: 0.8;
-}
-
-/* Status badges para lotes fechados */
-.status-badge-card.status-fechado,
-.status-badge-card.status-fechado_e_bloqueado {
-  background-color: #ef4444;
-  color: white;
 }
 
 /* Empty State */

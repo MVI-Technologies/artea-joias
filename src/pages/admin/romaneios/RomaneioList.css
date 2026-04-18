@@ -1,4 +1,4 @@
-﻿/* RomaneioList Styles */
+/* RomaneioList Styles */
 
 .romaneio-page {
   padding: 24px;
@@ -563,4 +563,38 @@
   .modal-actions button {
     width: 100%;
   }
+}
+
+/* Mini progress bar de pagamento nos cards */
+.pagamento-mini-progress {
+  flex-direction: column !important;
+  align-items: stretch !important;
+  gap: 4px !important;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--border-color, #e2e8f0);
+}
+
+.mini-progress-bar {
+  height: 6px;
+  background: #e2e8f0;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.mini-progress-fill {
+  height: 100%;
+  border-radius: 6px;
+  background: linear-gradient(90deg, #D4AF37, #f0d060);
+  transition: width 0.5s ease;
+}
+
+.mini-progress-fill.quitado {
+  background: linear-gradient(90deg, #22c55e, #4ade80);
+}
+
+.mini-progress-text {
+  font-size: 11px;
+  color: #64748b;
+  text-align: right;
 }

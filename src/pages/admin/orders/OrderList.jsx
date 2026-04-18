@@ -25,6 +25,7 @@ import { Clock } from 'lucide-react'
 const statusOptions = [
   { value: '', label: 'Todos os Status' },
   { value: 'pendente', label: 'Pendente' },
+  { value: 'parcialmente_pago', label: 'Parcialmente Pago' },
   { value: 'pago', label: 'Pago sem frete' },
   { value: 'pago_frete_incluso', label: 'Pago com frete' },
   { value: 'em_preparacao', label: 'Em Preparação' },
@@ -177,6 +178,7 @@ export default function OrderList() {
       pendente: { label: 'Pendente', class: 'badge-warning', icon: Clock },
       aguardando: { label: 'Aguardando', class: 'badge-warning', icon: Clock },
       aguardando_pagamento: { label: 'Aguardando Pagto', class: 'badge-warning', icon: Clock },
+      parcialmente_pago: { label: 'Pgto. Parcial', class: 'badge-info', icon: CreditCard },
       pago: { label: 'Pago sem frete', class: 'badge-pago-sem-frete', icon: CheckCircle },
       pago_frete_incluso: { label: 'Pago com frete', class: 'badge-success', icon: CheckCircle },
       admin_purchase: { label: 'Compra Admin', class: 'badge-secondary', icon: CheckCircle },

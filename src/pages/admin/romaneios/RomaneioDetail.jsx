@@ -16,7 +16,10 @@ import {
   Trash2,
   ChevronUp,
   ChevronDown,
-  Loader2
+  Loader2,
+  Banknote,
+  CreditCard,
+  Wallet
 } from 'lucide-react'
 import CenteredLoader from '../../../components/common/CenteredLoader'
 import { supabase } from '../../../lib/supabase'
@@ -27,7 +30,7 @@ import { generateRomaneioPDF } from '../../../utils/pdfGenerator'
 
 const STATUS_OPTIONS = [
   { value: 'aguardando_pagamento', label: 'Aguardando Pagamento', color: 'warning' },
-  { value: 'pago_50_pct_s_frete', label: 'Pago 50% Sem Frete', color: 'warning' },
+  { value: 'pago_50_pct_s_frete', label: 'Pago Parcialmente sem frete', color: 'warning' },
   { value: 'pago', label: 'Pago sem frete', color: 'warning' },
   { value: 'pago_frete_incluso', label: 'Pago com frete', color: 'success' },
   { value: 'em_separacao', label: 'Em Separação', color: 'info' },
@@ -69,8 +72,17 @@ export default function RomaneioDetail() {
   const [loadingProducts, setLoadingProducts] = useState(false)
   const [addVariacaoByProduct, setAddVariacaoByProduct] = useState({})
 
+  // Partial Payments Controls
+  const [pagamentos, setPagamentos] = useState([])
+  const [loadingPagamentos, setLoadingPagamentos] = useState(false)
+  const [showPaymentForm, setShowPaymentForm] = useState(false)
+  const [newPayment, setNewPayment] = useState({ valor: '', meio_pagamento: 'pix', observacao: '' })
+  const [savingPayment, setSavingPayment] = useState(false)
+  const [deletingPaymentId, setDeletingPaymentId] = useState(null)
+
   useEffect(() => {
     fetchData()
+    fetchPagamentos()
   }, [id])
 
   const fetchData = async () => {
@@ -159,6 +171,128 @@ export default function RomaneioDetail() {
       console.error('Erro:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  // ==================== PAGAMENTOS PARCIAIS ====================
+  const fetchPagamentos = async () => {
+    setLoadingPagamentos(true)
+    try {
+      const { data, error } = await supabase
+        .from('romaneio_pagamentos')
+        .select('*, registrado_por_client:clients!romaneio_pagamentos_registrado_por_fkey(nome)')
+        .eq('romaneio_id', id)
+        .order('created_at', { ascending: true })
+
+      if (error) throw error
+      setPagamentos(data || [])
+    } catch (error) {
+      console.error('Erro ao carregar pagamentos:', error)
+    } finally {
+      setLoadingPagamentos(false)
+    }
+  }
+
+  const handleAddPayment = async () => {
+    const valor = parseFloat(newPayment.valor)
+    if (!valor || valor <= 0) {
+      toast.warning('Informe um valor válido')
+      return
+    }
+
+    setSavingPayment(true)
+    try {
+      // Get admin client id
+      const { data: adminClient } = await supabase
+        .from('clients')
+        .select('id')
+        .eq('auth_id', user.id)
+        .single()
+
+      const { error } = await supabase
+        .from('romaneio_pagamentos')
+        .insert({
+          romaneio_id: id,
+          valor: valor,
+          meio_pagamento: newPayment.meio_pagamento,
+          observacao: newPayment.observacao || null,
+          registrado_por: adminClient?.id || null
+        })
+
+      if (error) throw error
+
+      toast.success(`Pagamento de R$ ${valor.toFixed(2)} registrado!`)
+      setNewPayment({ valor: '', meio_pagamento: 'pix', observacao: '' })
+      setShowPaymentForm(false)
+      await fetchPagamentos()
+      await fetchData() // Refresh romaneio to get updated valor_pago
+    } catch (error) {
+      console.error('Erro ao registrar pagamento:', error)
+      toast.error('Erro ao registrar pagamento: ' + error.message)
+    } finally {
+      setSavingPayment(false)
+    }
+  }
+
+  const handleDeletePayment = async (paymentId) => {
+    try {
+      setDeletingPaymentId(paymentId)
+      const { error } = await supabase
+        .from('romaneio_pagamentos')
+        .delete()
+        .eq('id', paymentId)
+
+      if (error) throw error
+
+      toast.success('Pagamento removido')
+      await fetchPagamentos()
+      await fetchData()
+    } catch (error) {
+      console.error('Erro ao remover pagamento:', error)
+      toast.error('Erro ao remover pagamento: ' + error.message)
+    } finally {
+      setDeletingPaymentId(null)
+    }
+  }
+
+  const handlePayFullRemaining = async () => {
+    const totalPago = pagamentos.reduce((s, p) => s + (p.valor || 0), 0)
+    const valorTotal = getValorTotalExib()
+    const restante = valorTotal - totalPago
+    if (restante <= 0) {
+      toast.info('Este romaneio já está totalmente pago')
+      return
+    }
+    setNewPayment(prev => ({ ...prev, valor: restante.toFixed(2) }))
+    setShowPaymentForm(true)
+  }
+
+  const getValorTotalExib = () => {
+    const valorProdutos = Number(romaneio?.valor_produtos ?? 0)
+    let taxaSep = Number(romaneio?.taxa_separacao ?? 0)
+    if (taxaSep <= 0 && valorProdutos >= 1) taxaSep = valorProdutos <= 80 ? 15 : 25
+    const totalComTaxa = valorProdutos + taxaSep + (romaneio?.valor_frete || 0) - (romaneio?.desconto_credito || 0)
+    return (Number(romaneio?.valor_total ?? 0) <= valorProdutos && taxaSep > 0) ? totalComTaxa : (romaneio?.valor_total ?? 0)
+  }
+
+  const getMeioPagamentoLabel = (meio) => {
+    const labels = {
+      'pix': 'PIX',
+      'dinheiro': 'Dinheiro',
+      'cartao': 'Cartão',
+      'transferencia': 'Transferência',
+      'outro': 'Outro'
+    }
+    return labels[meio] || meio
+  }
+
+  const getMeioPagamentoIcon = (meio) => {
+    switch (meio) {
+      case 'pix': return DollarSign
+      case 'dinheiro': return Banknote
+      case 'cartao': return CreditCard
+      case 'transferencia': return Wallet
+      default: return DollarSign
     }
   }
 
@@ -567,7 +701,7 @@ export default function RomaneioDetail() {
       // Mensagem personalizada baseada no status
       const statusMessages = {
         'cancelado': '❌ Pedido cancelado com sucesso!',
-        'pago_50_pct_s_frete': '💸 Marcado como Pago 50% Sem Frete!',
+        'pago_50_pct_s_frete': '💸 Marcado como Pago Parcialmente sem frete!',
         'pago': '🟠 Marcado como Pago sem frete!',
         'pago_frete_incluso': '✅ Marcado como Pago com frete!',
         'em_separacao': '📦 Pedido em separação!',
@@ -1095,6 +1229,190 @@ export default function RomaneioDetail() {
               <li style={{ marginTop: 8, fontWeight: 'bold' }}>• Recebido Líquido: R$ {romaneio.total_liquido?.toFixed(2)}</li>
             )}
           </ul>
+        </div>
+          )
+        })()}
+
+        {/* ==================== SEÇÃO DE PAGAMENTOS PARCIAIS ==================== */}
+        {(() => {
+          const totalPago = pagamentos.reduce((s, p) => s + (p.valor || 0), 0)
+          const valorTotal = getValorTotalExib()
+          const saldoRestante = Math.max(0, valorTotal - totalPago)
+          const porcentagemPaga = valorTotal > 0 ? Math.min(100, (totalPago / valorTotal) * 100) : 0
+          const quitado = saldoRestante <= 0.01 && totalPago > 0
+
+          return (
+        <div className="pagamentos-section no-print">
+          <div className="pagamentos-header">
+            <h3><Wallet size={20} /> Pagamentos</h3>
+            <div className="pagamentos-resumo-badges">
+              <span className="pagamento-badge pagamento-badge-pago">
+                Pago: R$ {totalPago.toFixed(2)}
+              </span>
+              {!quitado && (
+                <span className="pagamento-badge pagamento-badge-restante">
+                  Restante: R$ {saldoRestante.toFixed(2)}
+                </span>
+              )}
+              {quitado && (
+                <span className="pagamento-badge pagamento-badge-quitado">
+                  <CheckCircle size={14} /> Quitado
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Barra de progresso */}
+          <div className="pagamento-progress-container">
+            <div className="pagamento-progress-bar">
+              <div
+                className={`pagamento-progress-fill ${quitado ? 'quitado' : ''}`}
+                style={{ width: `${porcentagemPaga}%` }}
+              />
+            </div>
+            <span className="pagamento-progress-label">
+              {porcentagemPaga.toFixed(0)}% pago
+            </span>
+          </div>
+
+          {/* Lista de pagamentos */}
+          {loadingPagamentos ? (
+            <div style={{ textAlign: 'center', padding: '20px' }}>
+              <Loader2 size={20} className="spin" /> Carregando...
+            </div>
+          ) : pagamentos.length > 0 ? (
+            <div className="pagamentos-lista">
+              {pagamentos.map((pag, idx) => {
+                const MeioIcon = getMeioPagamentoIcon(pag.meio_pagamento)
+                return (
+                  <div key={pag.id} className="pagamento-item">
+                    <div className="pagamento-item-icon">
+                      <MeioIcon size={18} />
+                    </div>
+                    <div className="pagamento-item-info">
+                      <div className="pagamento-item-top">
+                        <strong>R$ {pag.valor?.toFixed(2)}</strong>
+                        <span className="pagamento-meio-badge">
+                          {getMeioPagamentoLabel(pag.meio_pagamento)}
+                        </span>
+                      </div>
+                      <div className="pagamento-item-bottom">
+                        <span className="pagamento-data">
+                          {new Date(pag.created_at).toLocaleString('pt-BR', {
+                            day: '2-digit', month: '2-digit', year: 'numeric',
+                            hour: '2-digit', minute: '2-digit'
+                          })}
+                        </span>
+                        {pag.observacao && (
+                          <span className="pagamento-obs">— {pag.observacao}</span>
+                        )}
+                        {pag.registrado_por_client?.nome && (
+                          <span className="pagamento-registrado">por {pag.registrado_por_client.nome}</span>
+                        )}
+                      </div>
+                    </div>
+                    <button
+                      className="btn btn-outline btn-sm pagamento-delete-btn"
+                      onClick={() => handleDeletePayment(pag.id)}
+                      disabled={deletingPaymentId === pag.id}
+                      title="Remover pagamento"
+                    >
+                      {deletingPaymentId === pag.id ? <Loader2 size={14} className="spin" /> : <Trash2 size={14} />}
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
+            <p className="pagamentos-empty">Nenhum pagamento registrado ainda.</p>
+          )}
+
+          {/* Formulário de novo pagamento */}
+          {showPaymentForm ? (
+            <div className="pagamento-form">
+              <h4>Registrar Pagamento</h4>
+              <div className="pagamento-form-row">
+                <div className="pagamento-form-field">
+                  <label>Valor (R$)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    placeholder="0,00"
+                    value={newPayment.valor}
+                    onChange={(e) => setNewPayment(prev => ({ ...prev, valor: e.target.value }))}
+                    className="form-control"
+                    autoFocus
+                  />
+                </div>
+                <div className="pagamento-form-field">
+                  <label>Meio</label>
+                  <select
+                    value={newPayment.meio_pagamento}
+                    onChange={(e) => setNewPayment(prev => ({ ...prev, meio_pagamento: e.target.value }))}
+                    className="form-control"
+                  >
+                    <option value="pix">PIX</option>
+                    <option value="dinheiro">Dinheiro</option>
+                    <option value="cartao">Cartão</option>
+                    <option value="transferencia">Transferência</option>
+                    <option value="outro">Outro</option>
+                  </select>
+                </div>
+              </div>
+              <div className="pagamento-form-field" style={{ marginTop: 8 }}>
+                <label>Observação (opcional)</label>
+                <input
+                  type="text"
+                  placeholder="Ex: Comprovante recebido via WhatsApp"
+                  value={newPayment.observacao}
+                  onChange={(e) => setNewPayment(prev => ({ ...prev, observacao: e.target.value }))}
+                  className="form-control"
+                />
+              </div>
+              <div className="pagamento-form-actions">
+                <button
+                  className="btn btn-outline btn-sm"
+                  onClick={() => { setShowPaymentForm(false); setNewPayment({ valor: '', meio_pagamento: 'pix', observacao: '' }) }}
+                  disabled={savingPayment}
+                >
+                  Cancelar
+                </button>
+                <button
+                  className="btn btn-primary btn-sm"
+                  onClick={handleAddPayment}
+                  disabled={savingPayment || !newPayment.valor}
+                >
+                  {savingPayment ? <><Loader2 size={14} className="spin" /> Salvando...</> : <><CheckCircle size={14} /> Confirmar</>}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="pagamento-actions-row">
+              <button
+                className="btn btn-primary btn-sm"
+                onClick={() => setShowPaymentForm(true)}
+              >
+                <Plus size={14} /> Registrar Pagamento
+              </button>
+              {!quitado && totalPago > 0 && (
+                <button
+                  className="btn btn-outline btn-sm"
+                  onClick={handlePayFullRemaining}
+                >
+                  <CheckCircle size={14} /> Quitar Restante (R$ {saldoRestante.toFixed(2)})
+                </button>
+              )}
+              {!quitado && totalPago === 0 && (
+                <button
+                  className="btn btn-outline btn-sm"
+                  onClick={handlePayFullRemaining}
+                >
+                  <DollarSign size={14} /> Pagar Total
+                </button>
+              )}
+            </div>
+          )}
         </div>
           )
         })()}

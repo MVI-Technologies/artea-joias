@@ -9,7 +9,10 @@ import {
   AlertCircle,
   CreditCard,
   Package,
-  Upload
+  Upload,
+  Wallet,
+  DollarSign,
+  Banknote
 } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
 import { generateRomaneioPDF } from '../../utils/pdfGenerator'
@@ -32,6 +35,7 @@ export default function RomaneioDetail() {
   const [loading, setLoading] = useState(true)
   const [copiedPix, setCopiedPix] = useState(false)
   const [uploadingProof, setUploadingProof] = useState(false)
+  const [pagamentos, setPagamentos] = useState([])
 
   useEffect(() => {
     if (romaneioId) loadRomaneio()
@@ -89,6 +93,41 @@ export default function RomaneioDetail() {
       toast.error('Erro ao carregar romaneio. Tente novamente.')
     } finally {
       setLoading(false)
+    }
+  }
+
+  // Fetch payments for this romaneio
+  const fetchPagamentos = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('romaneio_pagamentos')
+        .select('id, valor, meio_pagamento, observacao, created_at')
+        .eq('romaneio_id', romaneioId)
+        .order('created_at', { ascending: true })
+
+      if (error) throw error
+      setPagamentos(data || [])
+    } catch (error) {
+      console.error('Erro ao carregar pagamentos:', error)
+    }
+  }
+
+  useEffect(() => {
+    if (romaneioId) fetchPagamentos()
+  }, [romaneioId])
+
+  const getMeioPagamentoLabel = (meio) => {
+    const labels = { 'pix': 'PIX', 'dinheiro': 'Dinheiro', 'cartao': 'Cartão', 'transferencia': 'Transferência', 'outro': 'Outro' }
+    return labels[meio] || meio
+  }
+
+  const getMeioPagamentoIcon = (meio) => {
+    switch (meio) {
+      case 'pix': return DollarSign
+      case 'dinheiro': return Banknote
+      case 'cartao': return CreditCard
+      case 'transferencia': return Wallet
+      default: return DollarSign
     }
   }
 
@@ -340,6 +379,20 @@ export default function RomaneioDetail() {
                       <span className="label">Valor Total:</span>
                       <span className="valor">R$ {romaneio.valor_total?.toFixed(2)}</span>
                     </div>
+                    {/* Show remaining balance if partial payments exist */}
+                    {(() => {
+                      const totalPago = pagamentos.reduce((s, p) => s + (p.valor || 0), 0)
+                      const restante = (romaneio.valor_total || 0) - totalPago
+                      if (totalPago > 0 && restante > 0.01) {
+                        return (
+                          <div className="info-item valor-destaque" style={{ marginTop: 8 }}>
+                            <span className="label">Saldo Restante:</span>
+                            <span className="valor" style={{ color: '#b45309' }}>R$ {restante.toFixed(2)}</span>
+                          </div>
+                        )
+                      }
+                      return null
+                    })()}
                     {deadline && (
                       <div className="info-item prazo">
                         <Clock size={16} />
@@ -486,6 +539,112 @@ export default function RomaneioDetail() {
             </div>
           </div>
         </div>
+          )
+        })()}
+
+        {/* Pagamentos Realizados (read-only) */}
+        {pagamentos.length > 0 && (() => {
+          const totalPago = pagamentos.reduce((s, p) => s + (p.valor || 0), 0)
+          const valorTotal = romaneio.valor_total || 0
+          const saldoRestante = Math.max(0, valorTotal - totalPago)
+          const porcentagemPaga = valorTotal > 0 ? Math.min(100, (totalPago / valorTotal) * 100) : 0
+          const quitado = saldoRestante <= 0.01 && totalPago > 0
+
+          return (
+            <div className="payments-history card">
+              <h2><Wallet size={20} /> Pagamentos Realizados</h2>
+
+              {/* Progress bar */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+                <div style={{ flex: 1, height: 8, background: '#e2e8f0', borderRadius: 8, overflow: 'hidden' }}>
+                  <div
+                    style={{
+                      height: '100%',
+                      borderRadius: 8,
+                      background: quitado
+                        ? 'linear-gradient(90deg, #22c55e, #4ade80)'
+                        : 'linear-gradient(90deg, #D4AF37, #f0d060)',
+                      width: `${porcentagemPaga}%`,
+                      transition: 'width 0.5s ease'
+                    }}
+                  />
+                </div>
+                <span style={{ fontSize: 13, fontWeight: 600, color: '#64748b', whiteSpace: 'nowrap' }}>
+                  {porcentagemPaga.toFixed(0)}%
+                </span>
+              </div>
+
+              {/* Summary badges */}
+              <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+                <span style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                  padding: '4px 12px', borderRadius: 20, fontSize: 13, fontWeight: 600,
+                  background: '#dbeafe', color: '#1d4ed8'
+                }}>
+                  Pago: R$ {totalPago.toFixed(2)}
+                </span>
+                {!quitado && (
+                  <span style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 4,
+                    padding: '4px 12px', borderRadius: 20, fontSize: 13, fontWeight: 600,
+                    background: '#fef3c7', color: '#b45309'
+                  }}>
+                    Restante: R$ {saldoRestante.toFixed(2)}
+                  </span>
+                )}
+                {quitado && (
+                  <span style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 4,
+                    padding: '4px 12px', borderRadius: 20, fontSize: 13, fontWeight: 600,
+                    background: '#d1fae5', color: '#059669'
+                  }}>
+                    <CheckCircle size={14} /> Quitado
+                  </span>
+                )}
+              </div>
+
+              {/* Payments list */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {pagamentos.map(pag => {
+                  const MeioIcon = getMeioPagamentoIcon(pag.meio_pagamento)
+                  return (
+                    <div key={pag.id} style={{
+                      display: 'flex', alignItems: 'center', gap: 12,
+                      padding: '10px 14px', background: '#f8fafc',
+                      border: '1px solid #e2e8f0', borderRadius: 8
+                    }}>
+                      <div style={{
+                        width: 32, height: 32, borderRadius: 6,
+                        background: 'linear-gradient(135deg, #D4AF37, #e6c555)',
+                        color: 'white', display: 'flex', alignItems: 'center',
+                        justifyContent: 'center', flexShrink: 0
+                      }}>
+                        <MeioIcon size={16} />
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <strong style={{ fontSize: 14 }}>R$ {pag.valor?.toFixed(2)}</strong>
+                          <span style={{
+                            fontSize: 10, fontWeight: 600, textTransform: 'uppercase',
+                            padding: '2px 6px', borderRadius: 4,
+                            background: '#f1f5f9', color: '#475569'
+                          }}>
+                            {getMeioPagamentoLabel(pag.meio_pagamento)}
+                          </span>
+                        </div>
+                        <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>
+                          {new Date(pag.created_at).toLocaleString('pt-BR', {
+                            day: '2-digit', month: '2-digit', year: 'numeric',
+                            hour: '2-digit', minute: '2-digit'
+                          })}
+                          {pag.observacao && <span style={{ color: '#64748b', fontStyle: 'italic' }}> — {pag.observacao}</span>}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
           )
         })()}
       </div>

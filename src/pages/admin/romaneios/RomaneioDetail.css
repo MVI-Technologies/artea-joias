@@ -933,3 +933,307 @@
   -moz-appearance: textfield;
   appearance: textfield;
 }
+
+/* ==================== PAGAMENTOS PARCIAIS ==================== */
+
+.pagamentos-section {
+  margin: 24px 0;
+  padding: 24px;
+  background: #fafaf8;
+  border: 1px solid #e8e4d9;
+  border-radius: 12px;
+}
+
+.pagamentos-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.pagamentos-header h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 17px;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0;
+}
+
+.pagamentos-resumo-badges {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.pagamento-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.pagamento-badge-pago {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.pagamento-badge-restante {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.pagamento-badge-quitado {
+  background: #d1fae5;
+  color: #059669;
+}
+
+/* Barra de progresso */
+.pagamento-progress-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.pagamento-progress-bar {
+  flex: 1;
+  height: 10px;
+  background: #e2e8f0;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.pagamento-progress-fill {
+  height: 100%;
+  border-radius: 10px;
+  background: linear-gradient(90deg, #D4AF37, #f0d060);
+  transition: width 0.5s ease;
+}
+
+.pagamento-progress-fill.quitado {
+  background: linear-gradient(90deg, #22c55e, #4ade80);
+}
+
+.pagamento-progress-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #64748b;
+  white-space: nowrap;
+  min-width: 65px;
+  text-align: right;
+}
+
+/* Lista de pagamentos */
+.pagamentos-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.pagamento-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  transition: box-shadow 0.15s, border-color 0.15s;
+}
+
+.pagamento-item:hover {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  border-color: #cbd5e1;
+}
+
+.pagamento-item-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #D4AF37, #e6c555);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.pagamento-item-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.pagamento-item-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+
+.pagamento-item-top strong {
+  font-size: 15px;
+  color: #1e293b;
+}
+
+.pagamento-meio-badge {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.pagamento-item-bottom {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.pagamento-data {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.pagamento-obs {
+  font-size: 12px;
+  color: #64748b;
+  font-style: italic;
+}
+
+.pagamento-registrado {
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.pagamento-delete-btn {
+  flex-shrink: 0;
+  padding: 6px 8px !important;
+  color: #94a3b8 !important;
+  border-color: transparent !important;
+}
+
+.pagamento-delete-btn:hover {
+  color: #ef4444 !important;
+  border-color: #fecaca !important;
+  background: #fef2f2 !important;
+}
+
+.pagamentos-empty {
+  text-align: center;
+  color: #94a3b8;
+  font-size: 14px;
+  padding: 16px 0;
+  margin: 0;
+}
+
+/* Formulário de novo pagamento */
+.pagamento-form {
+  background: white;
+  border: 1px solid #D4AF37;
+  border-radius: 10px;
+  padding: 20px;
+  margin-top: 12px;
+}
+
+.pagamento-form h4 {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0 0 14px;
+}
+
+.pagamento-form-row {
+  display: flex;
+  gap: 12px;
+}
+
+.pagamento-form-field {
+  flex: 1;
+}
+
+.pagamento-form-field label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.pagamento-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+/* Botões de ação */
+.pagamento-actions-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+/* Spinner animation */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .pagamentos-section {
+    padding: 16px;
+    margin: 16px 0;
+  }
+
+  .pagamentos-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .pagamento-form-row {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .pagamento-item {
+    padding: 10px 12px;
+  }
+
+  .pagamento-item-icon {
+    width: 32px;
+    height: 32px;
+  }
+
+  .pagamento-item-top strong {
+    font-size: 14px;
+  }
+
+  .pagamento-actions-row {
+    flex-direction: column;
+  }
+
+  .pagamento-actions-row .btn {
+    width: 100%;
+    justify-content: center;
+  }
+}

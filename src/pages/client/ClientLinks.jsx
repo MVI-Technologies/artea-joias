@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom' 
-import { ShoppingBag, ChevronRight, Clock, Lock } from 'lucide-react'
+import { ShoppingBag, ChevronRight, Clock, Lock, Package, Truck, CheckCircle, Factory, Search, Send } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useToast } from '../../components/common/Toast'
 import CenteredLoader from '../../components/common/CenteredLoader'
@@ -31,7 +31,7 @@ export default function ClientLinks() {
       if (activeTab === 'aberto') {
         query = query.in('status', ['aberto', 'pronto_e_aberto'])
       } else {
-        query = query.in('status', ['fechado', 'fechado_e_bloqueado'])
+        query = query.not('status', 'in', '(aberto,pronto_e_aberto)')
       }
 
       query = query.order('created_at', { ascending: false })
@@ -52,6 +52,33 @@ export default function ClientLinks() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const getLotStatusLabel = (status) => {
+    const labels = {
+      'aberto': 'Aberto',
+      'pronto_e_aberto': 'Pronto e Aberto',
+      'fechado': 'Fechado',
+      'fechado_e_bloqueado': 'Fechado',
+      'preparacao': 'Em Preparação',
+      'em_preparacao': 'Em Preparação',
+      'em_fabricacao': 'Em Fabricação',
+      'fornecedor_separando': 'Fornecedor Separando',
+      'verificando_estoque': 'Verificando Estoque',
+      'organizando_valores': 'Organizando Valores',
+      'aguardando_pagamentos': 'Aguardando Pagamentos',
+      'em_transito': 'Em Trânsito',
+      'em_transito_internacional': 'Em Trânsito Internacional',
+      'em_separacao': 'Em Separação',
+      'envio_liberado': 'Envio Liberado',
+      'envio_parcial_liberado': 'Envio Parcial Liberado',
+      'pago': 'Pago',
+      'enviado': 'Enviado',
+      'concluido': 'Concluído',
+      'finalizado': 'Finalizado',
+      'cancelado': 'Cancelado'
+    }
+    return labels[status] || status
   }
 
   if (loading) return <CenteredLoader fullHeight />
@@ -122,14 +149,12 @@ export default function ClientLinks() {
                   </p>
                   
                   <div className={`status-badge-card status-${link.status}`}>
-                    {link.status === 'pronto_e_aberto' ? 'Pronto e Aberto' : 
-                     link.status === 'aberto' ? 'Aberto' : 
-                     link.status?.toUpperCase().replace(/_/g, ' ')}
+                    {getLotStatusLabel(link.status)}
                   </div>
                 </div>
                 
-                {/* Botão de acesso - desabilitar se lote fechado */}
-                {(link.status === 'fechado' || link.status === 'fechado_e_bloqueado') ? (
+                {/* Botão de acesso - desabilitar se lote não está aberto */}
+                {!['aberto', 'pronto_e_aberto'].includes(link.status) ? (
                   <button 
                     className="btn-access-products btn-disabled"
                     onClick={() => toast.warning('Este link está fechado!')}

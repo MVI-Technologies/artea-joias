@@ -94,7 +94,7 @@ export default function RomaneioList() {
       'pendente': { label: 'Pendente', class: 'status-pendente', icon: Clock },
       'aguardando': { label: 'Aguardando', class: 'status-aguardando', icon: Clock },
       'aguardando_pagamento': { label: 'Aguardando Pagamento', class: 'status-aguardando', icon: Clock },
-      'pago_50_pct_s_frete': { label: 'Pago 50% Sem Frete', class: 'status-aguardando', icon: DollarSign },
+      'pago_50_pct_s_frete': { label: 'Pago Parcialmente sem frete', class: 'status-aguardando', icon: DollarSign },
       'pago': { label: 'Pago sem frete', class: 'status-pago-sem-frete', icon: CheckCircle },
       'pago_frete_incluso': { label: 'Pago com frete', class: 'status-pago-com-frete', icon: CheckCircle },
       'em_separacao': { label: 'Em Separação', class: 'status-em_separacao', icon: Package },
@@ -171,6 +171,11 @@ export default function RomaneioList() {
 
   const filteredRomaneios = romaneios.filter(r => {
     if (statusFilter === 'todos') return true
+    if (statusFilter === 'parcialmente_pago') {
+      const pago = Number(r.valor_pago ?? 0)
+      const total = Number(r.valor_total ?? 0)
+      return pago > 0 && pago < total
+    }
     return r.status_pagamento === statusFilter
   })
 
@@ -276,7 +281,7 @@ export default function RomaneioList() {
                 >
                   <option value="todos">Todos os status</option>
                   <option value="aguardando_pagamento">⏳ Aguardando Pagamento</option>
-                  <option value="pago_50_pct_s_frete">💸 Pago 50% Sem Frete</option>
+                  <option value="pago_50_pct_s_frete">💸 Pago Parcialmente sem frete</option>
                   <option value="pago">🟠 Pago sem frete</option>
                   <option value="pago_frete_incluso">✅ Pago com frete</option>
                   <option value="em_separacao">📦 Em Separação</option>
@@ -284,6 +289,7 @@ export default function RomaneioList() {
                   <option value="concluido">🏁 Concluído</option>
                   <option value="admin_purchase">🏢 Compra Admin</option>
                   <option value="cancelado">❌ Cancelado</option>
+                  <option value="parcialmente_pago">💰 Pgto. Parcial</option>
                 </select>
               </div>
 
@@ -347,6 +353,27 @@ export default function RomaneioList() {
                             <span className="label">Total:</span>
                             <span className="value">R$ {(romaneio.status_pagamento === 'pago_50_pct_s_frete' ? valorTotalExib / 2 : valorTotalExib).toFixed(2)}</span>
                           </div>
+                          {/* Mini barra de progresso de pagamento */}
+                          {(() => {
+                            const valorPago = Number(romaneio.valor_pago ?? 0)
+                            const vTotal = romaneio.status_pagamento === 'pago_50_pct_s_frete' ? valorTotalExib / 2 : valorTotalExib
+                            const pct = vTotal > 0 ? Math.min(100, (valorPago / vTotal) * 100) : 0
+                            const quitado = vTotal > 0 && (vTotal - valorPago) <= 0.01
+                            if (valorPago <= 0 && !['pago', 'pago_frete_incluso', 'concluido', 'em_separacao', 'enviado', 'admin_purchase'].includes(romaneio.status_pagamento)) return null
+                            return (
+                              <div className="info-row pagamento-mini-progress">
+                                <div className="mini-progress-bar">
+                                  <div
+                                    className={`mini-progress-fill ${quitado ? 'quitado' : ''}`}
+                                    style={{ width: `${pct}%` }}
+                                  />
+                                </div>
+                                <span className="mini-progress-text">
+                                  R$ {valorPago.toFixed(2)} / R$ {vTotal.toFixed(2)}
+                                </span>
+                              </div>
+                            )
+                          })()}
                         </div>
 
                         <div className="romaneio-card-footer">
