@@ -76,21 +76,17 @@ CREATE OR REPLACE FUNCTION recalculate_romaneio_valor_pago()
 RETURNS TRIGGER AS $$
 DECLARE
     v_total_pago NUMERIC;
-    v_valor_total NUMERIC;
     v_romaneio_id UUID;
 BEGIN
     -- Determinar romaneio_id baseado na operação
     v_romaneio_id := COALESCE(NEW.romaneio_id, OLD.romaneio_id);
 
     -- Recalcular soma
-    SELECT COALESCE(SUM(valor), 0) INTO v_total_pago
-    FROM romaneio_pagamentos
-    WHERE romaneio_id = v_romaneio_id;
-
-    -- Buscar valor total do romaneio
-    SELECT valor_total INTO v_valor_total
-    FROM romaneios
-    WHERE id = v_romaneio_id;
+    v_total_pago := (
+        SELECT COALESCE(SUM(valor), 0)
+        FROM romaneio_pagamentos
+        WHERE romaneio_id = v_romaneio_id
+    );
 
     -- Atualizar cache
     UPDATE romaneios
