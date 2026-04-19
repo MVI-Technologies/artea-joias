@@ -125,16 +125,16 @@ export default function ClientLinks() {
               <div 
                 className="link-card-cover"
                 style={{
-                  backgroundImage: (link.status === 'fechado' || link.status === 'fechado_e_bloqueado') 
-                    ? 'url(/images/closed-lot.png)' 
-                    : (link.cover_image_url ? `url(${link.cover_image_url})` : 'none'),
-                  backgroundSize: (link.status === 'fechado' || link.status === 'fechado_e_bloqueado') ? 'contain' : 'cover',
-                  backgroundRepeat: (link.status === 'fechado' || link.status === 'fechado_e_bloqueado') ? 'no-repeat' : 'initial',
-                  backgroundColor: (link.status === 'fechado' || link.status === 'fechado_e_bloqueado') ? '#ffffff' : 'transparent',
+                  backgroundImage: (link.status === 'aberto' || link.status === 'pronto_e_aberto') 
+                    ? (link.cover_image_url ? `url(${link.cover_image_url})` : 'none')
+                    : 'url(/images/closed-lot.png)',
+                  backgroundSize: (link.status === 'aberto' || link.status === 'pronto_e_aberto') ? 'cover' : 'contain',
+                  backgroundRepeat: (link.status === 'aberto' || link.status === 'pronto_e_aberto') ? 'initial' : 'no-repeat',
+                  backgroundColor: (link.status === 'aberto' || link.status === 'pronto_e_aberto') ? 'transparent' : '#ffffff',
                 }}
               >
-                {/* Placeholder apenas se NÃO for fechado E não tiver cover_image_url */}
-                {!(link.status === 'fechado' || link.status === 'fechado_e_bloqueado') && !link.cover_image_url && (
+                {/* Placeholder apenas se estiver aberto E não tiver cover_image_url */}
+                {(link.status === 'aberto' || link.status === 'pronto_e_aberto') && !link.cover_image_url && (
                   <div className="cover-placeholder-gradient">
                     <ShoppingBag size={32} className="opacity-20 text-white" />
                   </div>
