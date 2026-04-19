@@ -40,6 +40,7 @@ export default function Catalog() {
   const [totalsCompradoPorProduto, setTotalsCompradoPorProduto] = useState({})
   // Usar uma key baseada no ID para garantir que cada acesso ao catálogo seja único
   const clickTracked = useRef(new Map()) // Map<lotId, boolean> para rastrear por catálogo
+  const syncTimeoutRef = useRef(null) // Debounce para sincronização do carrinho com o servidor
   const selectedProductRef = useRef(null) // para listeners atualizarem o modal (Qtd peças compradas / pessoas)
   selectedProductRef.current = selectedProduct
   // Estados para bloqueio de lote fechado
@@ -627,30 +628,55 @@ export default function Catalog() {
     }
   }
 
-  const syncCartToServer = async (cartItems) => {
+  /**
+   * syncCartToServer: envia o carrinho completo mais recente ao servidor.
+   * Usa debounce de 600ms para evitar race conditions: se a cliente adicionar
+   * vários produtos rapidamente, apenas o último estado (com todos os itens)
+   * é enviado. Isso previne o bug onde chamadas antigas chegam depois de novas
+   * e sobrescrevem o servidor com um carrinho menor.
+   */
+  const scheduleSyncToServer = (cartItems) => {
     if (!client?.auth_id || !cartItems?.length) return
     const lotUuid = lot?.id || cartItems[0]?.lot_id
     if (!lotUuid) return
-    try {
-      const itemsPayload = cartItems.map(item => ({
-        product_id: item.id,
-        quantity: item.quantity,
-        valor_unitario: item.preco,
-        variacao: item.variacao ?? ''
-      }))
-      const clientSnapshot = {
-        nome: client.nome,
-        telefone: client.telefone,
-        endereco: client.enderecos?.[0] || null
+
+    // Cancelar sync pendente anterior (só envia o último estado)
+    if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current)
+
+    // Salvar o cartKey para que o timeout leia o estado mais atualizado do localStorage
+    const cartKey = `cart_${lotUuid}`
+
+    syncTimeoutRef.current = setTimeout(async () => {
+      syncTimeoutRef.current = null
+      try {
+        // Ler do localStorage para pegar o estado MAIS RECENTE (pode ter mudado durante o debounce)
+        const latestCart = JSON.parse(localStorage.getItem(cartKey) || '[]')
+        if (!latestCart.length) return
+
+        const itemsPayload = latestCart.map(item => ({
+          product_id: item.id,
+          quantity: item.quantity,
+          valor_unitario: item.preco,
+          variacao: item.variacao ?? ''
+        }))
+        const clientSnapshot = {
+          nome: client.nome,
+          telefone: client.telefone,
+          endereco: client.enderecos?.[0] || null
+        }
+        const { error } = await supabase.rpc('checkout_romaneio', {
+          p_lot_id: lotUuid,
+          p_items: itemsPayload,
+          p_client_snapshot: clientSnapshot
+        })
+        if (error && !error.message?.includes('não está aberto')) {
+          console.warn('Sync carrinho (catalog):', error.message)
+          // Não mostrar toast aqui para não poluir — o Cart.jsx já cuida disso ao abrir o carrinho
+        }
+      } catch (e) {
+        if (!e?.message?.includes('não está aberto')) console.warn('Sync carrinho (catalog):', e)
       }
-      await supabase.rpc('checkout_romaneio', {
-        p_lot_id: lotUuid,
-        p_items: itemsPayload,
-        p_client_snapshot: clientSnapshot
-      })
-    } catch (e) {
-      if (!e?.message?.includes('não está aberto')) console.warn('Sync carrinho:', e)
-    }
+    }, 600)
   }
 
   const addToCart = async (product, variacao = '') => {
@@ -711,7 +737,8 @@ export default function Catalog() {
           const prevTotal = prev[product.id] ?? 0
           return { ...prev, [product.id]: prevTotal + qty }
         })
-        await syncCartToServer(newCart)
+        // Usar debounce para evitar race condition: adições rápidas não sobrescrevem o servidor com estado antigo
+        scheduleSyncToServer(newCart)
         if (lotUuid) await loadTotalsCompradoPorProduto(lotUuid)
         toast.success(`${qty}x ${product.nome}${variacaoNorm ? ` (${variacaoNorm})` : ''} adicionado ao carrinho!`)
       } else {

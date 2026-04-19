@@ -49,7 +49,7 @@ export default function Cart() {
                     .from('romaneios')
                     .select('id, lot_id, lot:lots(id, status, link_compra)')
                     .eq('client_id', client.id)
-                    .in('status_pagamento', ['aguardando_pagamento', 'aguardando', 'pendente', 'gerado'])
+                    .in('status_pagamento', ['aguardando_pagamento', 'aguardando', 'pendente', 'gerado', 'pago_50_pct', 'pago_50_pct_s_frete', 'parcialmente_pago'])
 
                 const openDrafts = (draftRomaneios || []).filter(
                     r => r.lot?.status === 'aberto'
@@ -59,10 +59,16 @@ export default function Cart() {
                     const lotId = rom.lot_id || rom.lot?.id
                     if (!lotId) continue
 
-                    const { data: serverItems } = await supabase
+                    const { data: serverItems, error: serverItemsError } = await supabase
                         .from('romaneio_items')
                         .select('product_id, quantidade, preco_unitario, variacao, product:products(id, nome, imagem1, preco)')
                         .eq('romaneio_id', rom.id)
+
+                    // Se houve erro ao buscar itens do servidor, não sobrescrever localStorage
+                    if (serverItemsError) {
+                        console.warn('Cart: erro ao buscar itens do servidor, mantendo localStorage:', serverItemsError.message)
+                        continue
+                    }
 
                     const cartItemsFromServer = (serverItems || []).map(ri => ({
                         id: ri.product_id,
@@ -75,12 +81,55 @@ export default function Cart() {
                     })).filter(i => i.quantity > 0)
 
                     const key = String(lotId)
-                    localStorage.setItem(`cart_${key}`, JSON.stringify(cartItemsFromServer))
+                    const localKey = `cart_${key}`
+
+                    // Proteção contra race condition: não sobrescrever localStorage com
+                    // dados do servidor se o servidor tiver MENOS itens que o local.
+                    // Isso acontece quando uma chamada de sync antiga chegou ao servidor
+                    // depois de uma nova e sobrescreveu com um carrinho menor.
+                    // Nesse caso, o localStorage (mais novo) prevalece e será re-sincronizado.
+                    const localItems = (() => {
+                        try { return JSON.parse(localStorage.getItem(localKey) || '[]') } catch { return [] }
+                    })()
+                    const localTotal = localItems.reduce((s, i) => s + (i.quantity || 0), 0)
+                    const serverTotal = cartItemsFromServer.reduce((s, i) => s + (i.quantity || 0), 0)
+
+                    if (cartItemsFromServer.length > 0 || localItems.length === 0) {
+                        // Servidor tem dados: sobrescrever local com estado autoritativo do servidor
+                        // OU local está vazio: aceitar o que o servidor tem (pode ser 0)
+                        if (serverTotal >= localTotal || localItems.length === 0) {
+                            localStorage.setItem(localKey, JSON.stringify(cartItemsFromServer))
+                        } else {
+                            // Servidor tem menos itens que o local — possível artifact de race condition.
+                            // Manter o localStorage e agendar re-sync para corrigir o servidor.
+                            console.warn(`Cart: servidor tem ${serverTotal} itens mas local tem ${localTotal}. Mantendo local e re-sincronizando servidor.`)
+                            // Re-sincronizar o local → servidor para corrigir o estado do banco
+                            const itemsPayload = localItems.map(item => ({
+                                product_id: item.id,
+                                quantity: item.quantity,
+                                valor_unitario: item.preco,
+                                variacao: item.variacao ?? ''
+                            }))
+                            // Fire-and-forget: não aguardar para não bloquear o carregamento
+                            supabase.rpc('checkout_romaneio', {
+                                p_lot_id: typeof lotId === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}/i.test(lotId) ? lotId : (rom.lot?.id ?? lotId),
+                                p_items: itemsPayload,
+                                p_client_snapshot: {}
+                            }).then(({ error }) => {
+                                if (error && !error.message?.includes('não está aberto')) {
+                                    console.warn('Cart: re-sync do local para servidor falhou:', error.message)
+                                }
+                            })
+                        }
+                    }
+                    // Se servidor retornou [] e local também tem [], não fazer nada (nenhuma mudança)
+
                     const linkCompra = rom.lot?.link_compra
                     if (linkCompra && String(linkCompra) !== String(lotId)) {
                         localStorage.removeItem(`cart_${linkCompra}`)
                     }
                 }
+
             }
 
             // Ler de todas as chaves cart_lotID do localStorage
@@ -146,10 +195,11 @@ export default function Cart() {
                 grouped[key].total += item.preco * item.quantity
             })
 
-            // Remover do carrinho (localStorage e exibição) os grupos cujo link já foi fechado (romaneio gerado)
+            // Ocultar da exibição os grupos cujo link já foi fechado.
+            // IMPORTANTE: NÃO apagar o localStorage — o romaneio continua no banco
+            // e o admin precisa ver o pedido. Apenas escondemos da tela do cliente.
             for (const lotId of Object.keys(grouped)) {
                 if (grouped[lotId].lot.status !== 'aberto') {
-                    localStorage.removeItem(`cart_${lotId}`)
                     delete grouped[lotId]
                 }
             }
@@ -201,7 +251,7 @@ export default function Cart() {
                 .select('id')
                 .eq('lot_id', lotUuid)
                 .eq('client_id', client.id)
-                .in('status_pagamento', ['aguardando_pagamento', 'aguardando', 'pendente', 'gerado'])
+                .in('status_pagamento', ['aguardando_pagamento', 'aguardando', 'pendente', 'gerado', 'pago_50_pct', 'pago_50_pct_s_frete', 'parcialmente_pago'])
                 .maybeSingle()
             const items = []
             if (rom?.id) {
@@ -268,7 +318,7 @@ export default function Cart() {
         if (items.length === 0) return
         try {
             const [{ data: rom }, { data: lpData }] = await Promise.all([
-                supabase.from('romaneios').select('id').eq('lot_id', lotUuid).eq('client_id', client.id).in('status_pagamento', ['aguardando_pagamento', 'aguardando', 'pendente', 'gerado']).maybeSingle(),
+                supabase.from('romaneios').select('id').eq('lot_id', lotUuid).eq('client_id', client.id).in('status_pagamento', ['aguardando_pagamento', 'aguardando', 'pendente', 'gerado', 'pago_50_pct', 'pago_50_pct_s_frete', 'parcialmente_pago']).maybeSingle(),
                 supabase.from('lot_products').select('product_id, quantidade_pedidos, product:products(qtd_minima_fornecedor)').eq('lot_id', lotUuid)
             ])
             let serverItems = []
