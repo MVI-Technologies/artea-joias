@@ -6,8 +6,10 @@
 -- o acesso ao carrinho no frontend (o romaneio "some" do loadCart do Cart.jsx).
 
 -- ================================================================
--- 1. Atualizar checkout_romaneio para reconhecer pago_50_pct
+-- 1. Atualizar checkout_romaneio para reconhecer pago_50_pct e
+--    evitar o erro de temporary table (42P01)
 -- ================================================================
+
 CREATE OR REPLACE FUNCTION checkout_romaneio(
     p_lot_id UUID,
     p_items JSONB,
@@ -42,18 +44,16 @@ BEGIN
         RAISE EXCEPTION 'Este lote não está aberto para compras (Status: %).', v_lot_status;
     END IF;
 
-    CREATE TEMPORARY TABLE temp_checkout_items AS
-    SELECT
-        (item->>'product_id')::UUID as product_id,
-        TRIM(COALESCE(item->>'variacao', '')) as variacao,
-        SUM((item->>'quantity')::INT)::INT as total_quantity,
-        MAX((item->>'valor_unitario')::NUMERIC) as unit_price
-    FROM jsonb_array_elements(p_items) as item
-    GROUP BY (item->>'product_id')::UUID, TRIM(COALESCE(item->>'variacao', ''));
-
+    -- Obter totais agregando direto do JSON (sem tabela temporária)
     SELECT COALESCE(SUM(total_quantity), 0), COALESCE(SUM(total_quantity * unit_price), 0)
     INTO v_total_itens, v_valor_produtos
-    FROM temp_checkout_items;
+    FROM (
+        SELECT
+            SUM((item->>'quantity')::INT)::INT as total_quantity,
+            MAX((item->>'valor_unitario')::NUMERIC) as unit_price
+        FROM jsonb_array_elements(p_items) as item
+        GROUP BY (item->>'product_id')::UUID, TRIM(COALESCE(item->>'variacao', ''))
+    ) sub;
 
     IF v_total_itens <= 0 THEN
         RAISE EXCEPTION 'O carrinho não pode estar vazio.';
@@ -63,9 +63,11 @@ BEGIN
     FROM romaneios
     WHERE lot_id = p_lot_id AND client_id = v_client_id;
 
-    -- Validação de disponibilidade: não fazer DROP aqui ao dar RAISE
+    -- Validação de disponibilidade iterando sobre os itens agregados do JSON
     FOR v_product_id, v_requested_qty IN
-        SELECT t.product_id, t.total_quantity FROM temp_checkout_items t
+        SELECT (item->>'product_id')::UUID, SUM((item->>'quantity')::INT)::INT
+        FROM jsonb_array_elements(p_items) as item
+        GROUP BY (item->>'product_id')::UUID, TRIM(COALESCE(item->>'variacao', ''))
     LOOP
         SELECT COALESCE(p.qtd_minima_fornecedor, 0) INTO v_limite
         FROM products p WHERE p.id = v_product_id;
@@ -81,7 +83,7 @@ BEGIN
           AND r.status_pagamento NOT IN ('cancelado', 'rejeitado');
 
         v_current_romaneio_qty := 0;
-        -- pago_50_pct incluído: romaneio parcialmente pago ainda é editável
+        -- pago_50_pct e outros incluídos
         IF v_existing_id IS NOT NULL AND v_status_pagamento IN ('aguardando_pagamento', 'aguardando', 'pendente', 'gerado', 'pago_50_pct', 'pago_50_pct_s_frete', 'parcialmente_pago') THEN
             SELECT COALESCE(SUM(ri.quantidade), 0)::INT INTO v_current_romaneio_qty
             FROM romaneio_items ri
@@ -95,7 +97,7 @@ BEGIN
     END LOOP;
 
     IF v_existing_id IS NOT NULL THEN
-        -- pago_50_pct incluído: permite atualizar romaneio parcialmente pago
+        -- permite atualizar romaneio parcialmente pago
         IF v_status_pagamento NOT IN ('aguardando_pagamento', 'aguardando', 'pendente', 'gerado', 'pago_50_pct', 'pago_50_pct_s_frete', 'parcialmente_pago') THEN
             RAISE EXCEPTION 'Já existe um romaneio processado (Status: %) para este link.', v_status_pagamento;
         END IF;
@@ -123,18 +125,24 @@ BEGIN
             quantidade_itens, valor_produtos, valor_total, subtotal, total, total_itens,
             cliente_nome_snapshot, cliente_telefone_snapshot, endereco_entrega_snapshot
         )
-        SELECT
+        VALUES (
             p_lot_id, v_client_id, generate_romaneio_number(), 'aguardando_pagamento',
             v_total_itens, v_valor_produtos, v_valor_produtos, v_valor_produtos, v_valor_produtos, v_total_itens,
             p_client_snapshot->>'nome', p_client_snapshot->>'telefone', p_client_snapshot->'endereco'
+        )
         RETURNING id INTO v_romaneio_id;
     END IF;
 
+    -- Inserir lendo direto do JSON
     INSERT INTO romaneio_items (romaneio_id, product_id, quantidade, preco_unitario, variacao)
-    SELECT v_romaneio_id, product_id, total_quantity, unit_price, NULLIF(TRIM(variacao), '')
-    FROM temp_checkout_items;
-
-    DROP TABLE temp_checkout_items;
+    SELECT 
+        v_romaneio_id, 
+        (item->>'product_id')::UUID, 
+        SUM((item->>'quantity')::INT)::INT, 
+        MAX((item->>'valor_unitario')::NUMERIC), 
+        NULLIF(TRIM(COALESCE(item->>'variacao', '')), '')
+    FROM jsonb_array_elements(p_items) as item
+    GROUP BY (item->>'product_id')::UUID, TRIM(COALESCE(item->>'variacao', ''));
 
     INSERT INTO romaneio_status_log (romaneio_id, status_novo, alterado_por, observacao)
     VALUES (
@@ -149,14 +157,10 @@ BEGIN
         'numero_romaneio', (SELECT numero_romaneio FROM romaneios WHERE id = v_romaneio_id),
         'total', v_valor_produtos
     );
-EXCEPTION
-    WHEN OTHERS THEN
-        DROP TABLE IF EXISTS temp_checkout_items;
-        RAISE;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
-COMMENT ON FUNCTION checkout_romaneio IS 'Checkout por lote. Reconhece pago_50_pct como estado editável (migration 070). Temp table é sempre removida no bloco EXCEPTION ao ocorrer erro.';
+COMMENT ON FUNCTION checkout_romaneio IS 'Checkout por lote. Reconhece status parciais sem erro de tabela temporária (migration 070).';
 
 -- ================================================================
 -- 2. Atualizar clear_draft_romaneio para reconhecer pago_50_pct
