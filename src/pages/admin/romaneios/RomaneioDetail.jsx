@@ -352,9 +352,16 @@ export default function RomaneioDetail() {
         const isEmpty = newQuantity === '' || newQuantity == null
         const num = isEmpty ? 0 : Math.max(0, parseInt(newQuantity, 10) || 0)
         const quantidade = isEmpty ? '' : num
-        const precoUnitario = item.valor_unitario || item.preco_unitario || item.product?.preco || 0
-        const valor_total = num * precoUnitario
-        return { ...item, quantidade, valor_total }
+        
+        // Ensure we calculate the correct client price with margins
+        const precoBase = item.product?.preco || 0
+        const adicional = Number(lot?.adicional_por_produto) || 0
+        const escritorio = Number(lot?.escritorio_pct) || 0
+        const precoComPct = precoBase * (1 + adicional / 100) * (1 + escritorio / 100)
+        const precoArredondado = Math.round(precoComPct * 100) / 100
+        
+        const valor_total = num * precoArredondado
+        return { ...item, quantidade, valor_total, preco_unitario: precoArredondado, valor_unitario: precoArredondado, valor_recalculado: valor_total }
       }
       return item
     }))
@@ -384,11 +391,11 @@ export default function RomaneioDetail() {
       product_id: product.id,
       product: product,
       quantidade: quantity,
-      valor_unitario: precoBase,
-      preco_unitario: precoBase,
+      valor_unitario: precoArredondado,
+      preco_unitario: precoArredondado,
       valor_total: precoArredondado * quantity,
       variacao: (variacao || '').trim() || null,
-      valor_recalculado: (adicional > 0 || escritorio > 0) ? precoArredondado * quantity : null,
+      valor_recalculado: precoArredondado * quantity,
       isNew: true // Flag to identify new items
     }
 
@@ -452,6 +459,7 @@ export default function RomaneioDetail() {
           .from('romaneio_items')
           .update({
             quantidade: qty,
+            preco_unitario: item.preco_unitario ?? item.valor_unitario, // added this to fix old broken values
             valor_recalculado: item.valor_total,
             variacao: item.variacao ?? null
           })
@@ -1120,22 +1128,30 @@ export default function RomaneioDetail() {
                   <td className="col-var">{item.variacao || '-'}</td>
                   <td className="col-val">
                     {(() => {
-                      const precoBase = (item.valor_unitario || item.preco_unitario || item.product?.preco || 0)
+                      const precoBase = item.product?.preco || 0
                       const adicional = Number(lot?.adicional_por_produto) || 0
                       const escritorio = Number(lot?.escritorio_pct) || 0
+                      
+                      const precoComPct = precoBase * (1 + adicional / 100) * (1 + escritorio / 100)
+                      const precoCliente = Math.round(precoComPct * 100) / 100
+                      
+                      // For manual overrides the actual saved price might differ, but if it matches closely we use it. 
+                      // If there is no margin, we just show the base price.
                       if ((adicional > 0 || escritorio > 0) && editMode) {
-                        const precoCliente = precoBase * (1 + adicional / 100) * (1 + escritorio / 100)
                         return (
                           <span title={`Seu preço: R$ ${precoBase.toFixed(2)} | Porcentagem aplicada sobre o produto | Cliente vê: R$ ${precoCliente.toFixed(2)}`}>
                             R$ {precoBase.toFixed(2)}
                             <br/>
                             <small style={{ color: '#059669', fontSize: '10px', fontWeight: 600 }}>
-                              cliente: R$ {(Math.round(precoCliente * 100) / 100).toFixed(2)}
+                              cliente: R$ {precoCliente.toFixed(2)}
                             </small>
                           </span>
                         )
                       }
-                      return <>R$ {precoBase.toFixed(2)}</>
+                      
+                      // When not in edit mode (or no margin), show the final price that the client actually sees
+                      const exibido = (item.preco_unitario != null && item.preco_unitario > 0) ? item.preco_unitario : precoCliente
+                      return <>R$ {exibido.toFixed(2)}</>
                     })()}
                   </td>
                   <td className="col-qty">
