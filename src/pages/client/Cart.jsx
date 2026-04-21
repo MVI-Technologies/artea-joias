@@ -4,6 +4,7 @@ import { ShoppingCart, Trash2, ArrowRight, Plus, Minus } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../components/common/Toast'
+import { calcPrecoClienteNoLote } from '../../utils/pricing'
 import './Cart.css'
 
 const SYNC_DEBOUNCE_MS = 800
@@ -47,7 +48,7 @@ export default function Cart() {
             if (client?.id) {
                 const { data: draftRomaneios } = await supabase
                     .from('romaneios')
-                    .select('id, lot_id, lot:lots(id, status, link_compra)')
+                    .select('id, lot_id, lot:lots(id, status, link_compra, adicional_por_produto, escritorio_pct)')
                     .eq('client_id', client.id)
                     .in('status_pagamento', ['aguardando_pagamento', 'aguardando', 'pendente', 'gerado', 'pago_50_pct', 'pago_50_pct_s_frete', 'parcialmente_pago'])
 
@@ -61,7 +62,7 @@ export default function Cart() {
 
                     const { data: serverItems, error: serverItemsError } = await supabase
                         .from('romaneio_items')
-                        .select('product_id, quantidade, preco_unitario, variacao, product:products(id, nome, imagem1, preco)')
+                        .select('product_id, quantidade, preco_unitario, variacao, product:products(id, nome, imagem1, preco, custo, margem_pct)')
                         .eq('romaneio_id', rom.id)
 
                     // Se houve erro ao buscar itens do servidor, não sobrescrever localStorage
@@ -70,15 +71,22 @@ export default function Cart() {
                         continue
                     }
 
-                    const cartItemsFromServer = (serverItems || []).map(ri => ({
-                        id: ri.product_id,
-                        quantity: ri.quantidade || 0,
-                        preco: Number(ri.preco_unitario ?? ri.product?.preco ?? 0),
-                        variacao: ri.variacao ?? '',
-                        lot_id: lotId,
-                        nome: ri.product?.nome ?? '',
-                        imagem1: ri.product?.imagem1 ?? null
-                    })).filter(i => i.quantity > 0)
+                    const cartItemsFromServer = (serverItems || []).map(ri => {
+                        // If preco_unitario was saved correctly, use it.
+                        // Otherwise, recalculate using centralized pricing (includes lot margins).
+                        const precoFinal = (ri.preco_unitario != null && Number(ri.preco_unitario) > 0)
+                            ? Number(ri.preco_unitario)
+                            : calcPrecoClienteNoLote(ri.product, rom.lot)
+                        return {
+                            id: ri.product_id,
+                            quantity: ri.quantidade || 0,
+                            preco: precoFinal,
+                            variacao: ri.variacao ?? '',
+                            lot_id: lotId,
+                            nome: ri.product?.nome ?? '',
+                            imagem1: ri.product?.imagem1 ?? null
+                        }
+                    }).filter(i => i.quantity > 0)
 
                     const key = String(lotId)
                     const localKey = `cart_${key}`
@@ -257,17 +265,28 @@ export default function Cart() {
             if (rom?.id) {
                 const { data: serverItems } = await supabase
                     .from('romaneio_items')
-                    .select('product_id, quantidade, preco_unitario, variacao, product:products(id, nome, imagem1, preco)')
+                    .select('product_id, quantidade, preco_unitario, variacao, product:products(id, nome, imagem1, preco, custo, margem_pct)')
                     .eq('romaneio_id', rom.id)
-                const list = (serverItems || []).map(ri => ({
-                    id: ri.product_id,
-                    quantity: ri.quantidade || 0,
-                    preco: Number(ri.preco_unitario ?? ri.product?.preco ?? 0),
-                    variacao: ri.variacao ?? '',
-                    lot_id: lotUuid,
-                    nome: ri.product?.nome ?? '',
-                    imagem1: ri.product?.imagem1 ?? null
-                })).filter(i => i.quantity > 0)
+                // Fetch lot data for pricing
+                const { data: lotData } = await supabase
+                    .from('lots')
+                    .select('id, adicional_por_produto, escritorio_pct')
+                    .eq('id', lotUuid)
+                    .single()
+                const list = (serverItems || []).map(ri => {
+                    const precoFinal = (ri.preco_unitario != null && Number(ri.preco_unitario) > 0)
+                        ? Number(ri.preco_unitario)
+                        : calcPrecoClienteNoLote(ri.product, lotData)
+                    return {
+                        id: ri.product_id,
+                        quantity: ri.quantidade || 0,
+                        preco: precoFinal,
+                        variacao: ri.variacao ?? '',
+                        lot_id: lotUuid,
+                        nome: ri.product?.nome ?? '',
+                        imagem1: ri.product?.imagem1 ?? null
+                    }
+                }).filter(i => i.quantity > 0)
                 items.push(...list)
             }
             const key = String(lotUuid)
@@ -323,12 +342,17 @@ export default function Cart() {
             ])
             let serverItems = []
             if (rom?.id) {
-                const { data: serverRows } = await supabase.from('romaneio_items').select('product_id, quantidade, preco_unitario, variacao, product:products(id, nome, imagem1, preco)').eq('romaneio_id', rom.id)
+                const { data: serverRows } = await supabase.from('romaneio_items').select('product_id, quantidade, preco_unitario, variacao, product:products(id, nome, imagem1, preco, custo, margem_pct)').eq('romaneio_id', rom.id)
+                // Fetch lot data for pricing fallback
+                const { data: lotDataForPricing } = await supabase.from('lots').select('id, adicional_por_produto, escritorio_pct').eq('id', lotUuid).single()
                 serverRows?.forEach(ri => {
+                    const precoFinal = (ri.preco_unitario != null && Number(ri.preco_unitario) > 0)
+                        ? Number(ri.preco_unitario)
+                        : calcPrecoClienteNoLote(ri.product, lotDataForPricing)
                     serverItems.push({
                         id: ri.product_id,
                         quantity: ri.quantidade || 0,
-                        preco: Number(ri.preco_unitario ?? ri.product?.preco ?? 0),
+                        preco: precoFinal,
                         variacao: ri.variacao ?? '',
                         lot_id: lotUuid,
                         nome: ri.product?.nome ?? '',

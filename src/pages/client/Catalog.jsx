@@ -6,7 +6,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../components/common/Toast'
 import LotTermsBlock from '../../components/client/LotTermsBlock'
 import ClosedLotScreen from '../../components/client/ClosedLotScreen'
-import { calcPrecoNoLote, formatPrice } from '../../utils/pricing'
+import { calcPrecoNoLote, calcPrecoClienteNoLote, formatPrice } from '../../utils/pricing'
 import { esgotadoNoLote, disponibilidadeLoteParaExibicao } from '../../utils/lotAvailability'
 import './Catalog.css'
 
@@ -456,35 +456,15 @@ export default function Catalog() {
   }
 
   // Função para calcular o preço final do produto com taxas do lote
+  // Delegate para o utilitário centralizado (single source of truth)
   const calcularPrecoFinal = (product) => {
-    // Aceita tanto um objeto produto quanto um preço direto (retrocompatibilidade)
-    let precoBase
-    if (product && typeof product === 'object') {
-      // Se product.preco for null (coluna GENERATED ALWAYS não retornada em joins),
-      // calcular a partir de custo + margem_pct como fallback
-      if (product.preco != null) {
-        precoBase = Number(product.preco)
-      } else if (product.custo != null) {
-        const margem = Number(product.margem_pct ?? 10)
-        precoBase = Number(product.custo) * (1 + margem / 100)
-      } else {
-        precoBase = 0
-      }
-    } else {
-      precoBase = Number(product) || 0
+    // Retrocompatibilidade: aceitar um número direto
+    if (product && typeof product !== 'object') {
+      const precoBase = Number(product) || 0
+      if (precoBase <= 0) return 0
+      return calcPrecoNoLote(precoBase, Number(lot?.escritorio_pct) || 0, Number(lot?.adicional_por_produto) || 0)
     }
-
-    if (!lot || !precoBase) return precoBase || 0
-
-    // Aplicar adicional_por_produto primeiro
-    const adicional = Number(lot.adicional_por_produto) || 0
-    const precoComAdicional = precoBase * (1 + adicional / 100)
-
-    // Aplicar escritório sobre o preço com adicional
-    const escritorio = Number(lot.escritorio_pct) || 0
-    const precoFinal = precoComAdicional * (1 + escritorio / 100)
-
-    return Math.round(precoFinal * 100) / 100
+    return calcPrecoClienteNoLote(product, lot)
   }
 
   // Carrinho local: quantidade no carrinho por produto (para o badge verde) — mesma chave do addToCart (UUID quando tem lote); lê das duas chaves e mescla se diferente (migração de cart_<link> para cart_<uuid>)

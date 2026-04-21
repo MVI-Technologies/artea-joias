@@ -27,6 +27,7 @@ import './RomaneioDetail.css'
 import { useAuth } from '../../../contexts/AuthContext'
 import { useToast } from '../../../components/common/Toast'
 import { generateRomaneioPDF } from '../../../utils/pdfGenerator'
+import { calcPrecoClienteNoLote } from '../../../utils/pricing'
 
 const STATUS_OPTIONS = [
   { value: 'aguardando_pagamento', label: 'Aguardando Pagamento', color: 'warning' },
@@ -353,12 +354,8 @@ export default function RomaneioDetail() {
         const num = isEmpty ? 0 : Math.max(0, parseInt(newQuantity, 10) || 0)
         const quantidade = isEmpty ? '' : num
         
-        // Ensure we calculate the correct client price with margins
-        const precoBase = item.product?.preco || 0
-        const adicional = Number(lot?.adicional_por_produto) || 0
-        const escritorio = Number(lot?.escritorio_pct) || 0
-        const precoComPct = precoBase * (1 + adicional / 100) * (1 + escritorio / 100)
-        const precoArredondado = Math.round(precoComPct * 100) / 100
+        // Use centralized pricing: handles null preco (GENERATED column) and lot margins
+        const precoArredondado = calcPrecoClienteNoLote(item.product, lot)
         
         const valor_total = num * precoArredondado
         return { ...item, quantidade, valor_total, preco_unitario: precoArredondado, valor_unitario: precoArredondado, valor_recalculado: valor_total }
@@ -376,14 +373,8 @@ export default function RomaneioDetail() {
   }
 
   const addProductToRomaneio = (product, quantity = 1, variacao = '') => {
-    const precoBase = product.preco || 0
-    // Aplicar porcentagens do lote (mesma lógica do catálogo do cliente)
-    const adicional = Number(lot?.adicional_por_produto) || 0
-    const escritorio = Number(lot?.escritorio_pct) || 0
-    const precoComPct = adicional > 0 || escritorio > 0
-      ? precoBase * (1 + adicional / 100) * (1 + escritorio / 100)
-      : precoBase
-    const precoArredondado = Math.round(precoComPct * 100) / 100
+    // Use centralized pricing: always applies lot margins correctly
+    const precoArredondado = calcPrecoClienteNoLote(product, lot)
 
     const newItem = {
       id: `temp-${Date.now()}`,
@@ -1128,16 +1119,14 @@ export default function RomaneioDetail() {
                   <td className="col-var">{item.variacao || '-'}</td>
                   <td className="col-val">
                     {(() => {
-                      const precoBase = item.product?.preco || 0
+                      // Use centralized pricing for consistent display
+                      const precoBase = Number(item.product?.preco) || 0
+                      const precoCliente = calcPrecoClienteNoLote(item.product, lot)
                       const adicional = Number(lot?.adicional_por_produto) || 0
                       const escritorio = Number(lot?.escritorio_pct) || 0
                       
-                      const precoComPct = precoBase * (1 + adicional / 100) * (1 + escritorio / 100)
-                      const precoCliente = Math.round(precoComPct * 100) / 100
-                      
-                      // For manual overrides the actual saved price might differ, but if it matches closely we use it. 
-                      // If there is no margin, we just show the base price.
-                      if ((adicional > 0 || escritorio > 0) && editMode) {
+                      // In edit mode with lot margins, show both base and client price
+                      if ((adicional > 0 || escritorio > 0) && editMode && precoBase > 0) {
                         return (
                           <span title={`Seu preço: R$ ${precoBase.toFixed(2)} | Porcentagem aplicada sobre o produto | Cliente vê: R$ ${precoCliente.toFixed(2)}`}>
                             R$ {precoBase.toFixed(2)}
@@ -1149,7 +1138,7 @@ export default function RomaneioDetail() {
                         )
                       }
                       
-                      // When not in edit mode (or no margin), show the final price that the client actually sees
+                      // Show the final price: prefer saved preco_unitario, fallback to calculated
                       const exibido = (item.preco_unitario != null && item.preco_unitario > 0) ? item.preco_unitario : precoCliente
                       return <>R$ {exibido.toFixed(2)}</>
                     })()}
