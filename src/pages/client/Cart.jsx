@@ -53,6 +53,8 @@ export default function Cart() {
 
     const loadCart = async () => {
         setLoading(true)
+        // openDrafts scoped here so it's accessible further down (line 261 check)
+        let openDrafts = []
         try {
             // Se o cliente está logado, trazer do servidor o estado do romaneio (rascunho) para lotes ainda abertos.
             // Assim, alterações feitas pelo admin no romaneio refletem no carrinho do cliente.
@@ -63,8 +65,8 @@ export default function Cart() {
                     .eq('client_id', client.id)
                     .in('status_pagamento', ['aguardando_pagamento', 'aguardando', 'pendente', 'gerado', 'pago_50_pct', 'pago_50_pct_s_frete', 'parcialmente_pago'])
 
-                const openDrafts = (draftRomaneios || []).filter(
-                    r => r.lot?.status === 'aberto'
+                openDrafts = (draftRomaneios || []).filter(
+                    r => r.lot?.status === 'aberto' || r.lot?.status === 'pronto_e_aberto'
                 )
 
                 for (const rom of openDrafts) {
@@ -155,11 +157,13 @@ export default function Cart() {
             const allItems = []
             for (let i = 0; i < localStorage.length; i++) {
                 const key = localStorage.key(i)
-                if (key.startsWith('cart_')) {
-                    const items = JSON.parse(localStorage.getItem(key))
-                    if (Array.isArray(items)) {
-                        allItems.push(...items)
-                    }
+                if (key && key.startsWith('cart_')) {
+                    try {
+                        const items = JSON.parse(localStorage.getItem(key))
+                        if (Array.isArray(items)) {
+                            allItems.push(...items)
+                        }
+                    } catch { /* ignore malformed entries */ }
                 }
             }
 
@@ -217,8 +221,10 @@ export default function Cart() {
             // Ocultar da exibição os grupos cujo link já foi fechado.
             // IMPORTANTE: NÃO apagar o localStorage — o romaneio continua no banco
             // e o admin precisa ver o pedido. Apenas escondemos da tela do cliente.
+            // Manter tanto 'aberto' quanto 'pronto_e_aberto' visíveis (cliente pode ver o carrinho em ambos)
             for (const lotId of Object.keys(grouped)) {
-                if (grouped[lotId].lot.status !== 'aberto') {
+                const s = grouped[lotId].lot.status
+                if (s !== 'aberto' && s !== 'pronto_e_aberto') {
                     delete grouped[lotId]
                 }
             }

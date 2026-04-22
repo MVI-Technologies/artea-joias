@@ -29,10 +29,12 @@ export default function ClientLayout() {
         for (let i = 0; i < localStorage.length; i++) {
             const key = localStorage.key(i)
             if (key && key.startsWith('cart_')) {
-                const items = JSON.parse(localStorage.getItem(key) || '[]')
-                if (Array.isArray(items)) {
-                    total += items.reduce((acc, item) => acc + (item.quantity || 1), 0)
-                }
+                try {
+                    const items = JSON.parse(localStorage.getItem(key) || '[]')
+                    if (Array.isArray(items)) {
+                        total += items.reduce((acc, item) => acc + (item.quantity || 1), 0)
+                    }
+                } catch { /* ignore malformed entries */ }
             }
         }
         setCartCount(total)
