@@ -17,10 +17,13 @@ import {
   Package,
   Truck,
   Check,
-  Trash2
+  Trash2,
+  Plus,
+  X
 } from 'lucide-react'
 import { supabase } from '../../../lib/supabase'
 import CenteredLoader from '../../../components/common/CenteredLoader'
+import { useToast } from '../../../components/common/Toast'
 import './RomaneioList.css'
 
 export default function RomaneioList() {
@@ -33,6 +36,14 @@ export default function RomaneioList() {
   const [statusFilter, setStatusFilter] = useState('todos')
   const [romaneioToDelete, setRomaneioToDelete] = useState(null)
   const [deletingRomaneio, setDeletingRomaneio] = useState(false)
+
+  // Novo Romaneio
+  const [showAddRomaneioModal, setShowAddRomaneioModal] = useState(false)
+  const [clients, setClients] = useState([])
+  const [clientSearch, setClientSearch] = useState('')
+  const [loadingClients, setLoadingClients] = useState(false)
+  const [creatingRomaneioId, setCreatingRomaneioId] = useState(null)
+  const toast = useToast()
   
   useEffect(() => {
     fetchLots()
@@ -179,6 +190,96 @@ export default function RomaneioList() {
     return r.status_pagamento === statusFilter
   })
 
+  const fetchClients = async (search = '') => {
+    setLoadingClients(true)
+    try {
+      let query = supabase
+        .from('clients')
+        .select('id, nome, telefone')
+        .order('nome')
+        .limit(20)
+
+      if (search) {
+        query = query.ilike('nome', `%${search}%`)
+      }
+
+      const { data, error } = await query
+      if (error) throw error
+      setClients(data || [])
+    } catch (error) {
+      console.error('Erro ao buscar clientes:', error)
+    } finally {
+      setLoadingClients(false)
+    }
+  }
+
+  const handleOpenAddModal = () => {
+    setClientSearch('')
+    fetchClients()
+    setShowAddRomaneioModal(true)
+  }
+
+  const handleCreateRomaneio = async (client) => {
+    if (!selectedLot) return
+    setCreatingRomaneioId(client.id)
+    try {
+      // 1. Verificar se já existe
+      const { data: existing } = await supabase
+        .from('romaneios')
+        .select('id')
+        .eq('lot_id', selectedLot.id)
+        .eq('client_id', client.id)
+        .maybeSingle()
+
+      if (existing) {
+        toast.info(`O cliente ${client.nome} já possui um romaneio neste link. Redirecionando...`)
+        navigate(`/admin/romaneios/${existing.id}`)
+        return
+      }
+
+      // 2. Gerar número
+      const { data: numData } = await supabase.rpc('generate_romaneio_number')
+      const numero = numData || `ROM-${Date.now().toString().slice(-6)}`
+
+      // 3. Inserir
+      const { data: newRom, error } = await supabase
+        .from('romaneios')
+        .insert({
+          lot_id: selectedLot.id,
+          client_id: client.id,
+          numero_romaneio: numero,
+          status_pagamento: 'aguardando_pagamento',
+          quantidade_itens: 0,
+          valor_produtos: 0,
+          valor_total: 0,
+          cliente_nome_snapshot: client.nome,
+          cliente_telefone_snapshot: client.telefone,
+          endereco_entrega_snapshot: null
+        })
+        .select()
+        .single()
+
+      if (error) throw error
+      
+      toast.success('Romaneio criado com sucesso!')
+      navigate(`/admin/romaneios/${newRom.id}`)
+    } catch (error) {
+      console.error('Erro ao criar romaneio:', error)
+      toast.error('Erro ao criar romaneio: ' + error.message)
+    } finally {
+      setCreatingRomaneioId(null)
+    }
+  }
+
+  useEffect(() => {
+    if (showAddRomaneioModal) {
+      const delayDebounceFn = setTimeout(() => {
+        fetchClients(clientSearch)
+      }, 300)
+      return () => clearTimeout(delayDebounceFn)
+    }
+  }, [clientSearch])
+
   // Calcular estatísticas
   // Calcular estatísticas
   const stats = {
@@ -256,9 +357,18 @@ export default function RomaneioList() {
               <div className="content-header">
                 <div>
                   <h2>{selectedLot.nome}</h2>
-                  <span className="text-secondary">
-                    {stats.total} romaneio(s) | {stats.pagos} pago(s)
-                  </span>
+                  <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                    <span className="text-secondary">
+                      {stats.total} romaneio(s) | {stats.pagos} pago(s)
+                    </span>
+                    <button 
+                      className="btn btn-sm btn-primary" 
+                      onClick={handleOpenAddModal}
+                      style={{ padding: '4px 12px', fontSize: '12px' }}
+                    >
+                      <Plus size={14} /> Adicionar Romaneio
+                    </button>
+                  </div>
                 </div>
                 <div className="header-stats">
                   <div className="stat-mini">
@@ -436,6 +546,73 @@ export default function RomaneioList() {
                 style={{ backgroundColor: '#dc3545', color: 'white', borderColor: '#dc3545' }}
               >
                 {deletingRomaneio ? 'Excluindo...' : 'Sim, Excluir'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Adicionar Romaneio */}
+      {showAddRomaneioModal && (
+        <div className="modal-overlay">
+          <div className="modal-content modal-large">
+            <div className="modal-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h3 style={{ margin: 0 }}>Adicionar Romaneio</h3>
+              <button className="btn-close" onClick={() => setShowAddRomaneioModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px' }}>
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="modal-body">
+              <p style={{ marginBottom: '16px' }}>Selecione um cliente para criar um novo romaneio no link <strong>{selectedLot?.nome}</strong></p>
+              
+              <div className="search-box" style={{ position: 'relative', marginBottom: '16px' }}>
+                <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#666' }} />
+                <input 
+                  type="text" 
+                  placeholder="Buscar cliente por nome..." 
+                  value={clientSearch}
+                  onChange={(e) => setClientSearch(e.target.value)}
+                  autoFocus
+                  style={{ width: '100%', padding: '10px 12px 10px 40px', borderRadius: '8px', border: '1px solid #ddd' }}
+                />
+              </div>
+
+              <div className="clients-list-container" style={{ maxHeight: '400px', overflowY: 'auto', border: '1px solid #eee', borderRadius: '8px' }}>
+                {loadingClients ? (
+                  <div style={{ padding: '20px' }}>
+                    <CenteredLoader text="Buscando clientes..." />
+                  </div>
+                ) : clients.length === 0 ? (
+                  <div className="empty-state-sm" style={{ padding: '20px', textAlign: 'center', color: '#666' }}>
+                    <p>Nenhum cliente encontrado</p>
+                  </div>
+                ) : (
+                  <ul className="clients-select-list" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                    {clients.map(client => (
+                      <li key={client.id} className="client-select-item" style={{ padding: '12px', borderBottom: '1px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div className="client-info">
+                          <strong style={{ display: 'block' }}>{client.nome}</strong>
+                          <span style={{ fontSize: '12px', color: '#666' }}>{client.telefone}</span>
+                        </div>
+                        <button 
+                          className="btn btn-sm btn-primary"
+                          onClick={() => handleCreateRomaneio(client)}
+                          disabled={creatingRomaneioId !== null}
+                          style={{ padding: '6px 16px' }}
+                        >
+                          {creatingRomaneioId === client.id ? 'Criando...' : 'Selecionar'}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+            
+            <div className="modal-footer" style={{ marginTop: '20px', textAlign: 'right' }}>
+              <button className="btn btn-outline" onClick={() => setShowAddRomaneioModal(false)}>
+                Cancelar
               </button>
             </div>
           </div>

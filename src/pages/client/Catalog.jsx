@@ -657,7 +657,15 @@ export default function Catalog() {
       try {
         // Ler do localStorage para pegar o estado MAIS RECENTE (pode ter mudado durante o debounce)
         const latestCart = JSON.parse(localStorage.getItem(cartKey) || '[]')
-        if (!latestCart.length) return
+        
+        // Se o carrinho foi esvaziado, chamar RPC de limpeza
+        if (!latestCart.length) {
+          const { error } = await supabase.rpc('clear_draft_romaneio', { p_lot_id: lotUuid })
+          if (error && !error.message?.includes('não está aberto')) {
+            console.warn('Erro ao limpar carrinho no servidor:', error.message)
+          }
+          return
+        }
 
         const itemsPayload = latestCart.map(item => ({
           product_id: item.id,
@@ -675,14 +683,24 @@ export default function Catalog() {
           p_items: itemsPayload,
           p_client_snapshot: clientSnapshot
         })
-        if (error && !error.message?.includes('não está aberto')) {
-          console.warn('Sync carrinho (catalog):', error.message)
-          // Não mostrar toast aqui para não poluir — o Cart.jsx já cuida disso ao abrir o carrinho
+        if (error) {
+          if (!error.message?.includes('não está aberto')) {
+            console.warn('Sync carrinho (catalog):', error.message)
+            const isAvailabilityError = /disponibilidade|insuficiente|esgotado/i.test(error.message || '')
+            if (isAvailabilityError) {
+              toast.error('Alguns itens do seu carrinho esgotaram e não puderam ser sincronizados.')
+            } else {
+              toast.error('Erro ao sincronizar seu carrinho com o servidor. Suas alterações foram salvas localmente.')
+            }
+          }
         }
       } catch (e) {
-        if (!e?.message?.includes('não está aberto')) console.warn('Sync carrinho (catalog):', e)
+        if (!e?.message?.includes('não está aberto')) {
+          console.warn('Sync carrinho (catalog):', e)
+          toast.error('Erro de conexão ao sincronizar carrinho.')
+        }
       }
-    }, 600)
+    }, 800) // Aumentado para 800ms para maior estabilidade
   }
 
   const addToCart = async (product, variacao = '') => {
@@ -709,6 +727,13 @@ export default function Catalog() {
     setModalAddError(null)
     setAddingToCart(product.id)
     try {
+      // Garantir owner ID no localStorage
+      if (user?.id) {
+        localStorage.setItem('cart_owner_id', user.id)
+      } else if (!localStorage.getItem('cart_owner_id')) {
+        localStorage.setItem('cart_owner_id', 'guest')
+      }
+
       const cartKey = `cart_${lot?.id ?? id}`
       const currentCart = JSON.parse(localStorage.getItem(cartKey) || '[]')
 

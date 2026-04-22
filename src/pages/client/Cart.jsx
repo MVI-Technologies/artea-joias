@@ -43,7 +43,9 @@ export default function Cart() {
         if (client?.auth_id && pendingSyncsRef.current.size > 0) {
             pendingSyncsRef.current.forEach(lotId => {
                 console.log(`Cart: Disparando sync pendente para lote ${lotId}`)
-                syncCartToServer(lotId)
+                syncCartToServer(lotId).then(res => {
+                    if (res?.error) toast.error(`Erro ao sincronizar carrinho: ${res.error}`)
+                })
             })
             pendingSyncsRef.current.clear()
         }
@@ -253,12 +255,17 @@ export default function Cart() {
             // ✅ NOVO: Verificar se algum lote local NÃO tem correspondente no servidor (openDrafts)
             // Se o usuário está logado, devemos garantir que o servidor saiba desses itens.
             if (client?.auth_id) {
+                // Atualizar owner ID
+                localStorage.setItem('cart_owner_id', client.auth_id)
+
                 const serverLotIds = new Set((openDrafts || []).map(r => norm(r.lot_id || r.lot?.id)))
                 for (const lotId of Object.keys(grouped)) {
                     const lotUuid = lotsMap[lotId]?.id || lotId
                     if (!serverLotIds.has(norm(lotUuid))) {
                         console.log(`Cart: Lote ${lotId} está no local mas não no servidor. Sincronizando...`)
-                        syncCartToServer(lotId)
+                        syncCartToServer(lotId).then(res => {
+                            if (res?.error) toast.error(`Erro ao sincronizar carrinho: ${res.error}`)
+                        })
                     }
                 }
             } else if (user) {
@@ -632,6 +639,9 @@ export default function Cart() {
         })
 
         localStorage.setItem(key, JSON.stringify(items))
+        // Atualizar owner se estiver logado
+        if (client?.auth_id) localStorage.setItem('cart_owner_id', client.auth_id)
+
         // Atualização otimista: só atualiza o estado do grupo, sem refetch (evita "reload" da tela)
         const newTotal = items.reduce((s, i) => s + i.preco * i.quantity, 0)
         setGroupedItems(prev => ({

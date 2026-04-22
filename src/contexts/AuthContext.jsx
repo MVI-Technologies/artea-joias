@@ -21,6 +21,21 @@ export function AuthProvider({ children }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log('🔄 Auth state changed:', event)
+        
+        // Proteção de LocalStorage: Evitar vazamento de carrinho entre contas
+        if (event === 'SIGNED_IN' && session?.user) {
+          const currentOwner = localStorage.getItem('cart_owner_id')
+          if (currentOwner && currentOwner !== session.user.id) {
+            console.log('🧹 Diferente usuário detectado. Limpando LocalStorage...')
+            clearCartLocalStorage()
+          }
+          localStorage.setItem('cart_owner_id', session.user.id)
+        } else if (event === 'SIGNED_OUT') {
+          console.log('🧹 Usuário saiu. Limpando LocalStorage...')
+          clearCartLocalStorage()
+          localStorage.removeItem('cart_owner_id')
+        }
+
         if (session?.user) {
           setUser(session.user)
           // Não aguardar fetchClientProfile para não travar o loading
@@ -291,8 +306,25 @@ export function AuthProvider({ children }) {
       setUser(null)
       setClient(null)
       setIsAdmin(false)
+      clearCartLocalStorage()
+      localStorage.removeItem('cart_owner_id')
     } catch (error) {
       console.error('Erro ao sair:', error)
+    }
+  }
+
+  const clearCartLocalStorage = () => {
+    try {
+      const keysToRemove = []
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i)
+        if (key && (key.startsWith('cart_') || key.startsWith('cart-warn-'))) {
+          keysToRemove.push(key)
+        }
+      }
+      keysToRemove.forEach(key => localStorage.removeItem(key))
+    } catch (e) {
+      console.error('Erro ao limpar localStorage:', e)
     }
   }
 
