@@ -260,11 +260,19 @@
   gap: 12px;
 }
 
+.client-info {
+  min-width: 0; /* Permite que o container encolha para truncar o texto */
+  flex: 1;
+}
+
 .client-info h4 {
   font-size: 15px;
   font-weight: 600;
   margin: 0 0 4px;
   color: var(--text-primary);
+  word-break: break-word;
+  line-height: 1.2;
+  min-width: 100px; /* Garante um espaço mínimo para o nome não virar uma coluna de letras */
 }
 
 .client-info span {
@@ -278,10 +286,14 @@
   align-items: center;
   gap: 4px;
   padding: 4px 10px;
-  border-radius: 20px;
-  font-size: 11px;
-  font-weight: 500;
-  white-space: nowrap;
+  border-radius: 12px; /* Reduzi um pouco o arredondamento para ficar melhor com 2 linhas */
+  font-size: 10px;
+  font-weight: 600;
+  white-space: normal; /* Permite quebra de linha no status */
+  text-align: center;
+  flex-shrink: 0;
+  max-width: 100px; /* Limita a largura para forçar a quebra se necessário */
+  justify-content: center;
 }
 
 .status-pago-sem-frete {
@@ -622,12 +634,14 @@
 
 .client-search-box input {
   width: 100%;
-  padding: 12px 16px 12px 42px;
+  padding: 12px 16px 12px 48px !important;
   background: #f8fafc;
   border: 1px solid #e2e8f0;
   border-radius: 10px;
   font-size: 15px;
   transition: all 0.2s;
+  display: block;
+  box-sizing: border-box; /* Garante que o padding não aumente o tamanho real */
 }
 
 .client-search-box input:focus {
