@@ -598,3 +598,105 @@
   color: #64748b;
   text-align: right;
 }
+
+/* Add Romaneio Modal Specifics */
+.modal-content.modal-large {
+  max-width: 600px;
+  display: flex;
+  flex-direction: column;
+  max-height: 90vh;
+}
+
+.client-search-box {
+  position: relative;
+  margin-bottom: 20px;
+}
+
+.client-search-box svg {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #94a3b8;
+}
+
+.client-search-box input {
+  width: 100%;
+  padding: 12px 16px 12px 42px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  font-size: 15px;
+  transition: all 0.2s;
+}
+
+.client-search-box input:focus {
+  background: white;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.1);
+  outline: none;
+}
+
+.clients-selection-container {
+  flex: 1;
+  overflow-y: auto;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  margin-bottom: 20px;
+  background: #fff;
+}
+
+.clients-select-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.client-select-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid #f1f5f9;
+  transition: background 0.2s;
+}
+
+.client-select-item:last-child {
+  border-bottom: none;
+}
+
+.client-select-item:hover {
+  background: #f8fafc;
+}
+
+.client-select-item .client-info strong {
+  display: block;
+  font-size: 15px;
+  color: #1e293b;
+  margin-bottom: 2px;
+}
+
+.client-select-item .client-info span {
+  font-size: 13px;
+  color: #64748b;
+}
+
+@media (max-width: 600px) {
+  .client-select-item {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .client-select-item .btn {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .modal-content.modal-large {
+    padding: 20px 16px;
+    height: 100%;
+    max-height: 100%;
+    border-radius: 0;
+  }
+}

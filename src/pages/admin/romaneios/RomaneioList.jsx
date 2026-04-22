@@ -563,43 +563,41 @@ export default function RomaneioList() {
               </button>
             </div>
             
-            <div className="modal-body">
+            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
               <p style={{ marginBottom: '16px' }}>Selecione um cliente para criar um novo romaneio no link <strong>{selectedLot?.nome}</strong></p>
               
-              <div className="search-box" style={{ position: 'relative', marginBottom: '16px' }}>
-                <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#666' }} />
+              <div className="client-search-box">
+                <Search size={18} />
                 <input 
                   type="text" 
                   placeholder="Buscar cliente por nome..." 
                   value={clientSearch}
                   onChange={(e) => setClientSearch(e.target.value)}
                   autoFocus
-                  style={{ width: '100%', padding: '10px 12px 10px 40px', borderRadius: '8px', border: '1px solid #ddd' }}
                 />
               </div>
 
-              <div className="clients-list-container" style={{ maxHeight: '400px', overflowY: 'auto', border: '1px solid #eee', borderRadius: '8px' }}>
+              <div className="clients-selection-container">
                 {loadingClients ? (
-                  <div style={{ padding: '20px' }}>
+                  <div style={{ padding: '40px 20px' }}>
                     <CenteredLoader text="Buscando clientes..." />
                   </div>
                 ) : clients.length === 0 ? (
-                  <div className="empty-state-sm" style={{ padding: '20px', textAlign: 'center', color: '#666' }}>
+                  <div className="empty-state-sm">
                     <p>Nenhum cliente encontrado</p>
                   </div>
                 ) : (
-                  <ul className="clients-select-list" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                  <ul className="clients-select-list">
                     {clients.map(client => (
-                      <li key={client.id} className="client-select-item" style={{ padding: '12px', borderBottom: '1px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <li key={client.id} className="client-select-item">
                         <div className="client-info">
-                          <strong style={{ display: 'block' }}>{client.nome}</strong>
-                          <span style={{ fontSize: '12px', color: '#666' }}>{client.telefone}</span>
+                          <strong>{client.nome}</strong>
+                          <span>{client.telefone}</span>
                         </div>
                         <button 
                           className="btn btn-sm btn-primary"
                           onClick={() => handleCreateRomaneio(client)}
                           disabled={creatingRomaneioId !== null}
-                          style={{ padding: '6px 16px' }}
                         >
                           {creatingRomaneioId === client.id ? 'Criando...' : 'Selecionar'}
                         </button>
@@ -610,7 +608,7 @@ export default function RomaneioList() {
               </div>
             </div>
             
-            <div className="modal-footer" style={{ marginTop: '20px', textAlign: 'right' }}>
+            <div className="modal-footer" style={{ textAlign: 'right' }}>
               <button className="btn btn-outline" onClick={() => setShowAddRomaneioModal(false)}>
                 Cancelar
               </button>
