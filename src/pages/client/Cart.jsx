@@ -35,9 +35,18 @@ export default function Cart() {
     const [productAvailability, setProductAvailability] = useState({}) // { [lotId]: { [productId]: { limit, totalPedidos } } }
     const [loading, setLoading] = useState(true)
     const syncTimeoutRef = useRef({})
+    const pendingSyncsRef = useRef(new Set()) // Lotes que precisam de sync assim que o client carregar
 
     useEffect(() => {
         loadCart()
+        // Disparar syncs pendentes se o client acabou de carregar
+        if (client?.auth_id && pendingSyncsRef.current.size > 0) {
+            pendingSyncsRef.current.forEach(lotId => {
+                console.log(`Cart: Disparando sync pendente para lote ${lotId}`)
+                syncCartToServer(lotId)
+            })
+            pendingSyncsRef.current.clear()
+        }
     }, [client?.id])
 
     const loadCart = async () => {
@@ -240,6 +249,24 @@ export default function Cart() {
             const remainingItems = Object.values(grouped).flatMap(g => g.items)
             setGroupedItems(grouped)
             setCartItems(remainingItems)
+
+            // ✅ NOVO: Verificar se algum lote local NÃO tem correspondente no servidor (openDrafts)
+            // Se o usuário está logado, devemos garantir que o servidor saiba desses itens.
+            if (client?.auth_id) {
+                const serverLotIds = new Set((openDrafts || []).map(r => norm(r.lot_id || r.lot?.id)))
+                for (const lotId of Object.keys(grouped)) {
+                    const lotUuid = lotsMap[lotId]?.id || lotId
+                    if (!serverLotIds.has(norm(lotUuid))) {
+                        console.log(`Cart: Lote ${lotId} está no local mas não no servidor. Sincronizando...`)
+                        syncCartToServer(lotId)
+                    }
+                }
+            } else if (user) {
+                // Se temos user mas não client ainda, marcar para sync posterior
+                for (const lotId of Object.keys(grouped)) {
+                    pendingSyncsRef.current.add(lotId)
+                }
+            }
         } catch (e) {
             console.error(e)
         } finally {
@@ -437,9 +464,21 @@ export default function Cart() {
         const items = JSON.parse(localStorage.getItem(key) || '[]')
         let lotUuid = lotId
         const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(lotId)
+        
         if (!isUuid) {
-            const { data } = await supabase.from('lots').select('id').eq('link_compra', lotId).single()
-            lotUuid = data?.id ?? lotId
+            // Tentar resolver link amigável para UUID
+            const { data, error: lookupError } = await supabase
+                .from('lots')
+                .select('id')
+                .or(`link_compra.eq.${lotId},nome.ilike.%${lotId}%`) // Tenta por link ou nome (ex: 518)
+                .limit(1)
+                .maybeSingle()
+            
+            if (data?.id) {
+                lotUuid = data.id
+            } else {
+                console.warn(`Cart: Não foi possível resolver o ID do lote para "${lotId}". RPC pode falhar.`, lookupError)
+            }
         }
 
         try {
