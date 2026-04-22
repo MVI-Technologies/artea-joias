@@ -41,6 +41,7 @@ export default function Catalog() {
   // Usar uma key baseada no ID para garantir que cada acesso ao catálogo seja único
   const clickTracked = useRef(new Map()) // Map<lotId, boolean> para rastrear por catálogo
   const syncTimeoutRef = useRef(null) // Debounce para sincronização do carrinho com o servidor
+  const pendingSyncRef = useRef(false) // Flag: havia itens no carrinho que não foram sincronizados por client ainda carregar
   const selectedProductRef = useRef(null) // para listeners atualizarem o modal (Qtd peças compradas / pessoas)
   selectedProductRef.current = selectedProduct
   // Estados para bloqueio de lote fechado
@@ -49,7 +50,7 @@ export default function Catalog() {
   /** Mensagem de erro no modal (ex.: quantidade mínima) — exibida em vermelho, sem fechar o modal */
   const [modalAddError, setModalAddError] = useState(null)
 
-  const { client } = useAuth()
+  const { client, user } = useAuth()
 
   // Disponibilidade no lote (calculada: limite_maximo - unidades confirmadas) + flag manual_esgotado.
   const getEsgotadoNoLote = (product) => {
@@ -140,6 +141,22 @@ export default function Catalog() {
     }, 2000)
     return () => clearTimeout(t)
   }, [lot?.id])
+
+  // Quando o client carrega no contexto (era null), disparar sync pendente caso haja itens no localStorage
+  useEffect(() => {
+    if (!client?.auth_id || !lot?.id) return
+    if (!pendingSyncRef.current) return
+    // Havia um sync pendente (adicionou ao carrinho antes de client carregar)
+    const cartKey = `cart_${lot.id}`
+    const localItems = (() => { try { return JSON.parse(localStorage.getItem(cartKey) || '[]') } catch { return [] } })()
+    if (localItems.length > 0) {
+      console.log('Disparando sync pendente: client agora carregou e há itens no carrinho.')
+      scheduleSyncToServer(localItems)
+    } else {
+      pendingSyncRef.current = false
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [client?.auth_id])
 
   // Registrar clique no catálogo (sempre que o catálogo é carregado)
   // REMOVIDO: não usar mais este useEffect para tracking, pois está sendo feito diretamente no loadCatalog
@@ -616,12 +633,21 @@ export default function Catalog() {
    * e sobrescrevem o servidor com um carrinho menor.
    */
   const scheduleSyncToServer = (cartItems) => {
-    if (!client?.auth_id || !cartItems?.length) return
-    const lotUuid = lot?.id || cartItems[0]?.lot_id
-    if (!lotUuid) return
+    const lotUuid = lot?.id || cartItems?.[0]?.lot_id
+    if (!lotUuid || !cartItems?.length) return
+
+    // Se o cliente ainda não carregou no contexto mas o usuário está logado,
+    // marcar sync como pendente — será disparado pelo useEffect abaixo quando client carregar.
+    if (!client?.auth_id) {
+      // Marcar como pendente: quando client carregar no contexto, o useEffect vai disparar o sync
+      pendingSyncRef.current = true
+      console.warn('Sync carrinho adiado: client ainda não carregou no contexto.')
+      return
+    }
 
     // Cancelar sync pendente anterior (só envia o último estado)
     if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current)
+    pendingSyncRef.current = false
 
     // Salvar o cartKey para que o timeout leia o estado mais atualizado do localStorage
     const cartKey = `cart_${lotUuid}`
@@ -712,18 +738,20 @@ export default function Catalog() {
       localStorage.setItem(cartKey, JSON.stringify(newCart))
       setCartVersion(v => v + 1)
       const lotUuid = lot?.id
+      // scheduleSyncToServer lida com o caso em que client ainda não carregou (marca como pendente)
+      // Só exibe o warning de "Faça login" se o usuário realmente não está autenticado (sem user no contexto)
+      scheduleSyncToServer(newCart)
       if (client?.auth_id) {
         setTotalsCompradoPorProduto(prev => {
           const prevTotal = prev[product.id] ?? 0
           return { ...prev, [product.id]: prevTotal + qty }
         })
-        // Usar debounce para evitar race condition: adições rápidas não sobrescrevem o servidor com estado antigo
-        scheduleSyncToServer(newCart)
         if (lotUuid) await loadTotalsCompradoPorProduto(lotUuid)
-        toast.success(`${qty}x ${product.nome}${variacaoNorm ? ` (${variacaoNorm})` : ''} adicionado ao carrinho!`)
-      } else {
+      } else if (!user) {
+        // Usuário não logado de verdade
         toast.warning('Adicionado ao carrinho. Faça login para que sua compra seja contabilizada e apareça na lista de compradores.')
       }
+      toast.success(`${qty}x ${product.nome}${variacaoNorm ? ` (${variacaoNorm})` : ''} adicionado ao carrinho!`)
 
       setQuantities(prev => ({ ...prev, [product.id]: 1 }))
       await new Promise(r => setTimeout(r, 300))
