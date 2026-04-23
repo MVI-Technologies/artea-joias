@@ -20,7 +20,14 @@ export default function Register() {
     cpfCnpj: '',
     dataNascimento: '',
     senha: '',
-    confirmarSenha: ''
+    confirmarSenha: '',
+    logradouro: '',
+    numero: '',
+    complemento: '',
+    bairro: '',
+    cidade: '',
+    estado: '',
+    cep: ''
   })
 
   const validateField = (name, value) => {
@@ -49,6 +56,18 @@ export default function Register() {
         return value.length < 6 ? 'A senha deve ter pelo menos 6 caracteres.' : ''
       case 'confirmarSenha':
         return value !== formData.senha ? 'As senhas não coincidem.' : ''
+      case 'logradouro':
+        return value.trim().length < 3 ? 'Endereço é obrigatório.' : ''
+      case 'numero':
+        return value.trim().length === 0 ? 'Número é obrigatório.' : ''
+      case 'bairro':
+        return value.trim().length < 2 ? 'Bairro é obrigatório.' : ''
+      case 'cidade':
+        return value.trim().length < 2 ? 'Cidade é obrigatória.' : ''
+      case 'estado':
+        return value.length !== 2 ? 'Estado é obrigatório.' : ''
+      case 'cep':
+        return value.replace(/\D/g, '').length !== 8 ? 'CEP inválido.' : ''
       default:
         return ''
     }
@@ -83,7 +102,7 @@ export default function Register() {
     setError('')
 
     // Validate all fields
-    const fieldsToValidate = ['nome', 'telefone', 'email', 'instagram', 'cpfCnpj', 'dataNascimento', 'senha', 'confirmarSenha']
+    const fieldsToValidate = ['nome', 'telefone', 'email', 'instagram', 'cpfCnpj', 'dataNascimento', 'senha', 'confirmarSenha', 'logradouro', 'numero', 'bairro', 'cidade', 'estado', 'cep']
     const newErrors = {}
     for (const field of fieldsToValidate) {
       const err = validateField(field, formData[field] || '')
@@ -117,6 +136,13 @@ export default function Register() {
             instagram: instagramValue,
             cpf: formData.cpfCnpj.replace(/\D/g, ''),
             data_nascimento: formData.dataNascimento,
+            endereco: formData.logradouro,
+            numero: formData.numero,
+            complemento: formData.complemento,
+            bairro: formData.bairro,
+            cidade: formData.cidade,
+            estado: formData.estado,
+            cep: formData.cep,
             role: 'cliente' // ✅ CRÍTICO: Armazenar role no metadata para persistência
           }
         }
@@ -144,7 +170,14 @@ export default function Register() {
         telefone: '',
         email: '',
         senha: '',
-        confirmarSenha: ''
+        confirmarSenha: '',
+        logradouro: '',
+        numero: '',
+        complemento: '',
+        bairro: '',
+        cidade: '',
+        estado: '',
+        cep: ''
       })
       setError('')
     } catch (err) {
@@ -284,6 +317,115 @@ export default function Register() {
               required
             />
             {formErrors.dataNascimento && <span className="field-error">{formErrors.dataNascimento}</span>}
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Endereço (Rua/Avenida) *</label>
+            <input
+              type="text"
+              className={`form-input ${formErrors.logradouro ? 'input-error' : ''}`}
+              placeholder="Rua, Avenida, etc."
+              value={formData.logradouro}
+              onChange={(e) => handleFieldChange('logradouro', e.target.value)}
+              required
+            />
+            {formErrors.logradouro && <span className="field-error">{formErrors.logradouro}</span>}
+          </div>
+
+          <div className="form-row">
+            <div className="form-group">
+              <label className="form-label">Número *</label>
+              <input
+                type="text"
+                className={`form-input ${formErrors.numero ? 'input-error' : ''}`}
+                value={formData.numero}
+                onChange={(e) => handleFieldChange('numero', e.target.value)}
+                required
+              />
+              {formErrors.numero && <span className="field-error">{formErrors.numero}</span>}
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Complemento</label>
+              <input
+                type="text"
+                className="form-input"
+                placeholder="Apto, Bloco, etc."
+                value={formData.complemento}
+                onChange={(e) => handleFieldChange('complemento', e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Bairro *</label>
+            <input
+              type="text"
+              className={`form-input ${formErrors.bairro ? 'input-error' : ''}`}
+              value={formData.bairro}
+              onChange={(e) => handleFieldChange('bairro', e.target.value)}
+              required
+            />
+            {formErrors.bairro && <span className="field-error">{formErrors.bairro}</span>}
+          </div>
+
+          <div className="form-row">
+            <div className="form-group">
+              <label className="form-label">Cidade *</label>
+              <input
+                type="text"
+                className={`form-input ${formErrors.cidade ? 'input-error' : ''}`}
+                value={formData.cidade}
+                onChange={(e) => handleFieldChange('cidade', e.target.value)}
+                required
+              />
+              {formErrors.cidade && <span className="field-error">{formErrors.cidade}</span>}
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Estado *</label>
+              <select
+                className={`form-input ${formErrors.estado ? 'input-error' : ''}`}
+                value={formData.estado}
+                onChange={(e) => handleFieldChange('estado', e.target.value)}
+                required
+              >
+                <option value="">Selecione...</option>
+                <option value="AC">AC</option><option value="AL">AL</option>
+                <option value="AP">AP</option><option value="AM">AM</option>
+                <option value="BA">BA</option><option value="CE">CE</option>
+                <option value="DF">DF</option><option value="ES">ES</option>
+                <option value="GO">GO</option><option value="MA">MA</option>
+                <option value="MT">MT</option><option value="MS">MS</option>
+                <option value="MG">MG</option><option value="PA">PA</option>
+                <option value="PB">PB</option><option value="PR">PR</option>
+                <option value="PE">PE</option><option value="PI">PI</option>
+                <option value="RJ">RJ</option><option value="RN">RN</option>
+                <option value="RS">RS</option><option value="RO">RO</option>
+                <option value="RR">RR</option><option value="SC">SC</option>
+                <option value="SP">SP</option><option value="SE">SE</option>
+                <option value="TO">TO</option>
+              </select>
+              {formErrors.estado && <span className="field-error">{formErrors.estado}</span>}
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">CEP *</label>
+            <input
+              type="text"
+              className={`form-input ${formErrors.cep ? 'input-error' : ''}`}
+              placeholder="00000-000"
+              value={formData.cep}
+              onChange={(e) => {
+                let val = e.target.value.replace(/\D/g, '')
+                if (val.length > 5) val = val.substring(0, 5) + '-' + val.substring(5, 8)
+                handleFieldChange('cep', val)
+              }}
+              maxLength={9}
+              required
+            />
+            {formErrors.cep && <span className="field-error">{formErrors.cep}</span>}
           </div>
 
           <div className="form-group">
