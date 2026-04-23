@@ -5,16 +5,8 @@ import {
   Plus,
   Search,
   Users,
-  ChevronDown,
-  BarChart3,
   Edit,
-  Edit2,
-  Calendar,
-  DollarSign,
-  CreditCard,
-  X,
   AlertTriangle,
-  MessageCircle,
   Trash2
 } from 'lucide-react'
 import WhatsAppIcon from '../../../components/icons/WhatsAppIcon'
@@ -32,12 +24,6 @@ export default function ClientList() {
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
 
-  // Modal State
-  const [isModalOpen, setIsModalOpen] = useState(false)
-  const [editingClient, setEditingClient] = useState(null)
-  const [modalMode, setModalMode] = useState('') // 'saldo', 'credito', 'ultima_compra'
-  const [modalValue, setModalValue] = useState('')
-  const [saving, setSaving] = useState(false)
   
   // Deletion Modal State
   const [deleteConfirmModal, setDeleteConfirmModal] = useState({
@@ -154,46 +140,6 @@ export default function ClientList() {
     return matchesSearch
   })
 
-  // Modal Handlers
-  const openModal = (client, mode) => {
-    // Data agora é automática, apenas info
-    if (mode === 'ultima_compra') return
-
-    setEditingClient(client)
-    setModalMode(mode)
-
-    if (mode === 'saldo') setModalValue(client.saldo_devedor || 0)
-    if (mode === 'credito') setModalValue(client.credito_disponivel || 0)
-
-    setIsModalOpen(true)
-  }
-
-  const handleSave = async () => {
-    if (!editingClient) return
-    setSaving(true)
-    try {
-      const updates = {}
-      if (modalMode === 'saldo') updates.saldo_devedor = parseFloat(modalValue)
-      if (modalMode === 'credito') updates.credito_disponivel = parseFloat(modalValue)
-      if (modalMode === 'ultima_compra') updates.ultima_compra = modalValue ? new Date(modalValue).toISOString() : null
-
-      const { error } = await supabase
-        .from('clients')
-        .update(updates)
-        .eq('id', editingClient.id)
-
-      if (error) throw error
-
-      // Update local state
-      setClients(clients.map(c => c.id === editingClient.id ? { ...c, ...updates } : c))
-      setIsModalOpen(false)
-    } catch (error) {
-      console.error('Erro ao salvar:', error)
-      toast.error('Erro ao salvar alterações.')
-    } finally {
-      setSaving(false)
-    }
-  }
 
   return (
     <div className="client-list-page">
@@ -231,22 +177,20 @@ export default function ClientList() {
               <tr>
                 <th>Nome</th>
                 <th>Contato</th>
-                <th>Financeiro</th>
-                <th>Última Compra</th>
                 <th>Status</th>
-                <th>Ações</th>
+                <th className="text-right">Ações</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan="6">
+                  <td colSpan="4">
                     <CenteredLoader />
                   </td>
                 </tr>
               ) : filteredClients.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="text-center text-muted">
+                  <td colSpan="4" className="text-center">
                     Nenhum cliente encontrado
                   </td>
                 </tr>
@@ -266,60 +210,45 @@ export default function ClientList() {
                       </div>
                     </td>
                     <td>
-                      <div className="financial-cell">
-                        <div className="financial-row text-danger" onClick={() => openModal(client, 'saldo')} title="Editar Saldo Devedor" style={{ cursor: 'pointer' }}>
-                          <DollarSign size={14} /> Devedor: R$ {(client.saldo_devedor || 0).toFixed(2)} <Edit2 size={10} />
-                        </div>
-                        <div className="financial-row text-success" onClick={() => openModal(client, 'credito')} title="Editar Crédito" style={{ cursor: 'pointer' }}>
-                          <CreditCard size={14} /> Crédito: R$ {(client.credito_disponivel || 0).toFixed(2)} <Edit2 size={10} />
-                        </div>
-                      </div>
-                    </td>
-                    <td>
-                      <div className="date-cell" title="Atualizado via Romaneios">
-                        {client.ultima_compra ? new Date(client.ultima_compra).toLocaleDateString('pt-BR') : '-'}
-                      </div>
-                    </td>
-                    <td>
                       {getStatusBadge(client)}
                     </td>
-                    <td>
-                      {/* Se cadastro incompleto, força edição */}
-                      {client.cadastro_status === 'incompleto' ? (
+                    <td className="text-right">
+                      <div className="actions-cell">
+                        {/* Se cadastro incompleto, força edição */}
+                        {client.cadastro_status === 'incompleto' ? (
+                          <button
+                            className="btn btn-sm btn-warning"
+                            onClick={() => navigate(`/admin/clientes/${client.id}`)}
+                            title="Completar dados cadastrais"
+                          >
+                            <AlertTriangle size={12} style={{ marginRight: 4 }} /> Atualizar
+                          </button>
+                        ) : (
+                          <button
+                            className={`btn btn-sm ${!client.approved ? 'btn-success' : 'btn-outline-danger'}`}
+                            onClick={() => toggleApproval(client)}
+                            title={client.approved ? "Bloquear Cadastro" : "Aprovar Cadastro"}
+                          >
+                            {client.approved ? "Bloquear" : "Aprovar"}
+                          </button>
+                        )}
+
                         <button
-                          className="btn btn-sm btn-warning"
+                          className="btn btn-sm btn-outline-primary"
                           onClick={() => navigate(`/admin/clientes/${client.id}`)}
-                          title="Completar dados cadastrais"
+                          title="Editar Cliente"
                         >
-                          <AlertTriangle size={12} style={{ marginRight: 4 }} /> Atualizar
+                          <Edit size={16} />
                         </button>
-                      ) : (
+
                         <button
-                          className={`btn btn-sm ${!client.approved ? 'btn-success' : 'btn-outline-danger'}`}
-                          onClick={() => toggleApproval(client)}
-                          title={client.approved ? "Bloquear Cadastro" : "Aprovar Cadastro"}
+                          className="btn btn-sm btn-outline-danger"
+                          onClick={() => handleDelete(client)}
+                          title="Excluir Cliente"
                         >
-                          {client.approved ? "Bloquear" : "Aprovar"}
+                          <Trash2 size={16} />
                         </button>
-                      )}
-
-                      <button
-                        className="btn btn-sm btn-outline-primary"
-                        onClick={() => navigate(`/admin/clientes/${client.id}`)}
-                        title="Editar Cliente"
-                        style={{ marginLeft: '8px' }}
-                      >
-                        <Edit size={16} />
-                      </button>
-
-                      <button
-                        className="btn btn-sm btn-outline-danger ml-2"
-                        onClick={() => handleDelete(client)}
-                        title="Excluir Cliente"
-                        style={{ marginLeft: '8px' }}
-                      >
-                        <Trash2 size={16} />
-                      </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -342,14 +271,16 @@ export default function ClientList() {
                 <span className="mobile-card-label">Contato:</span>
                 <span className="mobile-card-value">{formatTelefone(client.telefone)}</span>
               </div>
-              <div className="mobile-card-row">
-                <span className="mobile-card-label">Última Compra:</span>
-                <span className="mobile-card-value">
-                  {client.ultima_compra ? new Date(client.ultima_compra).toLocaleDateString('pt-BR') : 'Nunca'}
-                </span>
-              </div>
             </div>
             <div className="mobile-card-actions">
+              {client.cadastro_status !== 'incompleto' && (
+                <button
+                  className={`btn btn-sm ${!client.approved ? 'btn-success' : 'btn-outline-danger'}`}
+                  onClick={() => toggleApproval(client)}
+                >
+                  {client.approved ? "Bloquear" : "Aprovar"}
+                </button>
+              )}
               <Link to={`/admin/clientes/${client.id}`} className="btn btn-sm btn-primary">
                 <Edit size={14} />{client.cadastro_status === 'incompleto' ? 'Completar' : 'Editar'}
               </Link>
@@ -366,46 +297,6 @@ export default function ClientList() {
         )}
       </div>
 
-      {/* Modal de Edição Financeira */}
-      {isModalOpen && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h3>
-                {modalMode === 'saldo' && 'Gerenciar Saldo Devedor'}
-                {modalMode === 'credito' && 'Gerenciar Crédito'}
-                {modalMode === 'ultima_compra' && 'Data Última Compra'}
-              </h3>
-              <button className="btn-close" onClick={() => setIsModalOpen(false)}>
-                <X size={20} />
-              </button>
-            </div>
-            <div className="modal-body">
-              <p>Cliente: <strong>{editingClient?.nome}</strong></p>
-
-              <div className="form-group">
-                <label>
-                  {modalMode === 'saldo' && 'Valor Devido (R$)'}
-                  {modalMode === 'credito' && 'Crédito Disponível (R$)'}
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  className="form-control"
-                  value={modalValue}
-                  onChange={e => setModalValue(e.target.value)}
-                />
-              </div>
-            </div>
-            <div className="modal-footer">
-              <button className="btn btn-secondary" onClick={() => setIsModalOpen(false)}>Cancelar</button>
-              <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
-                {saving ? 'Salvando...' : 'Salvar'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
       {/* Modal de Confirmação de Exclusão */}
       <ConfirmationModal
         isOpen={deleteConfirmModal.isOpen}
