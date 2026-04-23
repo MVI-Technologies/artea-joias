@@ -155,7 +155,7 @@ export default function RomaneioDetail() {
         .from('romaneio_items')
         .select(`
           *,
-          product:products(id, nome, descricao, preco, imagem1, categoria_id, variacoes, category:categories(nome))
+          product:products(id, nome, descricao, preco, custo, margem_pct, imagem1, categoria_id, variacoes, category:categories(nome))
         `)
         .eq('romaneio_id', id)
         .order('created_at')
@@ -314,6 +314,8 @@ export default function RomaneioDetail() {
               nome,
               descricao,
               preco,
+              custo,
+              margem_pct,
               imagem1,
               categoria_id,
               variacoes,
