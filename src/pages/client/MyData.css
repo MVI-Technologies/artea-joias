@@ -43,6 +43,22 @@
   padding: var(--spacing-xl);
 }
 
+.my-data-section {
+    margin-bottom: var(--spacing-xl);
+}
+
+.my-data-section h3 {
+    font-size: var(--font-size-md);
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-md);
+    padding-bottom: var(--spacing-xs);
+    border-bottom: 2px solid var(--bg-secondary);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
 /* Message Alert */
 .my-data-message {
   margin-bottom: var(--spacing-lg);
@@ -69,6 +85,10 @@
   margin-bottom: var(--spacing-lg);
 }
 
+.my-data-form-group.span-2 {
+    grid-column: span 1;
+}
+
 .my-data-form-group label {
   display: block;
   font-size: var(--font-size-sm);
@@ -85,6 +105,7 @@
 }
 
 .my-data-form-group input,
+.my-data-form-group select,
 .my-data-form-group textarea {
   width: 100%;
   padding: var(--spacing-sm) var(--spacing-md);
@@ -97,6 +118,7 @@
 }
 
 .my-data-form-group input:focus,
+.my-data-form-group select:focus,
 .my-data-form-group textarea:focus {
   outline: none;
   border-color: var(--color-primary);
@@ -125,12 +147,16 @@
 .my-data-form-grid {
   display: grid;
   grid-template-columns: 1fr;
-  gap: var(--spacing-lg);
+  gap: var(--spacing-md) var(--spacing-lg);
 }
 
 @media (min-width: 768px) {
   .my-data-form-grid {
     grid-template-columns: 1fr 1fr;
+  }
+  
+  .my-data-form-group.span-2 {
+    grid-column: span 2;
   }
 }
 
@@ -171,6 +197,10 @@
 
 .btn-save:active:not(:disabled) {
   transform: translateY(0);
+}
+
+.mt-lg {
+    margin-top: var(--spacing-lg);
 }
 
 /* Responsive */

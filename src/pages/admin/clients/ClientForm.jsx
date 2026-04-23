@@ -53,7 +53,40 @@ export default function ClientForm() {
 
       if (error) throw error
 
-      const endereco = data.enderecos?.[0] || {}
+      const rawEnderecos = data.enderecos
+      let firstEnd = null
+      if (Array.isArray(rawEnderecos)) {
+        firstEnd = rawEnderecos[0] ?? null
+      } else if (typeof rawEnderecos === 'string') {
+        firstEnd = rawEnderecos
+      }
+
+      const isLegacyString = typeof firstEnd === 'string'
+      
+      // Tenta extrair o endereço de várias formas possíveis (legadas ou novas)
+      let logradouro = ''
+      let numero = ''
+      let complemento = ''
+      let bairro = ''
+      let cidade = ''
+      let estado = ''
+      let cep = ''
+
+      if (isLegacyString) {
+        logradouro = firstEnd
+      } else if (firstEnd && typeof firstEnd === 'object') {
+        logradouro = firstEnd.logradouro || ''
+        numero = firstEnd.numero || ''
+        complemento = firstEnd.complemento || ''
+        bairro = firstEnd.bairro || ''
+        cidade = firstEnd.cidade || ''
+        estado = firstEnd.estado || ''
+        cep = firstEnd.cep || ''
+      } else if (data.endereco_completo) {
+        // Fallback para uma possível coluna legada direta
+        logradouro = data.endereco_completo
+      }
+
       setFormData({
         nome: data.nome || '',
         telefone: data.telefone || '',
@@ -64,13 +97,13 @@ export default function ClientForm() {
         grupo: data.grupo || 'Grupo Compras',
         approved: data.approved || false,
         cadastro_status: data.cadastro_status || 'pendente',
-        endereco: endereco.logradouro || '',
-        numero: endereco.numero || '',
-        complemento: endereco.complemento || '',
-        bairro: endereco.bairro || '',
-        cidade: endereco.cidade || '',
-        estado: endereco.estado || '',
-        cep: endereco.cep || ''
+        endereco: logradouro,
+        numero: numero,
+        complemento: complemento,
+        bairro: bairro,
+        cidade: cidade,
+        estado: estado,
+        cep: cep
       })
     } catch (error) {
       console.error('Erro ao carregar cliente:', error)
@@ -233,12 +266,13 @@ export default function ClientForm() {
               )}
 
               <div className="form-group">
-                <label className="form-label">E-mail</label>
+                <label className="form-label">E-mail *</label>
                 <input
                   type="email"
                   className="form-input"
                   value={formData.email}
                   onChange={e => setFormData({ ...formData, email: e.target.value })}
+                  required
                 />
               </div>
 
@@ -254,7 +288,7 @@ export default function ClientForm() {
               </div>
 
               <div className="form-group">
-                <label className="form-label">CPF/CNPJ</label>
+                <label className="form-label">CPF/CNPJ *</label>
                 <input
                   type="text"
                   className="form-input"
@@ -262,6 +296,7 @@ export default function ClientForm() {
                   value={formData.cpf}
                   onChange={e => setFormData({ ...formData, cpf: formatCpfCnpj(e.target.value) })}
                   maxLength={18}
+                  required
                 />
               </div>
 
@@ -316,22 +351,24 @@ export default function ClientForm() {
             <h3 className="mb-md mt-lg">Endereço</h3>
             <div className="form-grid">
               <div className="form-group full-width">
-                <label className="form-label">Endereço</label>
+                <label className="form-label">Endereço *</label>
                 <input
                   type="text"
                   className="form-input"
                   value={formData.endereco}
                   onChange={e => setFormData({ ...formData, endereco: e.target.value })}
+                  required
                 />
               </div>
 
               <div className="form-group">
-                <label className="form-label">Número</label>
+                <label className="form-label">Número *</label>
                 <input
                   type="text"
                   className="form-input"
                   value={formData.numero}
                   onChange={e => setFormData({ ...formData, numero: e.target.value })}
+                  required
                 />
               </div>
 
@@ -346,31 +383,34 @@ export default function ClientForm() {
               </div>
 
               <div className="form-group">
-                <label className="form-label">Bairro</label>
+                <label className="form-label">Bairro *</label>
                 <input
                   type="text"
                   className="form-input"
                   value={formData.bairro}
                   onChange={e => setFormData({ ...formData, bairro: e.target.value })}
+                  required
                 />
               </div>
 
               <div className="form-group">
-                <label className="form-label">Cidade</label>
+                <label className="form-label">Cidade *</label>
                 <input
                   type="text"
                   className="form-input"
                   value={formData.cidade}
                   onChange={e => setFormData({ ...formData, cidade: e.target.value })}
+                  required
                 />
               </div>
 
               <div className="form-group">
-                <label className="form-label">Estado</label>
+                <label className="form-label">Estado *</label>
                 <select
                   className="form-select"
                   value={formData.estado}
                   onChange={e => setFormData({ ...formData, estado: e.target.value })}
+                  required
                 >
                   <option value="">Selecione...</option>
                   <option value="AC">Acre</option>
@@ -404,12 +444,13 @@ export default function ClientForm() {
               </div>
 
               <div className="form-group">
-                <label className="form-label">CEP</label>
+                <label className="form-label">CEP *</label>
                 <input
                   type="text"
                   className="form-input"
                   value={formData.cep}
                   onChange={e => setFormData({ ...formData, cep: e.target.value })}
+                  required
                 />
               </div>
             </div>
