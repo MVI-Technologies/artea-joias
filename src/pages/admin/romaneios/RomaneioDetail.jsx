@@ -122,21 +122,26 @@ export default function RomaneioDetail() {
 
       if (!lotData && romaneioData.lot_id) {
         console.log('⚠️ Lote não encontrado na primeira tentativa. Tentando via RPC (bypass RLS)...')
-        const { data: rpcName } = await supabase
-          .rpc('get_lot_name_by_id', { p_lot_id: romaneioData.lot_id })
+        const { data: rpcLot, error: rpcError } = await supabase
+          .rpc('get_lot_details_v2', { p_lot_id: romaneioData.lot_id })
 
-        console.log('📦 Nome do lote via RPC:', rpcName)
+        console.log('📦 Lote via RPC:', rpcLot)
 
-        if (rpcName) {
-          setLot({ id: romaneioData.lot_id, nome: rpcName })
+        if (rpcLot && rpcLot.length > 0) {
+          setLot(rpcLot[0])
         } else {
-          // Tenta buscar normal novamente só para garantir logs
-          const { data: retryLot } = await supabase
-            .from('lots')
-            .select('*')
-            .eq('id', romaneioData.lot_id)
-            .single()
-          if (retryLot) setLot(retryLot)
+          // Último recurso: tenta pelo nome apenas se o RPC v2 falhar
+          const { data: rpcName } = await supabase
+            .rpc('get_lot_name_by_id', { p_lot_id: romaneioData.lot_id })
+            
+          if (rpcName) {
+            setLot({ 
+              id: romaneioData.lot_id, 
+              nome: rpcName,
+              adicional_por_produto: 0,
+              escritorio_pct: 0
+            })
+          }
         }
       } else if (!romaneioData.lot_id) {
         console.error('❌ ERRO CRÍTICO: Romaneio não tem lot_id!')
@@ -1002,7 +1007,7 @@ export default function RomaneioDetail() {
                         </p>
                       )}
                       <p className="romaneio-product-price">
-                        R$ {product.preco?.toFixed(2)}
+                        R$ {calcPrecoClienteNoLote(product, lot).toFixed(2)}
                       </p>
                       {variacoesList.length > 0 && (
                         <div className="romaneio-product-variacao">
