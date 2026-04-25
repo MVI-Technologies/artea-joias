@@ -113,7 +113,7 @@ export default function RomaneioDetail() {
       console.log('🔍 Buscando lote com ID:', romaneioData.lot_id)
       const { data: lotData } = await supabase
         .from('lots')
-        .select('id, nome, updated_at, requer_pacote_fechado, prazo_pagamento_horas, adicional_por_produto, escritorio_pct')
+        .select('id, nome, updated_at, requer_pacote_fechado, adicional_por_produto, escritorio_pct')
         .eq('id', romaneioData.lot_id)
         .single()
 

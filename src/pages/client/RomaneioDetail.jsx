@@ -60,7 +60,7 @@ export default function RomaneioDetail() {
         .select(`
           *,
           client:clients(id, nome, telefone, email, enderecos),
-          lot:lots(id, nome, prazo_pagamento_horas, dados_pagamento)
+          lot:lots(id, nome, dados_pagamento)
         `)
         .eq('id', romaneioId)
         .single()
