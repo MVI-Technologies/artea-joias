@@ -483,8 +483,8 @@
     display: table;
     /* Ensure table display */
     width: 100%;
-    min-width: 600px;
-    /* Ensure wide enough to not collapse */
+    min-width: max-content;
+    /* Let the table grow to fit contents and use horizontal scroll */
     font-size: 11px;
   }
 
@@ -502,10 +502,13 @@
   .produto-thumb {
     width: 35px;
     height: 35px;
+    min-width: 35px;
+    flex-shrink: 0;
   }
 
   .col-img {
     width: 45px;
+    min-width: 45px;
   }
 
   /* Payment info responsive */
@@ -888,20 +891,20 @@
 /* Mobile: input maior para ver melhor a quantidade */
 @media (max-width: 768px) {
   .romaneio-qty-control {
-    min-height: 48px;
+    min-height: 36px;
   }
 
   .romaneio-qty-btn {
-    width: 44px;
-    min-width: 44px;
-    height: 48px;
+    width: 36px;
+    min-width: 36px;
+    height: 36px;
   }
 
   .romaneio-qty-input {
-    width: 64px;
-    min-width: 64px;
-    font-size: 20px;
-    padding: 12px 8px;
+    width: 48px;
+    min-width: 48px;
+    font-size: 16px;
+    padding: 8px 4px;
   }
 }
 
