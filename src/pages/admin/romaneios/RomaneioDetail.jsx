@@ -303,7 +303,20 @@ export default function RomaneioDetail() {
   }
 
   const enableEditMode = async () => {
-    setEditedItems(items.map(item => ({ ...item })))
+    // Recalculate prices for ALL existing items using current lot margins.
+    // This ensures the price shown in the UI (with margins) matches what gets saved.
+    // Without this, items whose quantity wasn't changed would save the old DB price.
+    setEditedItems(items.map(item => {
+      const precoCalculado = calcPrecoClienteNoLote(item.product, lot)
+      const qty = Number(item.quantidade) || 0
+      return {
+        ...item,
+        preco_unitario: precoCalculado,
+        valor_unitario: precoCalculado,
+        valor_total: qty * precoCalculado,
+        valor_recalculado: qty * precoCalculado
+      }
+    }))
     setEditMode(true)
 
     // Fetch available products from the lot
@@ -1195,11 +1208,12 @@ export default function RomaneioDetail() {
                     <td className="col-action no-print">
                       <button
                         type="button"
-                        className="btn btn-outline btn-sm"
+                        className="btn btn-outline btn-sm btn-delete-item"
                         onClick={() => removeItemFromRomaneio(item)}
                         title="Excluir produto do romaneio"
+                        style={{ minWidth: 36, minHeight: 36, padding: '6px', color: '#dc2626', borderColor: '#fca5a5', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                       >
-                        <Trash2 size={16} />
+                        <Trash2 size={16} color="#dc2626" />
                       </button>
                     </td>
                   )}
