@@ -8,7 +8,7 @@ O sistema Artea Joias é uma plataforma B2C de vendas de semijoias, operando pri
 
 Os produtos são cadastrados com custo interno oculto e uma margem percentual configurável, que gera automaticamente o preço final exibido ao cliente. O cliente nunca visualiza custo, margem ou lucro, apenas o valor final do produto. Os produtos podem ser vendidos de frma unitária (1–1) ou em pacotes de quantidade mínima (ex.: 12, 24 unidades do mesmo modelo).
 
-## 🚀 Funcionalidades Principais
+## 🚀 Funcionalidades 
 
 ### Para Administradores
 - **Gestão de Produtos**: Cadastro de produtos com custo interno, margem e preço final automático
