@@ -113,7 +113,7 @@ export default function RomaneioDetail() {
       console.log('🔍 Buscando lote com ID:', romaneioData.lot_id)
       const { data: lotData } = await supabase
         .from('lots')
-        .select('id, nome, updated_at, requer_pacote_fechado, prazo_pagamento_horas, adicional_por_produto, escritorio_pct')
+        .select('id, nome, updated_at, requer_pacote_fechado, adicional_por_produto, escritorio_pct')
         .eq('id', romaneioData.lot_id)
         .single()
 
@@ -122,21 +122,26 @@ export default function RomaneioDetail() {
 
       if (!lotData && romaneioData.lot_id) {
         console.log('⚠️ Lote não encontrado na primeira tentativa. Tentando via RPC (bypass RLS)...')
-        const { data: rpcName } = await supabase
-          .rpc('get_lot_name_by_id', { p_lot_id: romaneioData.lot_id })
+        const { data: rpcLot, error: rpcError } = await supabase
+          .rpc('get_lot_details_v2', { p_lot_id: romaneioData.lot_id })
 
-        console.log('📦 Nome do lote via RPC:', rpcName)
+        console.log('📦 Lote via RPC:', rpcLot)
 
-        if (rpcName) {
-          setLot({ id: romaneioData.lot_id, nome: rpcName })
+        if (rpcLot && rpcLot.length > 0) {
+          setLot(rpcLot[0])
         } else {
-          // Tenta buscar normal novamente só para garantir logs
-          const { data: retryLot } = await supabase
-            .from('lots')
-            .select('*')
-            .eq('id', romaneioData.lot_id)
-            .single()
-          if (retryLot) setLot(retryLot)
+          // Último recurso: tenta pelo nome apenas se o RPC v2 falhar
+          const { data: rpcName } = await supabase
+            .rpc('get_lot_name_by_id', { p_lot_id: romaneioData.lot_id })
+            
+          if (rpcName) {
+            setLot({ 
+              id: romaneioData.lot_id, 
+              nome: rpcName,
+              adicional_por_produto: 0,
+              escritorio_pct: 0
+            })
+          }
         }
       } else if (!romaneioData.lot_id) {
         console.error('❌ ERRO CRÍTICO: Romaneio não tem lot_id!')
@@ -298,7 +303,20 @@ export default function RomaneioDetail() {
   }
 
   const enableEditMode = async () => {
-    setEditedItems(items.map(item => ({ ...item })))
+    // Recalculate prices for ALL existing items using current lot margins.
+    // This ensures the price shown in the UI (with margins) matches what gets saved.
+    // Without this, items whose quantity wasn't changed would save the old DB price.
+    setEditedItems(items.map(item => {
+      const precoCalculado = calcPrecoClienteNoLote(item.product, lot)
+      const qty = Number(item.quantidade) || 0
+      return {
+        ...item,
+        preco_unitario: precoCalculado,
+        valor_unitario: precoCalculado,
+        valor_total: qty * precoCalculado,
+        valor_recalculado: qty * precoCalculado
+      }
+    }))
     setEditMode(true)
 
     // Fetch available products from the lot
@@ -1002,7 +1020,7 @@ export default function RomaneioDetail() {
                         </p>
                       )}
                       <p className="romaneio-product-price">
-                        R$ {product.preco?.toFixed(2)}
+                        R$ {calcPrecoClienteNoLote(product, lot).toFixed(2)}
                       </p>
                       {variacoesList.length > 0 && (
                         <div className="romaneio-product-variacao">
@@ -1190,11 +1208,12 @@ export default function RomaneioDetail() {
                     <td className="col-action no-print">
                       <button
                         type="button"
-                        className="btn btn-outline btn-sm"
+                        className="btn btn-outline btn-sm btn-delete-item"
                         onClick={() => removeItemFromRomaneio(item)}
                         title="Excluir produto do romaneio"
+                        style={{ minWidth: 36, minHeight: 36, padding: '6px', color: '#dc2626', borderColor: '#fca5a5', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                       >
-                        <Trash2 size={16} />
+                        <Trash2 size={16} color="#dc2626" />
                       </button>
                     </td>
                   )}

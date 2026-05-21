@@ -416,6 +416,18 @@
   color: #dc2626;
   border-color: #fca5a5;
   transition: all 0.2s ease;
+  min-width: 38px;
+  min-height: 38px;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 6px !important;
+}
+
+.btn-delete-romaneio svg {
+  color: #dc2626 !important;
+  flex-shrink: 0;
+  display: block !important;
 }
 
 .btn-delete-romaneio:hover {
@@ -423,6 +435,10 @@
   border-color: #dc2626;
   color: #b91c1c;
   box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.15);
+}
+
+.btn-delete-romaneio:hover svg {
+  color: #b91c1c !important;
 }
 
 .btn-sm {

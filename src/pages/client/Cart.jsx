@@ -104,27 +104,36 @@ export default function Cart() {
                     const key = String(lotId)
                     const localKey = `cart_${key}`
 
-                    // Proteção contra race condition: não sobrescrever localStorage com
-                    // dados do servidor se o servidor tiver MENOS itens que o local.
-                    // Isso acontece quando uma chamada de sync antiga chegou ao servidor
-                    // depois de uma nova e sobrescreveu com um carrinho menor.
-                    // Nesse caso, o localStorage (mais novo) prevalece e será re-sincronizado.
+                    // Decidir qual versão prevalece: servidor ou localStorage.
+                    // ESTRATÉGIA: O servidor é autoritativo somente se tiver pelo menos
+                    // tantas linhas de produto distintas quanto o local.
+                    // Isso evita que um carrinho local com 2 produtos distintos seja
+                    // sobrescrito por um servidor com 1 produto em maior quantidade
+                    // (mesmo total de unidades), que é a causa raiz do "itens sumindo".
                     const localItems = (() => {
                         try { return JSON.parse(localStorage.getItem(localKey) || '[]') } catch { return [] }
                     })()
+                    const localLineCount = localItems.length
+                    const serverLineCount = cartItemsFromServer.length
                     const localTotal = localItems.reduce((s, i) => s + (i.quantity || 0), 0)
                     const serverTotal = cartItemsFromServer.reduce((s, i) => s + (i.quantity || 0), 0)
 
-                    if (cartItemsFromServer.length > 0 || localItems.length === 0) {
-                        // Servidor tem dados: sobrescrever local com estado autoritativo do servidor
-                        // OU local está vazio: aceitar o que o servidor tem (pode ser 0)
-                        if (serverTotal >= localTotal || localItems.length === 0) {
+                    if (serverLineCount > 0 || localItems.length === 0) {
+                        // Servidor prevalece se:
+                        // - tem mais linhas distintas que o local, OU
+                        // - tem o mesmo número de linhas E quantidade >= local, OU
+                        // - o local está vazio
+                        const serverPrevails = localItems.length === 0 ||
+                            serverLineCount > localLineCount ||
+                            (serverLineCount === localLineCount && serverTotal >= localTotal)
+
+                        if (serverPrevails) {
                             localStorage.setItem(localKey, JSON.stringify(cartItemsFromServer))
                         } else {
-                            // Servidor tem menos itens que o local — possível artifact de race condition.
-                            // Manter o localStorage e agendar re-sync para corrigir o servidor.
-                            console.warn(`Cart: servidor tem ${serverTotal} itens mas local tem ${localTotal}. Mantendo local e re-sincronizando servidor.`)
-                            // Re-sincronizar o local → servidor para corrigir o estado do banco
+                            // Local tem mais produtos distintos — possível race condition ou
+                            // o admin ainda não processou os itens do cliente.
+                            // Manter o localStorage e re-sincronizar para corrigir o servidor.
+                            console.warn(`Cart: servidor tem ${serverLineCount} linhas/${serverTotal} unid. mas local tem ${localLineCount} linhas/${localTotal} unid. Mantendo local e re-sincronizando servidor.`)
                             const itemsPayload = localItems.map(item => ({
                                 product_id: item.id,
                                 quantity: item.quantity,
