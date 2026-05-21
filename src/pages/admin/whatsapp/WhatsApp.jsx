@@ -565,7 +565,7 @@ export default function WhatsApp() {
                         className="catalog-picker-item"
                         onClick={() => handleSelectCatalog(cat)}
                       >
-                        <img src={cat.cover_image_url} alt={cat.nome} className="catalog-picker-thumb" />
+                        <img src={cat.cover_image_url} alt={cat.nome} className="catalog-picker-thumb" loading="lazy" />
                         <span>{cat.nome}</span>
                       </div>
                     ))
@@ -634,7 +634,7 @@ export default function WhatsApp() {
                 </div>
               ) : (
                 <div className="image-preview-container">
-                  <img src={imageUrl} alt="Preview" />
+                  <img src={imageUrl} alt="Preview" loading="lazy" />
                   <button 
                     type="button" 
                     className="remove-image-btn" 

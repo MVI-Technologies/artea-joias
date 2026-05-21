@@ -170,7 +170,7 @@ export default function ProductList() {
             <div key={product.id} className="product-card">
               <div className="product-card-image">
                 {product.imagem1 ? (
-                  <img src={product.imagem1} alt={product.nome} />
+                  <img src={product.imagem1} alt={product.nome} loading="lazy" />
                 ) : (
                   <div className="product-card-placeholder">
                     <Package size={48} />

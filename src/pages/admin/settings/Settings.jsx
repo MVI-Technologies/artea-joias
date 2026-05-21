@@ -737,7 +737,7 @@ export default function Settings() {
                   </div>
                   {logoUrl && (
                     <div className="image-preview">
-                      <img src={logoUrl} alt="Logo" />
+                      <img src={logoUrl} alt="Logo" loading="lazy" />
                     </div>
                   )}
                 </div>
@@ -764,7 +764,7 @@ export default function Settings() {
                   </div>
                   {iconUrl && (
                     <div className="image-preview icon-preview">
-                      <img src={iconUrl} alt="Ícone" />
+                      <img src={iconUrl} alt="Ícone" loading="lazy" />
                     </div>
                   )}
                 </div>

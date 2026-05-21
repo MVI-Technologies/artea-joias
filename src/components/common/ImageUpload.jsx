@@ -44,6 +44,36 @@ export default function ImageUpload({ value, onChange, onUploadStart, onUploadEn
     }
   }
 
+  const compressImage = (file, maxWidth = 1000) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target.result;
+        img.onload = () => {
+          let width = img.width;
+          let height = img.height;
+          if (width > maxWidth) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          canvas.toBlob((blob) => {
+            if (!blob) { reject(new Error('Canvas is empty')); return; }
+            resolve(blob);
+          }, 'image/webp', 0.8);
+        };
+        img.onerror = (error) => reject(error);
+      };
+      reader.onerror = (error) => reject(error);
+    });
+  };
+
   const handleFiles = async (file) => {
     if (!file.type.startsWith('image/')) {
       toast.warning('Por favor, selecione apenas arquivos de imagem.')
@@ -51,22 +81,23 @@ export default function ImageUpload({ value, onChange, onUploadStart, onUploadEn
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      toast.warning('A imagem deve ter no máximo 5MB.')
+      toast.warning('A imagem original deve ter no máximo 5MB.')
       return
     }
 
     try {
       setUploading(true)
       if (onUploadStart) onUploadStart()
+      
+      const compressedBlob = await compressImage(file, 1000);
 
       const cleanFileName = file.name.replace(/[^a-zA-Z0-9.]/g, '')
-      const fileExt = cleanFileName.split('.').pop()
-      const fileName = `${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`
+      const fileName = `${Date.now()}_${Math.random().toString(36).substring(2)}.webp`
       const filePath = `${fileName}`
 
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from(bucketName)
-        .upload(filePath, file)
+        .upload(filePath, compressedBlob, { cacheControl: '31536000', contentType: 'image/webp' })
 
       if (uploadError) throw uploadError
 

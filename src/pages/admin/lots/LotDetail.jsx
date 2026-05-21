@@ -1346,7 +1346,7 @@ export default function LotDetail({ defaultTab }) {
                         }}
                       >
                         {product.imagem1 ? (
-                          <img src={product.imagem1} alt={product.nome} className="card-main-image" />
+                          <img src={product.imagem1} alt={product.nome} className="card-main-image" loading="lazy" />
                         ) : (
                           <div className="card-no-image">
                             <Image size={48} />
@@ -1513,7 +1513,7 @@ export default function LotDetail({ defaultTab }) {
                       <div key={itemIdx} className="reserva-item">
                         <div className="item-image">
                           {item.product?.imagem1 ? (
-                            <img src={item.product.imagem1} alt="" />
+                            <img src={item.product.imagem1} alt="" loading="lazy" />
                           ) : (
                             <div className="no-image-sm"><Image size={16} /></div>
                           )}
@@ -1673,7 +1673,7 @@ export default function LotDetail({ defaultTab }) {
                     <tr key={idx}>
                       <td style={{ width: 56 }}>
                         {row.product?.imagem1
-                          ? <img src={row.product.imagem1} alt="" style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 6, display: 'block' }} />
+                          ? <img src={row.product.imagem1} alt="" style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 6, display: 'block' }} loading="lazy" />
                           : <div style={{ width: 44, height: 44, background: '#f1f5f9', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Package size={18} /></div>
                         }
                       </td>
@@ -1761,7 +1761,7 @@ export default function LotDetail({ defaultTab }) {
                       />
                       <div className="product-select-image" style={{ width: 40, height: 40 }}>
                         {lp.product.imagem1 ? (
-                          <img src={lp.product.imagem1} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          <img src={lp.product.imagem1} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" />
                         ) : (
                           <div className="no-image-sm" style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#e2e8f0' }}><Package size={16} /></div>
                         )}
@@ -1822,7 +1822,7 @@ export default function LotDetail({ defaultTab }) {
               </div>
               {fabricaProductSelected && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
-                  {fabricaProductSelected.imagem1 && <img src={fabricaProductSelected.imagem1} alt="" style={{ width: 48, height: 48, borderRadius: 6, objectFit: 'cover' }} />}
+                  {fabricaProductSelected.imagem1 && <img src={fabricaProductSelected.imagem1} alt="" style={{ width: 48, height: 48, borderRadius: 6, objectFit: 'cover' }} loading="lazy" />}
                   <div>
                     <div style={{ fontWeight: 600, fontSize: '0.875rem' }}>{fabricaProductSelected.descricao || fabricaProductSelected.nome}</div>
                     {fabricaVariacaoSelected && <div style={{ fontSize: '0.8rem', color: '#64748b' }}>{fabricaVariacaoSelected}</div>}
@@ -1877,7 +1877,7 @@ export default function LotDetail({ defaultTab }) {
                       />
                       <div className="product-select-image">
                         {product.imagem1 ? (
-                          <img src={product.imagem1} alt="" />
+                          <img src={product.imagem1} alt="" loading="lazy" />
                         ) : (
                           <div className="no-image-sm"><Image size={20} /></div>
                         )}
@@ -2509,7 +2509,7 @@ export default function LotDetail({ defaultTab }) {
                       Crie um novo produto no link herdando a imagem e configurações do produto principal. Ideal para variações de tamanho ou cor com preços diferentes.
                     </p>
                     {productForm.imagem1 ? (
-                      <img src={productForm.imagem1} alt="Referência" style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '6px', marginBottom: '16px' }} />
+                      <img src={productForm.imagem1} alt="Referência" style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '6px', marginBottom: '16px' }} loading="lazy" />
                     ) : (
                       <div style={{ padding: '8px', backgroundColor: '#fffbeb', color: '#b45309', borderRadius: '4px', marginBottom: '16px', fontSize: '13px' }}>
                         ⚠️ Adicione uma foto no produto principal primeiro.
@@ -2566,7 +2566,7 @@ export default function LotDetail({ defaultTab }) {
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px' }}>
                           {related.map(lp => (
                             <div key={lp.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '6px', background: '#fff', position: 'relative' }}>
-                              <img src={lp.product.imagem1} alt="" style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '4px' }} />
+                              <img src={lp.product.imagem1} alt="" style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '4px' }} loading="lazy" />
                               <div style={{ flex: 1, overflow: 'hidden', paddingRight: '24px' }}>
                                 <p style={{ margin: 0, fontSize: '12px', fontWeight: 'bold', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{lp.product.descricao || lp.product.nome}</p>
                                 <p style={{ margin: 0, fontSize: '12px', color: '#16a34a' }}>R$ {lp.product.preco?.toFixed(2)}</p>

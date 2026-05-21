@@ -137,7 +137,7 @@ export default function ClientDashboard() {
               <div key={order.id} className="recent-order-item">
                 <div className="order-product-image">
                   {order.product?.imagem1 ? (
-                    <img src={order.product.imagem1} alt={order.product.nome} />
+                    <img src={order.product.imagem1} alt={order.product.nome} loading="lazy" />
                   ) : (
                     <Package size={24} />
                   )}

@@ -128,7 +128,7 @@ export default function ClientOrders() {
                 <div className="order-card-body">
                   <div className="product-thumb">
                     {order.product?.imagem1 ? (
-                      <img src={order.product.imagem1} alt={order.product.nome} />
+                      <img src={order.product.imagem1} alt={order.product.nome} loading="lazy" />
                     ) : (
                       <Package size={24} />
                     )}

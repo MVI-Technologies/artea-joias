@@ -363,7 +363,7 @@ export default function SeparacaoList() {
                               </span>
                               <div className="item-image">
                                 {item.product?.imagem1 ? (
-                                  <img src={item.product.imagem1} alt="" />
+                                  <img src={item.product.imagem1} alt="" loading="lazy" />
                                 ) : (
                                   <div className="no-image"><Package size={16} /></div>
                                 )}

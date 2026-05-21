@@ -185,7 +185,7 @@ export default function OrderHistory() {
                 {/* Imagem */}
                 <div className="order-card-image">
                   {order.product?.imagem1 ? (
-                    <img src={order.product.imagem1} alt={order.product.nome} />
+                    <img src={order.product.imagem1} alt={order.product.nome} loading="lazy" />
                   ) : (
                     <div className="flex items-center justify-center h-full text-slate-300">
                       <Package size={24} />

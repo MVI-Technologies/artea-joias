@@ -484,7 +484,7 @@ export default function RomaneioDetail() {
           {products.map((order) => (
             <div key={order.id} className="product-item">
               {order.product?.imagem1 && (
-                <img src={order.product.imagem1} alt={order.product.nome} className="product-img" />
+                <img src={order.product.imagem1} alt={order.product.nome} className="product-img" loading="lazy" />
               )}
               <div className="product-info">
                 <h4>{order.product?.nome}</h4>

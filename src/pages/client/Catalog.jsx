@@ -899,7 +899,7 @@ export default function Catalog() {
             >
               <div className={`product-image-area ${getEsgotadoNoLote(product) ? 'out-of-stock-image' : ''}`}>
                 {product.imagem1 ? (
-                  <img src={product.imagem1} alt={product.nome} className="product-img" />
+                  <img src={product.imagem1} alt={product.nome} className="product-img" loading="lazy" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-slate-300">
                     Sem foto
@@ -973,7 +973,7 @@ export default function Catalog() {
                 {/* COLUNA 1: IMAGEM */}
                 <div className="modal-col-image">
                   {selectedProduct.imagem1 ? (
-                    <img src={selectedProduct.imagem1} alt={selectedProduct.nome} className="modal-product-img" />
+                    <img src={selectedProduct.imagem1} alt={selectedProduct.nome} className="modal-product-img" loading="lazy" />
                   ) : (
                     <div className="modal-no-image">
                       <span>Sem foto</span>

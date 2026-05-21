@@ -6,7 +6,7 @@ export default function ClosedLotScreen({ lotName }) {
   
   return (
     <div className="closed-lot-screen">
-      <img 
+      <img loading="lazy" 
         src="/images/closed-lot.png" 
         alt="Link Fechado" 
         className="closed-lot-image"

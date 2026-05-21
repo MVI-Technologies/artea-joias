@@ -773,7 +773,7 @@ export default function Cart() {
                                     <div key={lineKey} className="cart-item">
                                         <div className="cart-item-image">
                                             {item.imagem1 ? (
-                                                <img src={item.imagem1} alt={item.nome} />
+                                                <img src={item.imagem1} alt={item.nome} loading="lazy" />
                                             ) : (
                                                 <div className="cart-item-image-placeholder">
                                                     <ShoppingCart size={24} />

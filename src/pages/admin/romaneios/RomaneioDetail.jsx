@@ -982,7 +982,7 @@ export default function RomaneioDetail() {
                   return (
                   <div key={product.id} className="romaneio-product-card">
                     {product.imagem1 ? (
-                      <img
+                      <img loading="lazy"
                         src={product.imagem1}
                         alt={product.nome}
                         className="romaneio-product-image"
@@ -1057,7 +1057,7 @@ export default function RomaneioDetail() {
         <header className="romaneio-header">
           <div className="header-logo">
             {company?.logo_url ? (
-              <img src={company.logo_url} alt="Logo" />
+              <img src={company.logo_url} alt="Logo" loading="lazy" />
             ) : (
               <div className="logo-placeholder">
                 <span>{company?.nome_empresa?.charAt(0) || 'A'}</span>
@@ -1111,7 +1111,7 @@ export default function RomaneioDetail() {
                 <tr key={item.id || index}>
                   <td className="col-img">
                     {item.product?.imagem1 ? (
-                      <img src={item.product.imagem1} alt="" className="produto-thumb" />
+                      <img src={item.product.imagem1} alt="" className="produto-thumb" loading="lazy" />
                     ) : (
                       <div className="produto-thumb-placeholder" />
                     )}

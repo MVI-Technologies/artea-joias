@@ -34,8 +34,8 @@ serve(async (req) => {
             headers: {
                 ...corsHeaders,
                 'Content-Type': contentType,
-                // Cache control to improve performance
-                'Cache-Control': 'public, max-age=3600'
+                // Cache control to improve performance (1 year)
+                'Cache-Control': 'public, max-age=31536000'
             },
         })
     } catch (error) {
