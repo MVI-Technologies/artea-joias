@@ -249,11 +249,31 @@ export default function RomaneioDetail() {
 
       if (!pdfBlob) throw new Error('Erro ao gerar PDF')
 
-      const blobUrl = URL.createObjectURL(pdfBlob)
+      const fileName = `Romaneio-${romaneio.numero_romaneio || romaneio.numero_pedido || romaneio.id.slice(-6)}.pdf`
 
+      // Tentar usar o compartilhamento nativo do celular (iOS/Android)
+      if (navigator.canShare) {
+        try {
+          const file = new File([pdfBlob], fileName, { type: 'application/pdf' })
+          if (navigator.canShare({ files: [file] })) {
+            await navigator.share({
+              files: [file],
+              title: 'Romaneio',
+              text: 'Segue o seu romaneio.'
+            })
+            return // Se compartilhou com sucesso, finaliza.
+          }
+        } catch (shareErr) {
+          console.log('Compartilhamento cancelado ou falhou', shareErr)
+        }
+      }
+
+      // Fallback: Download via URL.createObjectURL para Web/Desktop
+      const blobUrl = URL.createObjectURL(pdfBlob)
       const link = document.createElement('a')
       link.href = blobUrl
-      link.download = `Romaneio-${romaneio.numero_romaneio || romaneio.numero_pedido}.pdf`
+      link.download = fileName
+      link.target = '_blank'
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)

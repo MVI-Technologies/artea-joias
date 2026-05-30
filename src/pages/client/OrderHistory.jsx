@@ -131,7 +131,7 @@ export default function OrderHistory() {
       const { data: company } = await supabase.from('company_settings').select('*').single()
       const { data: pixInt } = await supabase.from('integrations').select('config').eq('type', 'pix').single()
 
-      const pdfBase64 = await generateRomaneioPDF({
+      const pdfBlob = await generateRomaneioPDF({
         romaneio: fullRomaneio,
         lot: fullRomaneio?.lot || { nome: 'Catálogo' },
         client: client,
@@ -140,14 +140,38 @@ export default function OrderHistory() {
         pixConfig: pixInt?.config
       })
 
-      if (!pdfBase64) throw new Error('Falha ao gerar PDF')
+      if (!pdfBlob) throw new Error('Falha ao gerar PDF')
 
+      const finalFileName = fileName || `Romaneio-${romaneioId.slice(0, 8)}.pdf`
+
+      // Tentar usar o compartilhamento nativo do celular (iOS/Android)
+      if (navigator.canShare) {
+        try {
+          const file = new File([pdfBlob], finalFileName, { type: 'application/pdf' })
+          if (navigator.canShare({ files: [file] })) {
+            await navigator.share({
+              files: [file],
+              title: 'Romaneio',
+              text: 'Segue o seu romaneio.'
+            })
+            return // Compartilhamento nativo com sucesso
+          }
+        } catch (shareErr) {
+          console.log('Compartilhamento falhou ou foi cancelado', shareErr)
+        }
+      }
+
+      // Fallback: Gerar ObjectURL e baixar
+      const blobUrl = URL.createObjectURL(pdfBlob)
       const link = document.createElement('a')
-      link.href = `data:application/pdf;base64,${pdfBase64}`
-      link.download = fileName || `Romaneio-${romaneioId.slice(0, 8)}.pdf`
+      link.href = blobUrl
+      link.download = finalFileName
+      link.target = '_blank'
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
+
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 1000)
 
     } catch (e) {
       console.error('Erro ao baixar PDF:', e)
