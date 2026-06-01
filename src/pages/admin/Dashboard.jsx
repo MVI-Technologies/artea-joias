@@ -13,7 +13,12 @@ import { supabase } from '../../lib/supabase'
 import './Dashboard.css'
 
 export default function Dashboard() {
-  const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().substring(0, 7)) // YYYY-MM
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    const d = new Date()
+    const year = d.getFullYear()
+    const month = String(d.getMonth() + 1).padStart(2, '0')
+    return `${year}-${month}`
+  }) // YYYY-MM
   const [stats, setStats] = useState({
     totalClients: 0,
     pendingClients: 0,
@@ -52,12 +57,18 @@ export default function Dashboard() {
         .in('status_pagamento', ['pago', 'pago_frete_incluso', 'enviado', 'concluido', 'em_separacao', 'admin_purchase'])
 
       if (selectedMonth !== 'all') {
-        const startDate = `${selectedMonth}-01T00:00:00Z`
-        const endDate = new Date(new Date(startDate).setMonth(new Date(startDate).getMonth() + 1)).toISOString()
+        // Obter datas locais correspondentes ao início e fim do mês no fuso horário do navegador
+        const startDateLocal = new Date(`${selectedMonth}-01T00:00:00`)
+        const startISO = startDateLocal.toISOString()
 
-        queryItems = queryItems.gte('created_at', startDate).lt('created_at', endDate)
-        queryTotalOrders = queryTotalOrders.gte('created_at', startDate).lt('created_at', endDate)
-        queryRevenue = queryRevenue.gte('created_at', startDate).lt('created_at', endDate)
+        // Calcular o primeiro dia do mês seguinte na hora local
+        const [year, month] = selectedMonth.split('-').map(Number)
+        const nextMonthDate = new Date(year, month, 1, 0, 0, 0, 0)
+        const endISO = nextMonthDate.toISOString()
+
+        queryItems = queryItems.gte('created_at', startISO).lt('created_at', endISO)
+        queryTotalOrders = queryTotalOrders.gte('created_at', startISO).lt('created_at', endISO)
+        queryRevenue = queryRevenue.gte('created_at', startISO).lt('created_at', endISO)
       }
 
       // Execute Queries
@@ -148,8 +159,14 @@ export default function Dashboard() {
             className="form-select"
             value={selectedMonth === 'all' ? 'all' : 'monthly'}
             onChange={(e) => {
-              if (e.target.value === 'all') setSelectedMonth('all')
-              else setSelectedMonth(new Date().toISOString().substring(0, 7))
+              if (e.target.value === 'all') {
+                setSelectedMonth('all')
+              } else {
+                const d = new Date()
+                const year = d.getFullYear()
+                const month = String(d.getMonth() + 1).padStart(2, '0')
+                setSelectedMonth(`${year}-${month}`)
+              }
             }}
           >
             <option value="monthly">Filtrar por Mês</option>

@@ -95,21 +95,21 @@ export default function Reports() {
   }
 
   const loadProdutosReport = async () => {
-    // Buscar diretamente da tabela orders com filtro de data
+    // Buscar diretamente da tabela romaneio_items com filtro de data
     const startDate = new Date(dateRange.start)
     startDate.setHours(0, 0, 0, 0)
     const endDate = new Date(dateRange.end)
     endDate.setHours(23, 59, 59, 999)
     
-    const { data: ordersData, error } = await supabase
-      .from('orders')
+    const { data: itemsData, error } = await supabase
+      .from('romaneio_items')
       .select(`
         quantidade,
         valor_total,
         created_at,
-        product:products(nome, codigo_sku)
+        product:products(nome, codigo_sku),
+        romaneio:romaneios(status_pagamento)
       `)
-      .eq('status', 'pago')
       .gte('created_at', startDate.toISOString())
       .lte('created_at', endDate.toISOString())
 
@@ -119,7 +119,12 @@ export default function Reports() {
       return
     }
 
-    if (!ordersData || ordersData.length === 0) {
+    // Filtrar apenas itens de romaneios pagos/concluídos/enviados/etc.
+    const paidItems = (itemsData || []).filter(item => 
+      ['pago', 'pago_frete_incluso', 'enviado', 'concluido', 'em_separacao', 'admin_purchase'].includes(item.romaneio?.status_pagamento)
+    )
+
+    if (paidItems.length === 0) {
       console.log('Nenhum produto encontrado no ranking no período selecionado')
       setData([])
       return
@@ -127,19 +132,19 @@ export default function Reports() {
 
     // Agregar por produto
     const productMap = {}
-    ordersData.forEach(order => {
-      if (!order.product) return
-      const productId = order.product.nome
+    paidItems.forEach(item => {
+      if (!item.product) return
+      const productId = item.product.nome
       if (!productMap[productId]) {
         productMap[productId] = {
-          produto: order.product.nome || '-',
-          sku: order.product.codigo_sku || '-',
+          produto: item.product.nome || '-',
+          sku: item.product.codigo_sku || '-',
           vendidos: 0,
           receita: 0
         }
       }
-      productMap[productId].vendidos += order.quantidade || 0
-      productMap[productId].receita += parseFloat(order.valor_total || 0)
+      productMap[productId].vendidos += item.quantidade || 0
+      productMap[productId].receita += parseFloat(item.valor_total || 0)
     })
 
     const sorted = Object.values(productMap)
@@ -150,21 +155,22 @@ export default function Reports() {
   }
 
   const loadClientesReport = async () => {
-    // Buscar diretamente da tabela orders com filtro de data
+    // Buscar diretamente da tabela romaneio_items com filtro de data
     const startDate = new Date(dateRange.start)
     startDate.setHours(0, 0, 0, 0)
     const endDate = new Date(dateRange.end)
     endDate.setHours(23, 59, 59, 999)
     
-    const { data: ordersData, error } = await supabase
-      .from('orders')
+    const { data: itemsData, error } = await supabase
+      .from('romaneio_items')
       .select(`
-        id,
         valor_total,
         created_at,
-        client:clients(nome, telefone)
+        romaneio:romaneios(
+          status_pagamento,
+          client:clients(nome, telefone)
+        )
       `)
-      .eq('status', 'pago')
       .gte('created_at', startDate.toISOString())
       .lte('created_at', endDate.toISOString())
 
@@ -174,7 +180,13 @@ export default function Reports() {
       return
     }
 
-    if (!ordersData || ordersData.length === 0) {
+    // Filtrar apenas itens de romaneios pagos
+    const paidItems = (itemsData || []).filter(item => 
+      item.romaneio?.client &&
+      ['pago', 'pago_frete_incluso', 'enviado', 'concluido', 'em_separacao', 'admin_purchase'].includes(item.romaneio?.status_pagamento)
+    )
+
+    if (paidItems.length === 0) {
       console.log('Nenhum cliente encontrado no ranking no período selecionado')
       setData([])
       return
@@ -182,23 +194,23 @@ export default function Reports() {
 
     // Agregar por cliente
     const clientMap = {}
-    ordersData.forEach(order => {
-      if (!order.client) return
-      const clientId = order.client.nome
-      if (!clientMap[clientId]) {
-        clientMap[clientId] = {
-          cliente: order.client.nome || '-',
-          telefone: order.client.telefone || '-',
+    paidItems.forEach(item => {
+      const client = item.romaneio.client
+      const clientName = client.nome
+      if (!clientMap[clientName]) {
+        clientMap[clientName] = {
+          cliente: client.nome || '-',
+          telefone: client.telefone || '-',
           pedidos: 0,
           total_gasto: 0,
           ultima_compra: null
         }
       }
-      clientMap[clientId].pedidos += 1
-      clientMap[clientId].total_gasto += parseFloat(order.valor_total || 0)
-      const orderDate = new Date(order.created_at)
-      if (!clientMap[clientId].ultima_compra || orderDate > clientMap[clientId].ultima_compra) {
-        clientMap[clientId].ultima_compra = orderDate
+      clientMap[clientName].pedidos += 1
+      clientMap[clientName].total_gasto += parseFloat(item.valor_total || 0)
+      const orderDate = new Date(item.created_at)
+      if (!clientMap[clientName].ultima_compra || orderDate > clientMap[clientName].ultima_compra) {
+        clientMap[clientName].ultima_compra = orderDate
       }
     })
 
