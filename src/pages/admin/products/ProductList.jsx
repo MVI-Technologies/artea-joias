@@ -229,7 +229,6 @@ export default function ProductList() {
               </div>
               <div className="product-card-actions">
                 <button className="card-action-btn"><Eye size={16} /> <span className="action-text">Pedidos</span></button>
-                <button className="card-action-btn"><span className="action-text">WhatsApp</span></button>
                 <button className="card-action-btn"><span className="action-text">Foto</span></button>
                 <button className="card-action-btn"><span className="action-text">Link</span></button>
               </div>

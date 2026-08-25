@@ -9,7 +9,6 @@ import {
   FileText,
   BarChart3,
   Settings,
-  MessageSquare,
   Wallet,
   Tag,
   ChevronDown,
@@ -50,11 +49,6 @@ const menuItems = [
     icon: Users,
     path: '/admin/clientes',
     badge: null
-  },
-  {
-    label: 'WhatsApp',
-    icon: MessageSquare,
-    path: '/admin/whatsapp',
   },
   {
     label: 'Relatórios',

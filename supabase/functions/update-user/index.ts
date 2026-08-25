@@ -42,15 +42,26 @@ Deno.serve(async (req: Request) => {
     const newTelefoneFormated = telefone.replace(/[^\d+]/g, '');
     const oldTelefoneFormated = oldTelefone ? oldTelefone.replace(/[^\d+]/g, '') : '';
 
-    // 2. Update Auth User if phone changed
-    if (authId && newTelefoneFormated !== oldTelefoneFormated) {
+    // Verifica se a conta já migrou para e-mail real (auth.users.email não é
+    // mais o sintético {telefone}@artea.local). Nesse caso, uma troca de
+    // telefone NÃO deve reescrever o e-mail de autenticação — isso
+    // derrubaria o cliente de volta para o fluxo legado.
+    let currentAuthEmail: string | undefined;
+    if (authId) {
+      const { data: currentAuthUser } = await supabaseAdmin.auth.admin.getUserById(authId);
+      currentAuthEmail = currentAuthUser?.user?.email;
+    }
+    const alreadyMigratedToEmail = !!currentAuthEmail && !currentAuthEmail.endsWith('@artea.local');
+
+    // 2. Update Auth User if phone changed (apenas contas ainda não migradas)
+    if (authId && !alreadyMigratedToEmail && newTelefoneFormated !== oldTelefoneFormated) {
       const newAuthEmail = `${newTelefoneFormated.replace(/\+/g, '')}@artea.local`;
-      
+
       const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(
         authId,
-        { 
+        {
           email: newAuthEmail,
-          user_metadata: { 
+          user_metadata: {
             name: nome,
             role: role || 'cliente',
             email_real: email

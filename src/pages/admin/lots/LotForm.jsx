@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Save, Info, Bell, Loader2, Lock, X, Search } from 'lucide-react'
+import { ArrowLeft, Save, Info, Loader2, X, Search } from 'lucide-react'
 import { supabase } from '../../../lib/supabase'
 import { notifyNewCatalog, notifyCatalogClosed } from '../../../services/whatsapp'
 import { useToast } from '../../../components/common/Toast'
@@ -18,8 +18,8 @@ export default function LotForm() {
   const [saving, setSaving] = useState(false)
   const [sendingNotification, setSendingNotification] = useState(false)
   const [activeTab, setActiveTab] = useState('taxas')
-  const [notifyClients, setNotifyClients] = useState(false)
-  const [notifyOnClose, setNotifyOnClose] = useState(false) // Notificar ao fechar
+  const [notifyClients] = useState(false) // Notificação via WhatsApp temporariamente oculta da UI
+  const [notifyOnClose] = useState(false) // Notificar ao fechar (oculto da UI)
   const [notificationResult, setNotificationResult] = useState(null)
   const [originalStatus, setOriginalStatus] = useState('') // Status original para detectar mudança
   const [originalCatalog, setOriginalCatalog] = useState(null) // Dados originais do catálogo
@@ -646,53 +646,7 @@ export default function LotForm() {
           </div>
         )}
 
-        {/* Notificação de clientes - novo catálogo */}
-        {!isEditing && (
-          <div className="form-section notification-section">
-            <div className="notification-checkbox">
-              <label className="checkbox-container">
-                <input
-                  type="checkbox"
-                  checked={notifyClients}
-                  onChange={(e) => setNotifyClients(e.target.checked)}
-                  disabled={saving || sendingNotification}
-                />
-                <span className="checkmark"></span>
-                <span className="checkbox-label">
-                  <Bell size={16} />
-                  Enviar notificação WhatsApp para todos os clientes
-                </span>
-              </label>
-              <p className="notification-hint">
-                Ao marcar esta opção, todos os clientes cadastrados com telefone receberão uma mensagem automática sobre o novo catálogo.
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* Notificação de fechamento - ao mudar status para fechado */}
-        {isEditing && originalStatus !== 'fechado' && formData.status === 'fechado' && (
-          <div className="form-section notification-section notification-close">
-            <div className="notification-checkbox">
-              <label className="checkbox-container">
-                <input
-                  type="checkbox"
-                  checked={notifyOnClose}
-                  onChange={(e) => setNotifyOnClose(e.target.checked)}
-                  disabled={saving || sendingNotification}
-                />
-                <span className="checkmark"></span>
-                <span className="checkbox-label">
-                  <Lock size={16} />
-                  Enviar notificação de FECHAMENTO para todos os clientes
-                </span>
-              </label>
-              <p className="notification-hint">
-                Ao marcar esta opção, todos os clientes receberão uma mensagem informando que este catálogo foi fechado.
-              </p>
-            </div>
-          </div>
-        )}
+        {/* Notificações via WhatsApp temporariamente ocultas da UI (funcionalidade preservada no backend) */}
 
         {/* Feedback de notificação */}
         {notificationResult && (

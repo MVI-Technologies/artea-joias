@@ -65,7 +65,8 @@ export default function RomaneioDetail() {
   const [editMode, setEditMode] = useState(false)
   const [editedItems, setEditedItems] = useState([])
   const [saving, setSaving] = useState(false)
-  const [sendingWhatsApp, setSendingWhatsApp] = useState(false)
+  // eslint-disable-next-line no-unused-vars
+  const [sendingWhatsApp, setSendingWhatsApp] = useState(false) // Envio via WhatsApp temporariamente oculto da UI
 
   // Product Addition Controls
   const [availableProducts, setAvailableProducts] = useState([])
@@ -531,6 +532,8 @@ export default function RomaneioDetail() {
     }
   }
 
+  // Envio de WhatsApp temporariamente oculto da UI (função preservada para reativação futura)
+  // eslint-disable-next-line no-unused-vars
   const sendWhatsAppWithPDF = async () => {
     if (!client?.telefone) {
       toast.error('Cliente não possui telefone cadastrado')
@@ -741,6 +744,8 @@ export default function RomaneioDetail() {
     }
   }
 
+  // Envio de WhatsApp temporariamente oculto da UI (função preservada para reativação futura)
+  // eslint-disable-next-line no-unused-vars
   const openWhatsApp = () => {
     if (!client?.telefone) return
 
@@ -819,13 +824,7 @@ export default function RomaneioDetail() {
               <button className="btn btn-outline" onClick={enableEditMode}>
                 <Edit size={16} /> Editar Quantidades
               </button>
-              <button
-                className="btn btn-success"
-                onClick={sendWhatsAppWithPDF}
-                disabled={sendingWhatsApp}
-              >
-                <MessageCircle size={16} /> {sendingWhatsApp ? 'Enviando...' : 'Enviar WhatsApp + PDF'}
-              </button>
+              {/* Envio via WhatsApp temporariamente oculto da UI (função preservada no arquivo) */}
               <button className="btn btn-primary" onClick={handleDownloadPDF}>
                 <Download size={16} /> Salvar PDF
               </button>

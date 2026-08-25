@@ -1,4 +1,16 @@
-// Supabase Edge Function - Reset de Senha
+// Supabase Edge Function - Reset de Senha (clientes legados, por telefone)
+//
+// Fluxo: telefone -> encontra o cliente em `clients` -> exige um novo
+// e-mail (que passa a ser a identidade de login) + nova senha -> aplica
+// os dois no Supabase Auth via Admin API.
+//
+// Decisão de produto (explícita, ver conversa): NÃO há verificação de
+// posse do telefone (nenhum código enviado por WhatsApp/SMS) nem do
+// e-mail (nenhum link de confirmação) — a única barreira é saber o
+// telefone cadastrado do cliente. Isso é mais fraco do que a versão
+// anterior baseada em código por WhatsApp; ver aviso de risco no
+// relatório da tarefa que introduziu este fluxo.
+//
 // Deploy: Cole este código no editor do Supabase Dashboard
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
@@ -9,14 +21,14 @@ const corsHeaders = {
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
+const EMAIL_REGEX = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+
 Deno.serve(async (req) => {
-    // Handle CORS preflight
     if (req.method === 'OPTIONS') {
         return new Response('ok', { headers: corsHeaders });
     }
 
     try {
-        // Parse request body
         let body;
         try {
             body = await req.json();
@@ -27,16 +39,30 @@ Deno.serve(async (req) => {
             );
         }
 
-        const { code, telefone, newPassword } = body;
+        const { telefone, newEmail, newPassword } = body;
 
-        if (!code || !telefone || !newPassword) {
+        if (!telefone || !newEmail || !newPassword) {
             return new Response(
-                JSON.stringify({ success: false, error: 'Código, telefone e nova senha são obrigatórios' }),
+                JSON.stringify({ success: false, error: 'Telefone, e-mail e nova senha são obrigatórios' }),
                 { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
             );
         }
 
-        // Get Supabase credentials from environment
+        const emailNormalizado = String(newEmail).trim().toLowerCase();
+        if (!EMAIL_REGEX.test(emailNormalizado)) {
+            return new Response(
+                JSON.stringify({ success: false, error: 'E-mail inválido' }),
+                { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+        }
+
+        if (String(newPassword).length < 6) {
+            return new Response(
+                JSON.stringify({ success: false, error: 'A senha deve ter pelo menos 6 caracteres' }),
+                { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+        }
+
         const supabaseUrl = Deno.env.get('SUPABASE_URL');
         const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
@@ -47,105 +73,90 @@ Deno.serve(async (req) => {
             );
         }
 
+        const serviceHeaders = {
+            'apikey': supabaseServiceKey,
+            'Authorization': `Bearer ${supabaseServiceKey}`,
+            'Content-Type': 'application/json',
+        };
+
+        // Encontrar o cliente pelo telefone, tolerando variações de DDI
+        // (mesma lógica já usada em ForgotPasswordLegacy.jsx/AuthContext).
         const telefoneLimpo = telefone.replace(/\D/g, '');
+        const telefoneSem55 = telefoneLimpo.startsWith('55') ? telefoneLimpo.slice(2) : telefoneLimpo;
+        const telefoneCom55 = telefoneLimpo.startsWith('55') ? telefoneLimpo : `55${telefoneLimpo}`;
+        const orFilter = `telefone.eq.${telefoneLimpo},telefone.eq.${telefoneSem55},telefone.eq.${telefoneCom55}`;
 
-        // Validar código usando fetch direto (sem createClient)
-        const validateResponse = await fetch(`${supabaseUrl}/rest/v1/password_reset_codes?code=eq.${code}&telefone=eq.${telefoneLimpo}&used=eq.false&expires_at=gt.${new Date().toISOString()}&select=*,client:clients(*)`, {
-            headers: {
-                'apikey': supabaseServiceKey,
-                'Authorization': `Bearer ${supabaseServiceKey}`,
-                'Content-Type': 'application/json',
-                'Prefer': 'return=representation'
-            }
-        });
+        const clientResponse = await fetch(
+            `${supabaseUrl}/rest/v1/clients?select=id,auth_id,email&or=(${orFilter})&limit=1`,
+            { headers: serviceHeaders }
+        );
+        const clients = await clientResponse.json();
 
-        const resetData = await validateResponse.json();
-
-        if (!validateResponse.ok || !resetData || resetData.length === 0) {
+        if (!clientResponse.ok || !Array.isArray(clients) || clients.length === 0) {
             return new Response(
-                JSON.stringify({ success: false, error: 'Código inválido ou expirado' }),
-                { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-            );
-        }
-
-        const resetRecord = resetData[0];
-
-        // Buscar email do cliente no Supabase Auth
-        const phoneWithoutCountryCode = telefoneLimpo.startsWith('55') ? telefoneLimpo.slice(2) : telefoneLimpo;
-        const phoneWithCountryCode = telefoneLimpo.startsWith('55') ? telefoneLimpo : `55${telefoneLimpo}`;
-
-        const emailVariations = [
-            `${phoneWithoutCountryCode}@artea.local`,
-            `${phoneWithCountryCode}@artea.local`,
-            `+${phoneWithCountryCode}@artea.local`,
-        ];
-
-        let authUser = null;
-        for (const email of emailVariations) {
-            try {
-                const userResponse = await fetch(`${supabaseUrl}/auth/v1/admin/users?email=${encodeURIComponent(email)}`, {
-                    headers: {
-                        'apikey': supabaseServiceKey,
-                        'Authorization': `Bearer ${supabaseServiceKey}`,
-                        'Content-Type': 'application/json'
-                    }
-                });
-
-                const userData = await userResponse.json();
-
-                if (userResponse.ok && userData && userData.users && userData.users.length > 0) {
-                    authUser = userData.users[0];
-                    console.log(`✅ Usuário encontrado com email: ${email}`);
-                    break;
-                }
-            } catch (err) {
-                console.log(`Tentando próximo email...`);
-            }
-        }
-
-        if (!authUser) {
-            return new Response(
-                JSON.stringify({ success: false, error: 'Usuário não encontrado no sistema de autenticação' }),
+                JSON.stringify({ success: false, error: 'Telefone não encontrado no sistema' }),
                 { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
             );
         }
 
-        // Atualizar senha usando Admin API
-        const updateResponse = await fetch(`${supabaseUrl}/auth/v1/admin/users/${authUser.id}`, {
+        const client = clients[0];
+
+        if (!client.auth_id) {
+            return new Response(
+                JSON.stringify({ success: false, error: 'Cliente não possui conta de autenticação vinculada' }),
+                { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+        }
+
+        // E-mail já em uso por OUTRO cliente? (idx_clients_email_unique cobre
+        // isso no banco, mas checar aqui dá uma mensagem amigável em vez do
+        // erro cru da constraint.)
+        const dupResponse = await fetch(
+            `${supabaseUrl}/rest/v1/clients?select=id&email=ilike.${encodeURIComponent(emailNormalizado)}&id=neq.${client.id}&limit=1`,
+            { headers: serviceHeaders }
+        );
+        const dupRows = await dupResponse.json();
+        if (dupResponse.ok && Array.isArray(dupRows) && dupRows.length > 0) {
+            return new Response(
+                JSON.stringify({ success: false, error: 'Este e-mail já está cadastrado em outra conta' }),
+                { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+        }
+
+        // Atualiza e-mail + senha no Auth em uma única chamada.
+        const updateResponse = await fetch(`${supabaseUrl}/auth/v1/admin/users/${client.auth_id}`, {
             method: 'PUT',
-            headers: {
-                'apikey': supabaseServiceKey,
-                'Authorization': `Bearer ${supabaseServiceKey}`,
-                'Content-Type': 'application/json'
-            },
+            headers: serviceHeaders,
             body: JSON.stringify({
-                password: newPassword
+                email: emailNormalizado,
+                password: newPassword,
+                email_confirm: true,
             })
         });
 
         if (!updateResponse.ok) {
             const errorData = await updateResponse.json();
-            console.error('Erro ao atualizar senha:', errorData);
+            console.error('Erro ao atualizar e-mail/senha:', errorData);
+            const msg = String(errorData?.msg || errorData?.message || '').toLowerCase();
+            const emailEmUso = msg.includes('already been registered') || msg.includes('already exists') || msg.includes('duplicate');
             return new Response(
-                JSON.stringify({ success: false, error: 'Erro ao atualizar senha' }),
-                { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                JSON.stringify({
+                    success: false,
+                    error: emailEmUso ? 'Este e-mail já está cadastrado em outra conta' : 'Erro ao atualizar e-mail/senha'
+                }),
+                { status: emailEmUso ? 409 : 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
             );
         }
 
-        // Marcar código como usado
-        await fetch(`${supabaseUrl}/rest/v1/password_reset_codes?id=eq.${resetRecord.id}`, {
+        // Mantém clients.email em sincronia com auth.users.email.
+        await fetch(`${supabaseUrl}/rest/v1/clients?id=eq.${client.id}`, {
             method: 'PATCH',
-            headers: {
-                'apikey': supabaseServiceKey,
-                'Authorization': `Bearer ${supabaseServiceKey}`,
-                'Content-Type': 'application/json',
-                'Prefer': 'return=representation'
-            },
-            body: JSON.stringify({ used: true })
+            headers: { ...serviceHeaders, 'Prefer': 'return=minimal' },
+            body: JSON.stringify({ email: emailNormalizado })
         });
 
         return new Response(
-            JSON.stringify({ success: true, message: 'Senha alterada com sucesso' }),
+            JSON.stringify({ success: true, message: 'E-mail e senha atualizados com sucesso' }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
 

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Plus, Search, ChevronDown, Copy, MoreVertical, Edit, Lock, FileText, Package, Scissors, X, Settings, AlertTriangle, CheckCircle, MessageSquare, Clock, Trash2 } from 'lucide-react'
+import { Plus, Search, ChevronDown, Copy, MoreVertical, Edit, Lock, FileText, Package, Scissors, X, Settings, AlertTriangle, CheckCircle, Clock, Trash2 } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../../../lib/supabase'
 import { notifyCatalogClosed, sendRomaneiosAutomaticamente } from '../../../services/whatsapp'
@@ -19,7 +19,7 @@ export default function LotList() {
   const [showConfirmModal, setShowConfirmModal] = useState(null) // { type: 'fechar' | 'duplicar' | 'excluir', lot: object }
   const [showConfigModal, setShowConfigModal] = useState(null) // lot object
   const [configData, setConfigData] = useState({})
-  const [notifyOnClose, setNotifyOnClose] = useState(true)
+  const [notifyOnClose] = useState(false) // Notificação via WhatsApp temporariamente oculta da UI
   const [processing, setProcessing] = useState(false)
 
   // Toast state
@@ -623,15 +623,6 @@ export default function LotList() {
                 <>
                   <p>Tem certeza que deseja fechar o grupo <strong>"{showConfirmModal.lot?.nome}"</strong>?</p>
                   <p className="text-muted">Isso impedirá novas reservas neste grupo.</p>
-                  <label className="checkbox-notify">
-                    <input
-                      type="checkbox"
-                      checked={notifyOnClose}
-                      onChange={(e) => setNotifyOnClose(e.target.checked)}
-                    />
-                    <MessageSquare size={16} />
-                    <span>Enviar notificação WhatsApp para os clientes</span>
-                  </label>
                 </>
               ) : showConfirmModal.type === 'excluir' ? (
                 <>

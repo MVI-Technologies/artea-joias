@@ -56,12 +56,15 @@ Deno.serve(async (req: Request) => {
         console.log(`Backfilling auth for existing client: ${clientToUpdateId}`);
     }
 
-    // 1. Create user in Supabase Auth
-    // Use phone as email identifier pattern if strictly needed or just use the provided email?
-    // The original code used phoneDigits@artea.local. Checking if we should preserve that.
+    // 1. Create user in Supabase Auth.
+    // Se um e-mail real foi informado, ele passa a ser a identidade de
+    // autenticação (fluxo principal por e-mail). Sem e-mail, mantém o
+    // padrão legado {telefone}@artea.local — a conta segue pelo fluxo de
+    // migração obrigatória de e-mail no próximo login.
     const phoneFormated = telefone.replace(/[^\d+]/g, '');
-    const authEmail = `${phoneFormated.replace(/\+/g, '')}@artea.local`;
-    
+    const normalizedEmail = email ? String(email).trim().toLowerCase() : '';
+    const authEmail = normalizedEmail || `${phoneFormated.replace(/\+/g, '')}@artea.local`;
+
     // We send 'legacy_migration': 'true' to bypass the handle_new_user trigger
     const { data: authData, error: authError } = await supabase.auth.admin.createUser({
       email: authEmail,

@@ -27,7 +27,6 @@ import {
   ClipboardList,
   MoreVertical,
   CheckSquare,
-  Bell,
   Loader2,
   Save,
   TrendingUp,
@@ -71,7 +70,7 @@ export default function LotDetail({ defaultTab }) {
   // States para confirmação e notificação
   const [showConfirmModal, setShowConfirmModal] = useState(false)
   const [confirmAction, setConfirmAction] = useState(null)
-  const [notifyOnClose, setNotifyOnClose] = useState(true)
+  const [notifyOnClose] = useState(false) // Notificação via WhatsApp temporariamente oculta da UI
   const [sendingNotification, setSendingNotification] = useState(false)
   const [notification, setNotification] = useState(null)
 
@@ -2204,20 +2203,6 @@ export default function LotDetail({ defaultTab }) {
                   <p className="confirm-hint">
                     Após fechado, os clientes não poderão mais fazer reservas.
                   </p>
-
-                  <div className="confirm-option">
-                    <label className="checkbox-container">
-                      <input
-                        type="checkbox"
-                        checked={notifyOnClose}
-                        onChange={(e) => setNotifyOnClose(e.target.checked)}
-                      />
-                      <span className="checkbox-label">
-                        <Bell size={16} />
-                        Notificar clientes via WhatsApp sobre o fechamento
-                      </span>
-                    </label>
-                  </div>
                 </>
               )}
 

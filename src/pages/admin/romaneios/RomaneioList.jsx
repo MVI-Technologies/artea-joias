@@ -7,7 +7,6 @@ import {
   Eye,
   Search,
   FileSpreadsheet,
-  MessageCircle,
   CheckCircle,
   Clock,
   DollarSign,
@@ -138,6 +137,8 @@ export default function RomaneioList() {
     })
   }
 
+  // Envio de WhatsApp temporariamente oculto da UI (função preservada para reativação futura)
+  // eslint-disable-next-line no-unused-vars
   const openWhatsApp = (romaneio) => {
     if (!romaneio.client?.telefone) return
 
@@ -146,7 +147,7 @@ export default function RomaneioList() {
     if (taxaSep <= 0 && valorProdutos >= 1) taxaSep = valorProdutos <= 80 ? 15 : 25
     const totalComTaxa = valorProdutos + taxaSep + (romaneio.valor_frete || 0) - (romaneio.desconto_credito || 0)
     const valorTotalExib = (Number(romaneio.valor_total ?? 0) <= valorProdutos && taxaSep > 0) ? totalComTaxa : (romaneio.valor_total ?? 0)
-    
+
     const phone = romaneio.client.telefone.replace(/\D/g, '')
     const message = encodeURIComponent(
       `Olá ${romaneio.client.nome}! 🌟\n\n` +
@@ -488,14 +489,7 @@ export default function RomaneioList() {
 
                         <div className="romaneio-card-footer">
                           <div style={{ display: 'flex', gap: '8px' }}>
-                            <button 
-                              className="btn btn-sm btn-outline"
-                              onClick={() => openWhatsApp(romaneio)}
-                              title="Enviar WhatsApp"
-                            >
-                              <MessageCircle size={14} />
-                            </button>
-                            <button 
+                            <button
                               className="btn btn-sm btn-outline btn-delete-romaneio"
                               onClick={() => confirmDeleteRomaneio(romaneio)}
                               title="Excluir Romaneio"

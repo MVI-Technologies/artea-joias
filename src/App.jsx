@@ -11,6 +11,8 @@ import Login from './pages/auth/Login'
 import Register from './pages/auth/Register'
 import ForgotPassword from './pages/auth/ForgotPassword'
 import ResetPassword from './pages/auth/ResetPassword'
+import ForgotPasswordLegacy from './pages/auth/ForgotPasswordLegacy'
+import CompleteEmail from './pages/auth/CompleteEmail'
 
 // Admin Pages
 import Dashboard from './pages/admin/Dashboard'
@@ -48,7 +50,7 @@ import './styles/index.css'
 
 // Protected Route Component
 function ProtectedRoute({ children, requireAdmin = false }) {
-  const { user, isAdmin, loading, client } = useAuth()
+  const { user, isAdmin, loading, client, needsEmailMigration } = useAuth()
 
   if (loading) {
     return <CenteredLoader fullHeight />
@@ -76,6 +78,13 @@ function ProtectedRoute({ children, requireAdmin = false }) {
     )
   }
 
+  // Cliente legado autenticado por telefone, ainda sem e-mail cadastrado:
+  // bloqueia qualquer rota do cliente (mesmo por URL direta) até o e-mail
+  // ser cadastrado em /completar-cadastro.
+  if (!requireAdmin && needsEmailMigration) {
+    return <Navigate to="/completar-cadastro" replace />
+  }
+
   return children
 }
 
@@ -89,7 +98,9 @@ function AppRoutes() {
       <Route path="/cadastro" element={<Register />} />
       <Route path="/esqueci-senha" element={<ForgotPassword />} />
       <Route path="/redefinir-senha" element={<ResetPassword />} />
-      
+      <Route path="/recuperar-legado" element={<ForgotPasswordLegacy />} />
+      <Route path="/completar-cadastro" element={<CompleteEmail />} />
+
       {/* Admin Routes */}
       <Route
         path="/admin"

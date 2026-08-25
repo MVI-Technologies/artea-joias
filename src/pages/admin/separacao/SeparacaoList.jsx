@@ -163,6 +163,8 @@ export default function SeparacaoList() {
     })
   }
 
+  // Envio de WhatsApp temporariamente oculto da UI (função preservada para reativação futura)
+  // eslint-disable-next-line no-unused-vars
   const openWhatsApp = (client) => {
     if (!client?.telefone) return
     
@@ -318,14 +320,7 @@ export default function SeparacaoList() {
                             <span>{clientReserva.client?.telefone}</span>
                           </div>
                           <div className="header-actions">
-                            <button 
-                              className="btn btn-icon"
-                              onClick={() => openWhatsApp(clientReserva.client)}
-                              title="WhatsApp"
-                            >
-                              <MessageCircle size={16} />
-                            </button>
-                            <button 
+                            <button
                               className="btn btn-icon"
                               onClick={() => toggleAllClient(clientReserva)}
                               title={progress.checked === progress.total ? "Desmarcar todos" : "Marcar todos"}

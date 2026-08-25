@@ -1,0 +1,37 @@
+-- =====================================================
+-- MIGRATION 078: Reabilita RLS na tabela clients (CRÍTICO)
+-- =====================================================
+-- Achado durante o trabalho no fluxo de recuperação de senha legado:
+-- `public.clients` estava com Row Level Security DESABILITADO em
+-- produção (relrowsecurity = false), apesar de todas as policies
+-- corretas (017/018) ainda existirem e estarem ativas na tabela.
+--
+-- Com RLS desligado, as policies simplesmente não são avaliadas — e
+-- como `anon`/`authenticated` têm grants de SELECT/INSERT/UPDATE/DELETE
+-- na tabela (necessários para quando RLS está ligado), qualquer
+-- requisição não autenticada (só com a anon key pública) conseguia
+-- ler, alterar ou apagar QUALQUER linha de `clients` — nome, telefone,
+-- e-mail, CPF, endereço, saldo_devedor, role, approved, etc. de
+-- qualquer cliente, sem login algum. Confirmado em teste real
+-- (`GET .../rest/v1/clients?telefone=eq....` com a anon key retornou
+-- dados de um cliente real sem nenhuma autenticação).
+--
+-- Isso bate com o alerta já documentado no skill artea-supabase sobre
+-- `999_emergency_fix_rls.sql` (script de emergência que desliga RLS em
+-- `clients` e não deveria nunca ser reexecutado) — não foi possível
+-- determinar neste momento se foi esse script que rodou novamente ou
+-- outra ação manual no dashboard, mas o estado encontrado era
+-- exatamente esse.
+--
+-- Esta migration apenas RELIGA a proteção já projetada — não altera
+-- nenhuma policy. As policies atuais (verificadas antes desta
+-- migration, via pg_policies) já implementam corretamente o modelo
+-- "dono vê a própria linha, admin vê tudo":
+--   * "Ler proprio perfil"                 SELECT  auth_id = auth.uid()
+--   * "Usuario ve o seu"                   ALL     auth_id = auth.uid()
+--   * "Admins ver tudo"                    ALL     is_admin()
+--   * "Novos usuários podem se registrar"  INSERT  auth.uid() = auth_id
+--   * "Admins podem inserir novos clientes" INSERT  is_admin() (via subquery)
+--   * "Admins podem editar todos os clientes (UPDATE)" UPDATE admin (via subquery)
+
+ALTER TABLE public.clients ENABLE ROW LEVEL SECURITY;

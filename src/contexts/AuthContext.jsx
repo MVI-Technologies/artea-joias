@@ -171,6 +171,22 @@ export function AuthProvider({ children }) {
     }
   }
 
+  // Login principal: e-mail + senha (Supabase Auth nativo).
+  const signInWithEmail = async (email, senha) => {
+    try {
+      const emailLimpo = (email || '').trim().toLowerCase()
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: emailLimpo,
+        password: senha
+      })
+      return { data, error }
+    } catch (error) {
+      return { data: null, error }
+    }
+  }
+
+  // Login legado: apenas para clientes antigos que ainda não têm e-mail
+  // cadastrado. Mantido temporariamente durante a migração para e-mail.
   const signIn = async (telefone, senha) => {
     try {
       console.log('📞 Tentando login com telefone:', telefone)
@@ -300,6 +316,69 @@ export function AuthProvider({ children }) {
     }
   }
 
+  // Cliente legado autenticado por telefone, ainda sem e-mail real associado
+  // à conta do Supabase Auth (auth.users.email ainda é o e-mail sintético
+  // {telefone}@artea.local). Centraliza a regra usada pelo ProtectedRoute
+  // para bloquear o acesso às páginas normais até o e-mail ser cadastrado.
+  const needsEmailMigration = !!(
+    user &&
+    client &&
+    !isAdmin &&
+    (user.email || '').toLowerCase().endsWith('@artea.local')
+  )
+
+  // Associa um e-mail real à conta do cliente legado autenticado por telefone
+  // (ou permite a um cliente já migrado trocar de e-mail). Atualiza primeiro
+  // o Supabase Auth (fonte de verdade da autenticação) e só então sincroniza
+  // clients.email via RPC — nunca abre uma policy de UPDATE geral em clients.
+  const completeEmailMigration = async (novoEmail) => {
+    try {
+      const email = (novoEmail || '').trim().toLowerCase()
+      if (!user) {
+        return { error: { message: 'Sessão inválida. Faça login novamente.' } }
+      }
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+        return { error: { message: 'Informe um e-mail válido.' } }
+      }
+
+      // Checagem amigável antes de chamar o Auth (a checagem definitiva
+      // e autoritativa acontece dentro da RPC set_client_email).
+      const { data: existing } = await supabase
+        .from('clients')
+        .select('id')
+        .ilike('email', email)
+        .neq('auth_id', user.id)
+        .maybeSingle()
+
+      if (existing) {
+        return { error: { message: 'Este e-mail já está sendo utilizado por outra conta.' } }
+      }
+
+      const { data: updateData, error: updateError } = await supabase.auth.updateUser({ email })
+      if (updateError) {
+        return { error: updateError }
+      }
+
+      const { error: rpcError } = await supabase.rpc('set_client_email', { p_email: email })
+      if (rpcError) {
+        console.warn('Auth atualizado, mas falha ao sincronizar clients.email:', rpcError)
+      }
+
+      // Alguns projetos Supabase exigem confirmação por e-mail para trocar
+      // o endereço (double opt-in). Nesse caso a sessão ainda mostra o
+      // e-mail antigo até o link de confirmação ser clicado.
+      const { data: sessionData } = await supabase.auth.getSession()
+      const confirmedNow = sessionData?.session?.user?.email?.toLowerCase() === email
+      if (confirmedNow) {
+        setUser(sessionData.session.user)
+      }
+
+      return { data: updateData, error: null, pendingConfirmation: !confirmedNow }
+    } catch (error) {
+      return { error }
+    }
+  }
+
   const signOut = async () => {
     try {
       await supabase.auth.signOut()
@@ -333,9 +412,12 @@ export function AuthProvider({ children }) {
     client,
     isAdmin,
     loading,
+    needsEmailMigration,
     signIn,
+    signInWithEmail,
     signUp,
     signOut,
+    completeEmailMigration,
     refreshProfile: () => user && fetchClientProfile(user)
   }
 

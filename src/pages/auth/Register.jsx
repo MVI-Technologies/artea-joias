@@ -39,7 +39,8 @@ export default function Register() {
         return digits.length < 10 ? 'Telefone inválido. Verifique o número digitado.' : ''
       }
       case 'email':
-        return value && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(value) ? 'E-mail inválido.' : ''
+        if (!value.trim()) return 'E-mail é obrigatório.'
+        return !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(value) ? 'E-mail inválido.' : ''
       case 'instagram':
         return value.trim().length < 2 ? 'Instagram é obrigatório.' : ''
       case 'cpfCnpj': {
@@ -117,22 +118,36 @@ export default function Register() {
     setLoading(true)
 
     try {
-      // Converter telefone para email fake (mesmo esquema do login, mantendo o + se houver)
-      const emailFormated = formData.telefone.replace(/[^\d+]/g, '')
-      const emailFake = `${emailFormated.replace(/\+/g, '')}@artea.local`
-      
       // Preparar dados para metadados
       const instagramValue = formData.instagram.trim().replace(/^@/, '')
-      
-      // Criar usuário no Supabase Auth usando telefone como base do email
+      const emailNormalizado = formData.email.trim().toLowerCase()
+      const telefoneMetadata = formData.telefone.replace(/[^\d+]/g, '')
+
+      // Checagem amigável de telefone antes de chamar o Auth. Necessária
+      // porque, ao contrário de e-mail duplicado (rejeitado pelo próprio
+      // GoTrue antes de chegar ao trigger), telefone duplicado só é
+      // detectado dentro do trigger handle_new_user — e o endpoint
+      // /auth/v1/signup não repassa esse detalhe ao cliente, respondendo
+      // de forma genérica. A validação autoritativa continua no trigger.
+      const { data: telefoneDisponivel, error: telefoneCheckError } = await supabase
+        .rpc('check_telefone_disponivel', { p_telefone: telefoneMetadata })
+
+      if (!telefoneCheckError && telefoneDisponivel === false) {
+        setError('Este telefone já está cadastrado. Tente fazer login ou recuperar sua senha.')
+        setLoading(false)
+        return
+      }
+
+      // Cadastro principal: e-mail real como identidade de autenticação.
+      // O telefone é mantido apenas como dado cadastral/contato (metadata),
+      // usado pelo trigger handle_new_user para preencher clients.telefone.
       const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: emailFake,
+        email: emailNormalizado,
         password: formData.senha,
         options: {
           data: {
             nome: formData.nome,
-            telefone: formData.telefone.replace(/[^\d+]/g, ''),
-            email_real: formData.email,
+            telefone: telefoneMetadata,
             instagram: instagramValue,
             cpf: formData.cpfCnpj.replace(/\D/g, ''),
             data_nascimento: formData.dataNascimento,
@@ -150,8 +165,17 @@ export default function Register() {
 
       if (authError) throw authError
 
+      // Supabase retorna sucesso (sem erro) para e-mail já cadastrado quando
+      // "Confirm email" está ativo, para não expor quais e-mails existem —
+      // nesse caso o usuário retornado não tem identidades novas associadas.
+      if (authData?.user && Array.isArray(authData.user.identities) && authData.user.identities.length === 0) {
+        setError('Este e-mail já está cadastrado. Tente fazer login ou recuperar sua senha.')
+        setLoading(false)
+        return
+      }
+
       console.log('✅ Auth signup bem-sucedido!', authData.user)
-      
+
       // ✅ Cliente é criado automaticamente pelo trigger on_auth_user_created
       // Não precisa inserir manualmente - a migration 040 cuida disso
       
@@ -184,7 +208,17 @@ export default function Register() {
       console.error('❌ Erro ao cadastrar:', err)
       console.error('❌ Nome do erro:', err.name)
       console.error('❌ Stack:', err.stack)
-      setError(err.message || 'Erro ao criar cadastro. Verifique os dados e tente novamente.')
+      const mensagem = (err.message || '').toLowerCase()
+      if (mensagem.includes('already registered') || mensagem.includes('already exists')) {
+        setError('Este e-mail já está cadastrado. Tente fazer login ou recuperar sua senha.')
+      } else if (mensagem.includes('database error saving new user')) {
+        // Erro genérico do GoTrue quando o trigger handle_new_user rejeita o
+        // cadastro (ex.: telefone já em uso por outra conta em condição de
+        // corrida com a pré-checagem acima) — GoTrue não repassa o motivo.
+        setError('Não foi possível concluir o cadastro. Verifique se o telefone informado já não está em uso ou tente novamente em instantes.')
+      } else {
+        setError(err.message || 'Erro ao criar cadastro. Verifique os dados e tente novamente.')
+      }
     } finally {
       setLoading(false)
     }
@@ -255,7 +289,7 @@ export default function Register() {
           </div>
 
           <div className="form-group">
-            <label className="form-label">Telefone/WhatsApp *</label>
+            <label className="form-label">Telefone *</label>
             <PhoneInput
               className={`form-input ${formErrors.telefone ? 'input-error' : ''}`}
               value={formData.telefone}
