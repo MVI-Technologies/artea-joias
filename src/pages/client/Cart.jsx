@@ -75,7 +75,7 @@ export default function Cart() {
 
                     const { data: serverItems, error: serverItemsError } = await supabase
                         .from('romaneio_items')
-                        .select('product_id, quantidade, preco_unitario, variacao, product:products(id, nome, imagem1, preco, custo, margem_pct)')
+                        .select('product_id, quantidade, preco_unitario, variacao, product:products(id, nome, imagem1, preco)')
                         .eq('romaneio_id', rom.id)
 
                     // Se houve erro ao buscar itens do servidor, não sobrescrever localStorage
@@ -314,7 +314,7 @@ export default function Cart() {
             if (rom?.id) {
                 const { data: serverItems } = await supabase
                     .from('romaneio_items')
-                    .select('product_id, quantidade, preco_unitario, variacao, product:products(id, nome, imagem1, preco, custo, margem_pct)')
+                    .select('product_id, quantidade, preco_unitario, variacao, product:products(id, nome, imagem1, preco)')
                     .eq('romaneio_id', rom.id)
                 // Fetch lot data for pricing
                 const { data: lotData } = await supabase
@@ -391,7 +391,7 @@ export default function Cart() {
             ])
             let serverItems = []
             if (rom?.id) {
-                const { data: serverRows } = await supabase.from('romaneio_items').select('product_id, quantidade, preco_unitario, variacao, product:products(id, nome, imagem1, preco, custo, margem_pct)').eq('romaneio_id', rom.id)
+                const { data: serverRows } = await supabase.from('romaneio_items').select('product_id, quantidade, preco_unitario, variacao, product:products(id, nome, imagem1, preco)').eq('romaneio_id', rom.id)
                 // Fetch lot data for pricing fallback
                 const { data: lotDataForPricing } = await supabase.from('lots').select('id, adicional_por_produto, escritorio_pct').eq('id', lotUuid).single()
                 serverRows?.forEach(ri => {

@@ -159,7 +159,11 @@ export default function Register() {
             estado: formData.estado,
             cep: formData.cep,
             role: 'cliente' // ✅ CRÍTICO: Armazenar role no metadata para persistência
-          }
+          },
+          // Explícito para não depender do "Site URL" configurado no
+          // Dashboard do Supabase (que pode estar desatualizado/local) caso
+          // "Confirm email" seja habilitado no futuro.
+          emailRedirectTo: `${window.location.origin}/login`
         }
       })
 

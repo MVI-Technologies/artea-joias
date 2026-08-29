@@ -356,9 +356,10 @@ export const generateRomaneioPDF = async ({ romaneio, lot, client, items, compan
     if (taxaSeparacao <= 0 && valorProdutos >= 1) {
         taxaSeparacao = valorProdutos <= 80 ? 15 : 25
     }
-    // Sempre exibir total = produtos + taxa (evita romaneios com valor_total só de produtos)
-    const valorTotalCompra = valorProdutos + taxaSeparacao
-    
+    const valorFrete = Number(romaneio.valor_frete ?? 0)
+    // Sempre exibir total = produtos + taxa + frete (evita romaneios com valor_total só de produtos)
+    const valorTotalCompra = valorProdutos + taxaSeparacao + valorFrete
+
     // Calcula os 50% caso aplicável
     const pago50Pct = romaneio.status_pagamento === 'pago_50_pct_s_frete'
     const valorExibir = pago50Pct ? valorTotalCompra / 2 : valorTotalCompra
@@ -380,7 +381,9 @@ export const generateRomaneioPDF = async ({ romaneio, lot, client, items, compan
 
     addTotalLine('Valor Produtos', formatCurrency(valorProdutos))
     if (taxaSeparacao > 0) addTotalLine('Custo Separação', formatCurrency(taxaSeparacao))
+    if (valorFrete > 0) addTotalLine('Frete', formatCurrency(valorFrete))
     addTotalLine('Quantidade Total de Produtos', romaneio.quantidade_itens)
+    if (romaneio.codigo_rastreio) addTotalLine('Código de Rastreio', romaneio.codigo_rastreio)
     if (pago50Pct) {
         doc.setFont('helvetica', 'bold')
         doc.setTextColor(0, 100, 0)

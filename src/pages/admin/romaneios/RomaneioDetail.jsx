@@ -19,7 +19,8 @@ import {
   Loader2,
   Banknote,
   CreditCard,
-  Wallet
+  Wallet,
+  Package
 } from 'lucide-react'
 import CenteredLoader from '../../../components/common/CenteredLoader'
 import { supabase } from '../../../lib/supabase'
@@ -82,10 +83,22 @@ export default function RomaneioDetail() {
   const [savingPayment, setSavingPayment] = useState(false)
   const [deletingPaymentId, setDeletingPaymentId] = useState(null)
 
+  // Frete e Código de Rastreio (fechamento do romaneio)
+  const [freteInput, setFreteInput] = useState('')
+  const [rastreioInput, setRastreioInput] = useState('')
+  const [savingEnvio, setSavingEnvio] = useState(false)
+
   useEffect(() => {
     fetchData()
     fetchPagamentos()
   }, [id])
+
+  useEffect(() => {
+    if (romaneio) {
+      setFreteInput(romaneio.valor_frete > 0 ? String(romaneio.valor_frete) : '')
+      setRastreioInput(romaneio.codigo_rastreio || '')
+    }
+  }, [romaneio])
 
   const fetchData = async () => {
     try {
@@ -280,6 +293,47 @@ export default function RomaneioDetail() {
     if (taxaSep <= 0 && valorProdutos >= 1) taxaSep = valorProdutos <= 80 ? 15 : 25
     const totalComTaxa = valorProdutos + taxaSep + (romaneio?.valor_frete || 0) - (romaneio?.desconto_credito || 0)
     return (Number(romaneio?.valor_total ?? 0) <= valorProdutos && taxaSep > 0) ? totalComTaxa : (romaneio?.valor_total ?? 0)
+  }
+
+  const handleSaveEnvio = async () => {
+    const freteValue = freteInput === '' ? 0 : parseFloat(freteInput.replace(',', '.'))
+    if (Number.isNaN(freteValue) || freteValue < 0) {
+      toast.warning('Informe um valor de frete válido')
+      return
+    }
+
+    setSavingEnvio(true)
+    try {
+      // Mesma regra automática usada em saveChanges(): recalcula o total
+      // final (produtos + separação + frete) para manter valor_total
+      // consistente com o novo frete — sem isso, getValorTotalExib()
+      // continuaria confiando no valor_total antigo (sem o frete novo).
+      const valorProdutos = Number(romaneio.valor_produtos ?? 0)
+      let taxaSep = Number(romaneio.taxa_separacao ?? 0)
+      if (taxaSep <= 0 && valorProdutos >= 1) taxaSep = valorProdutos <= 80 ? 15 : 25
+      const valorTotal = valorProdutos + taxaSep + freteValue - (romaneio.desconto_credito || 0)
+
+      const { error } = await supabase
+        .from('romaneios')
+        .update({
+          valor_frete: freteValue,
+          codigo_rastreio: rastreioInput.trim() || null,
+          taxa_separacao: taxaSep,
+          valor_total: valorTotal,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id)
+
+      if (error) throw error
+
+      toast.success('Frete e rastreio salvos!')
+      await fetchData()
+    } catch (error) {
+      console.error('Erro ao salvar frete/rastreio:', error)
+      toast.error('Erro ao salvar: ' + error.message)
+    } finally {
+      setSavingEnvio(false)
+    }
   }
 
   const getMeioPagamentoLabel = (meio) => {
@@ -1222,6 +1276,42 @@ export default function RomaneioDetail() {
           </table>
         </div>
 
+        {/* Frete e Código de Rastreio (fechamento do romaneio) */}
+        <div className="envio-section no-print">
+          <h3><Package size={18} /> Frete e Rastreio</h3>
+          <div className="envio-form-row">
+            <div className="envio-form-field">
+              <label>Frete (R$)</label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="0,00"
+                value={freteInput}
+                onChange={(e) => setFreteInput(e.target.value)}
+                className="form-control"
+              />
+            </div>
+            <div className="envio-form-field envio-form-field-rastreio">
+              <label>Código de Rastreio (opcional)</label>
+              <input
+                type="text"
+                placeholder="Ex: BR123456789XX"
+                value={rastreioInput}
+                onChange={(e) => setRastreioInput(e.target.value)}
+                className="form-control"
+              />
+            </div>
+            <button
+              className="btn btn-primary btn-sm"
+              onClick={handleSaveEnvio}
+              disabled={savingEnvio}
+            >
+              {savingEnvio ? 'Salvando...' : 'Salvar'}
+            </button>
+          </div>
+        </div>
+
         {/* Resumo Financeiro - custo de separação calculado quando não gravado (15 até R$80, 25 acima) */}
         {(() => {
           const valorProdutos = Number(romaneio.valor_produtos ?? 0)
@@ -1248,6 +1338,9 @@ export default function RomaneioDetail() {
             )}
             {romaneio.valor_frete > 0 && (
               <li>• Frete: R$ {romaneio.valor_frete?.toFixed(2)}</li>
+            )}
+            {romaneio.codigo_rastreio && (
+              <li>• Código de Rastreio: {romaneio.codigo_rastreio}</li>
             )}
             <li>• Quantidade Total de Produtos: {romaneio.quantidade_itens}</li>
             {romaneio.total_liquido > 0 && (

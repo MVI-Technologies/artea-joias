@@ -354,7 +354,16 @@ export function AuthProvider({ children }) {
         return { error: { message: 'Este e-mail já está sendo utilizado por outra conta.' } }
       }
 
-      const { data: updateData, error: updateError } = await supabase.auth.updateUser({ email })
+      // emailRedirectTo explícito: sem isso, o link de confirmação enviado
+      // pelo Supabase Auth usa o "Site URL" configurado no Dashboard como
+      // fallback — se esse valor estiver desatualizado (ex.: apontando
+      // para localhost, resquício de configuração local), o link de
+      // confirmação de e-mail quebra em produção mesmo com o app rodando
+      // no domínio certo.
+      const { data: updateData, error: updateError } = await supabase.auth.updateUser(
+        { email },
+        { emailRedirectTo: `${window.location.origin}/login` }
+      )
       if (updateError) {
         return { error: updateError }
       }

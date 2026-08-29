@@ -15,9 +15,10 @@ import './ForgotPassword.css'
 // Fluxo: telefone -> encontra o cadastro em `clients` -> pede um novo
 // e-mail (que passa a ser a identidade de login) + nova senha.
 //
-// Decisão de produto (explícita): a única barreira aqui é saber o
-// telefone cadastrado do cliente — não há confirmação de posse do
-// telefone (código por WhatsApp) nem do e-mail (link de confirmação).
+// Decisão de produto (explícita): nenhuma dependência de WhatsApp neste
+// fluxo (nem em nenhum outro). A única barreira é saber o telefone
+// cadastrado do cliente — não há confirmação de posse do telefone nem
+// do e-mail (link de confirmação).
 export default function ForgotPasswordLegacy() {
   const navigate = useNavigate()
   const toast = useToast()

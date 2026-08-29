@@ -5,11 +5,12 @@
 // os dois no Supabase Auth via Admin API.
 //
 // Decisão de produto (explícita, ver conversa): NÃO há verificação de
-// posse do telefone (nenhum código enviado por WhatsApp/SMS) nem do
+// posse do telefone (nenhum código enviado por WhatsApp/SMS — decisão
+// reafirmada: nenhuma dependência de WhatsApp em nenhum fluxo) nem do
 // e-mail (nenhum link de confirmação) — a única barreira é saber o
-// telefone cadastrado do cliente. Isso é mais fraco do que a versão
-// anterior baseada em código por WhatsApp; ver aviso de risco no
-// relatório da tarefa que introduziu este fluxo.
+// telefone cadastrado do cliente. Isso é mais fraco do que uma
+// verificação por código; ver aviso de risco no relatório da tarefa
+// que introduziu este fluxo.
 //
 // Deploy: Cole este código no editor do Supabase Dashboard
 

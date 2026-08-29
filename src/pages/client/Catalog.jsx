@@ -437,11 +437,22 @@ export default function Catalog() {
 
       // 2. Carregar Produtos do Lote
       const lotIdForProducts = lotData.id // Usar o ID real do lot encontrado
+      // Nunca selecionar products.custo/margem_pct aqui — este é o catálogo
+      // visto pelo cliente, que só deve enxergar o preço final (ver
+      // src/utils/pricing.js). Lista explícita em vez de "*" por isso.
       const { data: prodData, error: prodError } = await supabase
         .from('lot_products')
         .select(`
             *,
-            product:products (*, preco, custo)
+            product:products (
+              id, nome, descricao, categoria_id, imagem1, imagem2,
+              quantidade_minima, ativo, created_at, updated_at, tipo_venda,
+              quantidade_pacote, codigo_interno, estoque, variacoes,
+              observacoes, qtd_minima_fornecedor, qtd_maxima_fornecedor,
+              qtd_minima_cliente, multiplo_pacote, posicao_catalogo,
+              revisar_produto, registrar_peso, codigo_sku, peso_gramas,
+              altura_cm, largura_cm, comprimento_cm, preco
+            )
         `)
         .eq('lot_id', lotIdForProducts)
 

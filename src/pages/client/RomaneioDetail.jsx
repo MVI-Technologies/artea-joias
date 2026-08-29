@@ -557,6 +557,12 @@ export default function RomaneioDetail() {
               <strong>Total:</strong>
               <strong>R$ {totalExib.toFixed(2)}</strong>
             </div>
+            {romaneio.codigo_rastreio && (
+              <div className="breakdown-item">
+                <span>Código de Rastreio:</span>
+                <span>{romaneio.codigo_rastreio}</span>
+              </div>
+            )}
           </div>
         </div>
           )
