@@ -50,13 +50,10 @@ export default function LotTermsBlock({ lot }) {
         <p><strong>Custo Digitação:</strong> {formatCurrency(lot.custo_digitacao)}</p>
       )}
 
-      {lot.escritorio_pct > 0 && (
-        <p><strong>Escritório:</strong> {lot.escritorio_pct}% sob o valor total dos produtos</p>
-      )}
-
-      {lot.adicional_por_produto > 0 && (
-        <p><strong>Adicional por produto (Já incluso no valor das peças):</strong> {lot.adicional_por_produto}% sobre cada produto</p>
-      )}
+      {/* Escritório e Adicional por produto são taxas já embutidas no preço
+          final exibido ao cliente (ver calcPrecoClienteNoLote em
+          src/utils/pricing.js) — o percentual em si nunca deve ser
+          revelado ao comprador, só o preço final já com tudo incluso. */}
 
       {lot.percentual_entrada > 0 && (
         <p><strong>Percentual de entrada:</strong> {lot.percentual_entrada}%</p>
