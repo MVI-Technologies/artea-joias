@@ -14,8 +14,18 @@ export function AuthProvider({ children }) {
   const [isAdmin, setIsAdmin] = useState(false)
 
   useEffect(() => {
-    // Verificar sessão atual
-    checkUser()
+    // NÃO chamar supabase.auth.getSession() aqui além do listener abaixo.
+    // onAuthStateChange já emite um evento INITIAL_SESSION assim que se
+    // inscreve (depois de aguardar a inicialização do client), então uma
+    // segunda chamada concorrente a getSession() nesse mesmo instante disputa
+    // o mesmo lock exclusivo do navigator.locks (chave "lock:<storageKey>")
+    // usado internamente pelo supabase-js. Quando a inicialização demora mais
+    // que o timeout do lock — como acontece ao abrir a página vindo de um
+    // link de confirmação de e-mail/recuperação de senha, cujo token na URL
+    // precisa ser trocado via rede antes da sessão ficar pronta — a segunda
+    // chamada é abortada e rejeita com "signal is aborted without reason",
+    // quebrando silenciosamente a confirmação. Ver também ResetPassword.jsx,
+    // que tinha o mesmo padrão.
 
     // Listener para mudanças de auth
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -54,24 +64,6 @@ export function AuthProvider({ children }) {
 
     return () => subscription.unsubscribe()
   }, [])
-
-  const checkUser = async () => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (session?.user) {
-        setUser(session.user)
-        // Não aguardar fetchClientProfile para não travar o loading
-        fetchClientProfile(session.user).catch(err => {
-          console.warn('Erro ao buscar perfil (não crítico):', err)
-        })
-      }
-    } catch (error) {
-      console.error('Erro ao verificar usuário:', error)
-    } finally {
-      // Sempre definir loading como false
-      setLoading(false)
-    }
-  }
 
   const fetchClientProfile = async (authUser) => {
     try {

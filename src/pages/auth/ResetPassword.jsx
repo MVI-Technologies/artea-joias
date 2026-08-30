@@ -29,14 +29,19 @@ export default function ResetPassword() {
       setChecking(false)
     }
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'PASSWORD_RECOVERY') {
+    // Não chamar supabase.auth.getSession() aqui em paralelo ao listener
+    // abaixo — as duas chamadas disputam o mesmo lock exclusivo interno do
+    // supabase-js (navigator.locks) e, quando a troca do token de
+    // recuperação na URL demora mais que o timeout do lock, a chamada extra
+    // é abortada com "signal is aborted without reason", fazendo esta
+    // página achar (erradamente) que o link expirou. onAuthStateChange já
+    // cobre os dois casos que a chamada extra tentava cobrir: PASSWORD_RECOVERY
+    // (link de recuperação recém-processado) e INITIAL_SESSION com sessão já
+    // existente (usuário que abriu a página já autenticado).
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY' || (event === 'INITIAL_SESSION' && session)) {
         markValid()
       }
-    })
-
-    supabase.auth.getSession().then(({ data }) => {
-      if (data?.session) markValid()
     })
 
     // Se nenhuma sessão de recovery aparecer em alguns segundos, o link é
