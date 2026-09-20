@@ -1,5 +1,6 @@
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
+import { calcRomaneioTotals } from './romaneioTotals'
 
 const formatDate = (date) => {
     if (!date) return '-'
@@ -351,14 +352,11 @@ export const generateRomaneioPDF = async ({ romaneio, lot, client, items, compan
     doc.line(15, finalY, doc.internal.pageSize.width - 15, finalY)
     finalY += 8
 
-    const valorProdutos = Number(romaneio.valor_produtos ?? 0)
-    let taxaSeparacao = Number(romaneio.taxa_separacao ?? 0)
-    if (taxaSeparacao <= 0 && valorProdutos >= 1) {
-        taxaSeparacao = valorProdutos <= 80 ? 15 : 25
-    }
-    const valorFrete = Number(romaneio.valor_frete ?? 0)
-    // Sempre exibir total = produtos + taxa + frete (evita romaneios com valor_total só de produtos)
-    const valorTotalCompra = valorProdutos + taxaSeparacao + valorFrete
+    // Totais centralizados (mesma conta da tela do cliente e do admin)
+    const {
+        valorProdutos, taxaSeparacao, custoMotoboy, custoDigitacao,
+        custoOperacional, valorFrete, descontoCredito, total: valorTotalCompra
+    } = calcRomaneioTotals({ romaneio, lot })
 
     // Calcula os 50% caso aplicável
     const pago50Pct = romaneio.status_pagamento === 'pago_50_pct_s_frete'
@@ -381,7 +379,11 @@ export const generateRomaneioPDF = async ({ romaneio, lot, client, items, compan
 
     addTotalLine('Valor Produtos', formatCurrency(valorProdutos))
     if (taxaSeparacao > 0) addTotalLine('Custo Separação', formatCurrency(taxaSeparacao))
+    if (custoMotoboy > 0) addTotalLine('Motoboy', formatCurrency(custoMotoboy))
+    if (custoDigitacao > 0) addTotalLine('Digitação', formatCurrency(custoDigitacao))
+    if (custoOperacional > 0) addTotalLine('Custo Operacional', formatCurrency(custoOperacional))
     if (valorFrete > 0) addTotalLine('Frete', formatCurrency(valorFrete))
+    if (descontoCredito > 0) addTotalLine('Desconto', `- ${formatCurrency(descontoCredito)}`)
     addTotalLine('Quantidade Total de Produtos', romaneio.quantidade_itens)
     if (romaneio.codigo_rastreio) addTotalLine('Código de Rastreio', romaneio.codigo_rastreio)
     if (pago50Pct) {

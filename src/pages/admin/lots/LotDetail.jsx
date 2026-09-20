@@ -1054,6 +1054,7 @@ export default function LotDetail({ defaultTab }) {
               <span className={`status-badge status-${lot.status}`}>
                 {lot.status === 'aberto' ? 'ABERTO' :
                   lot.status === 'fechado' ? 'FECHADO' :
+                    lot.status === 'oculto' ? 'OCULTO' :
                     (lot.status === 'preparacao' || lot.status === 'em_preparacao') ? 'EM PREPARAÇÃO' :
                       lot.status === 'pago' ? 'PAGO' :
                         lot.status === 'enviado' ? 'ENVIADO' :

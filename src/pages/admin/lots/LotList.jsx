@@ -114,6 +114,7 @@ export default function LotList() {
       'open': { label: 'Aberto', class: 'badge-green' },
       'fechado': { label: 'Fechado', class: 'badge-red' },
       'closed': { label: 'Fechado', class: 'badge-red' },
+      'oculto': { label: 'Oculto', class: 'badge-slate' },
       'preparacao': { label: 'Em preparação', class: 'badge-orange' },
       'empreparacao': { label: 'Em preparação', class: 'badge-orange' },
       'prontoeaberto': { label: 'Pronto e Aberto', class: 'badge-green' },
@@ -359,6 +360,7 @@ export default function LotList() {
             <option value="todos">Todos os status</option>
             <option value="aberto">Aberto</option>
             <option value="fechado">Fechado</option>
+            <option value="oculto">Oculto</option>
             <option value="preparacao">Em preparação</option>
             <option value="pago">Pago</option>
             <option value="enviado">Enviado</option>
@@ -460,14 +462,17 @@ export default function LotList() {
         {filteredLots.map((lot) => {
           const badgeInfo = getStatusBadge(lot.status)
           const isFechado = lot.status === 'fechado' || lot.status === 'closed'
-          const cardClass = `mobile-card ${isFechado ? 'is-fechado' : 'is-aberto'}`
-          
+          const isOculto = lot.status === 'oculto'
+          const cardClass = `mobile-card ${isOculto ? 'is-oculto' : isFechado ? 'is-fechado' : 'is-aberto'}`
+          // Oculto precisa de pill própria: a regra binária abaixo pintaria de verde
+          const pillVariant = isOculto ? 'oculto' : isFechado ? 'fechado' : 'aberto'
+
           return (
             <div key={lot.id} className={cardClass}>
               <div className="mobile-card-header">
                 <div className="mobile-card-title-group">
                   <span className="mobile-card-title">{lot.nome}</span>
-                  <span className={`status-badge-pill pill-${isFechado ? 'fechado' : 'aberto'}`}>
+                  <span className={`status-badge-pill pill-${pillVariant}`}>
                     {badgeInfo.label}
                   </span>
                 </div>

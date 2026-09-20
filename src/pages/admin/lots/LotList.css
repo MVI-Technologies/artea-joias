@@ -243,6 +243,12 @@
   color: white !important;
 }
 
+/* Oculto: grafite escuro, distinto do badge-gray de "Concluído" */
+.grupos-table .badge-slate {
+  background: #334155 !important;
+  color: white !important;
+}
+
 /* Status Badges para Mobile Cards */
 .mobile-card .status-badge {
   display: inline-block !important;
@@ -289,6 +295,11 @@
 
 .mobile-card .badge-yellow {
   background: #eab308 !important;
+  color: white !important;
+}
+
+.mobile-card .badge-slate {
+  background: #334155 !important;
   color: white !important;
 }
 
@@ -573,6 +584,11 @@
 .pill-aberto {
   background-color: #D1FAE5;
   color: #065F46;
+}
+
+.pill-oculto {
+  background-color: #E2E8F0;
+  color: #334155;
 }
 
 .btn-icon-acoes {

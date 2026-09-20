@@ -1,4 +1,5 @@
 import React from 'react'
+import { descreverTaxaSeparacao } from '../../utils/romaneioTotals'
 import './LotTermsBlock.css'
 
 /**
@@ -34,9 +35,10 @@ export default function LotTermsBlock({ lot }) {
         <p><strong>Começo do pagamento:</strong> {formatDate(lot.data_inicio_pagamento)}</p>
       )}
 
-      {lot.custo_separacao > 0 && (
-        <p><strong>Custo Separação:</strong> {formatCurrency(lot.custo_separacao)}</p>
-      )}
+      {/* A separação é cobrada por faixa de valor do pedido, não é um valor
+          fixo por lote — exibir o campo lot.custo_separacao aqui contradizia
+          o que o romaneio cobra. Ver src/utils/romaneioTotals.js. */}
+      <p><strong>Custo Separação:</strong> {descreverTaxaSeparacao()}</p>
 
       {lot.custo_motoboy > 0 && (
         <p><strong>Custo Motoboy:</strong> {formatCurrency(lot.custo_motoboy)}</p>

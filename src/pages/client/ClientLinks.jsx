@@ -28,10 +28,13 @@ export default function ClientLinks() {
             )
         `)
       
+      // Lotes "oculto" não aparecem para o cliente em nenhuma aba. A aba
+      // "Encerrados" é catch-all (tudo que não está aberto), então precisa
+      // excluir 'oculto' explicitamente — senão o link escondido cairia lá.
       if (activeTab === 'aberto') {
         query = query.in('status', ['aberto', 'pronto_e_aberto'])
       } else {
-        query = query.not('status', 'in', '(aberto,pronto_e_aberto)')
+        query = query.not('status', 'in', '(aberto,pronto_e_aberto,oculto)')
       }
 
       query = query.order('created_at', { ascending: false })
@@ -60,6 +63,7 @@ export default function ClientLinks() {
       'pronto_e_aberto': 'Pronto e Aberto',
       'fechado': 'Fechado',
       'fechado_e_bloqueado': 'Fechado',
+      'oculto': 'Oculto',
       'preparacao': 'Em Preparação',
       'em_preparacao': 'Em Preparação',
       'em_fabricacao': 'Em Fabricação',

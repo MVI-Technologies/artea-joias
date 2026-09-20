@@ -91,6 +91,12 @@
   color: white;
 }
 
+/* Oculto: grafite escuro, distinto do vermelho de "Fechado" */
+.status-oculto {
+  background: #334155;
+  color: white;
+}
+
 .status-em_preparacao,
 .status-preparacao {
   background: #d97706;

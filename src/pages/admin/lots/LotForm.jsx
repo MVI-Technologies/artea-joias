@@ -360,6 +360,7 @@ export default function LotForm() {
                 <option value="em_preparacao">Em preparação</option>
                 <option value="pronto_e_aberto">Pronto e Aberto</option>
                 <option value="fechado">Fechado</option>
+                <option value="oculto">Oculto (não aparece para o cliente)</option>
                 <option value="em_fabricacao">Em fabricação</option>
                 <option value="fornecedor_separando">Fornecedor separando o pedido</option>
                 <option value="verificando_estoque">Verificando Estoque</option>

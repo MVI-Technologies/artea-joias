@@ -128,6 +128,7 @@
 .status-pronto_e_aberto { background-color: #8b5cf6; } /* Roxo */
 .status-fechado,
 .status-fechado_e_bloqueado { background-color: #ef4444; } /* Vermelho */
+.status-oculto { background-color: #334155; } /* Grafite - não deve renderizar aqui, é filtrado */
 .status-preparacao,
 .status-em_preparacao { background-color: #f59e0b; } /* Laranja */
 .status-em_fabricacao { background-color: #d97706; } /* Laranja escuro */

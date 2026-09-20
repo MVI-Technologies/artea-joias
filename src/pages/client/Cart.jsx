@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../components/common/Toast'
 import { calcPrecoClienteNoLote } from '../../utils/pricing'
+import { calcRomaneioTotals, descreverTaxaSeparacao } from '../../utils/romaneioTotals'
 import './Cart.css'
 
 const SYNC_DEBOUNCE_MS = 800
@@ -17,11 +18,9 @@ function permitirEfetivo(val) {
     return 'permitir_reduzir_excluir'
 }
 
-/** Taxa de separação: até R$ 80 = R$ 15, acima de R$ 80 = R$ 25 */
-function getTaxaSeparacao(subtotal) {
-    const n = Number(subtotal) || 0
-    return n <= 80 ? 15 : 25
-}
+// Taxa de separação e demais taxas do lote vêm de src/utils/romaneioTotals.js
+// (mesma conta usada no romaneio e no PDF, para o carrinho não prometer um
+// total diferente do que será cobrado).
 
 /** Por lotId -> productId -> { limit, totalPedidos, ourQuantityAtLoad }. available = limit - totalPedidos + ourQuantityAtLoad - currentQty (considera qtd atual no carrinho). */
 const norm = (x) => (x == null ? '' : String(x))
@@ -192,14 +191,14 @@ export default function Cart() {
                 if (uuidIds.length > 0) {
                     const { data: byId } = await supabase
                         .from('lots')
-                        .select('id, nome, status, data_fim, permitir_modificacao_produtos, exigir_dados_galvanica, link_compra')
+                        .select('id, nome, status, data_fim, permitir_modificacao_produtos, exigir_dados_galvanica, link_compra, custo_separacao, custo_operacional, custo_motoboy, custo_digitacao')
                         .in('id', uuidIds)
                     if (byId?.length) lotsList.push(...byId)
                 }
                 if (linkIds.length > 0) {
                     const { data: byLink } = await supabase
                         .from('lots')
-                        .select('id, nome, status, data_fim, permitir_modificacao_produtos, exigir_dados_galvanica, link_compra')
+                        .select('id, nome, status, data_fim, permitir_modificacao_produtos, exigir_dados_galvanica, link_compra, custo_separacao, custo_operacional, custo_motoboy, custo_digitacao')
                         .in('link_compra', linkIds)
                     if (byLink?.length) lotsList.push(...byLink)
                 }
@@ -847,7 +846,14 @@ export default function Cart() {
                                 })}
                             </div>
 
-                            {/* Footer Totais: subtotal, taxa de separação e total */}
+                            {/* Footer Totais: subtotal, taxas do lote e total */}
+                            {(() => {
+                                const qtdItens = group.items.reduce((s, it) => s + (Number(it.quantity) || 0), 0)
+                                const t = calcRomaneioTotals({
+                                    romaneio: { valor_produtos: group.total, quantidade_itens: qtdItens },
+                                    lot: group.lot
+                                })
+                                return (
                             <div className="cart-group-footer">
                                 <div className="cart-footer-lines">
                                     <div className="cart-footer-line">
@@ -856,15 +862,35 @@ export default function Cart() {
                                     </div>
                                     <div className="cart-footer-line">
                                         <span className="cart-group-total-label">Taxa de separação:</span>
-                                        <span className="cart-footer-value">R$ {(getTaxaSeparacao(group.total)).toFixed(2)}</span>
+                                        <span className="cart-footer-value">R$ {t.taxaSeparacao.toFixed(2)}</span>
                                     </div>
-                                    <p className="cart-taxa-obs">Até R$ 80,00 a taxa é R$ 15,00. Acima de R$ 80,00 a taxa é R$ 25,00.</p>
+                                    {t.custoMotoboy > 0 && (
+                                        <div className="cart-footer-line">
+                                            <span className="cart-group-total-label">Motoboy:</span>
+                                            <span className="cart-footer-value">R$ {t.custoMotoboy.toFixed(2)}</span>
+                                        </div>
+                                    )}
+                                    {t.custoDigitacao > 0 && (
+                                        <div className="cart-footer-line">
+                                            <span className="cart-group-total-label">Digitação:</span>
+                                            <span className="cart-footer-value">R$ {t.custoDigitacao.toFixed(2)}</span>
+                                        </div>
+                                    )}
+                                    {t.custoOperacional > 0 && (
+                                        <div className="cart-footer-line">
+                                            <span className="cart-group-total-label">Custo operacional:</span>
+                                            <span className="cart-footer-value">R$ {t.custoOperacional.toFixed(2)}</span>
+                                        </div>
+                                    )}
+                                    <p className="cart-taxa-obs">Taxa de separação: {descreverTaxaSeparacao()}.</p>
                                 </div>
                                 <div className="cart-footer-total">
                                     <span className="cart-group-total-label">Total do pedido:</span>
-                                    <span className="cart-group-total-value">R$ {(group.total + getTaxaSeparacao(group.total)).toFixed(2)}</span>
+                                    <span className="cart-group-total-value">R$ {t.total.toFixed(2)}</span>
                                 </div>
                             </div>
+                                )
+                            })()}
                         </div>
                     ))}
                 </div>

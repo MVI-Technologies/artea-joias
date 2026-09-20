@@ -23,6 +23,7 @@ import {
 import { supabase } from '../../../lib/supabase'
 import CenteredLoader from '../../../components/common/CenteredLoader'
 import { useToast } from '../../../components/common/Toast'
+import { calcRomaneioTotals } from '../../../utils/romaneioTotals'
 import './RomaneioList.css'
 
 export default function RomaneioList() {
@@ -142,11 +143,7 @@ export default function RomaneioList() {
   const openWhatsApp = (romaneio) => {
     if (!romaneio.client?.telefone) return
 
-    const valorProdutos = Number(romaneio.valor_produtos ?? 0)
-    let taxaSep = Number(romaneio.taxa_separacao ?? 0)
-    if (taxaSep <= 0 && valorProdutos >= 1) taxaSep = valorProdutos <= 80 ? 15 : 25
-    const totalComTaxa = valorProdutos + taxaSep + (romaneio.valor_frete || 0) - (romaneio.desconto_credito || 0)
-    const valorTotalExib = (Number(romaneio.valor_total ?? 0) <= valorProdutos && taxaSep > 0) ? totalComTaxa : (romaneio.valor_total ?? 0)
+    const valorTotalExib = calcRomaneioTotals({ romaneio, lot: selectedLot }).total
 
     const phone = romaneio.client.telefone.replace(/\D/g, '')
     const message = encodeURIComponent(
@@ -421,11 +418,9 @@ export default function RomaneioList() {
                     const statusBadge = getStatusBadge(romaneio.status_pagamento)
                     const StatusIcon = statusBadge.icon
                     
-                    const valorProdutos = Number(romaneio.valor_produtos ?? 0)
-                    let taxaSep = Number(romaneio.taxa_separacao ?? 0)
-                    if (taxaSep <= 0 && valorProdutos >= 1) taxaSep = valorProdutos <= 80 ? 15 : 25
-                    const totalComTaxa = valorProdutos + taxaSep + (romaneio.valor_frete || 0) - (romaneio.desconto_credito || 0)
-                    const valorTotalExib = (Number(romaneio.valor_total ?? 0) <= valorProdutos && taxaSep > 0) ? totalComTaxa : (romaneio.valor_total ?? 0)
+                    const t = calcRomaneioTotals({ romaneio, lot: selectedLot })
+                    const taxaSep = t.taxaSeparacao
+                    const valorTotalExib = t.total
 
                     return (
                       <div key={romaneio.id} className="romaneio-card">

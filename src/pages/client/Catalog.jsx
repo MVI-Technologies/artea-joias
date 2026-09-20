@@ -50,7 +50,7 @@ export default function Catalog() {
   /** Mensagem de erro no modal (ex.: quantidade mínima) — exibida em vermelho, sem fechar o modal */
   const [modalAddError, setModalAddError] = useState(null)
 
-  const { client, user } = useAuth()
+  const { client, user, isAdmin, loading: authLoading } = useAuth()
 
   // Disponibilidade no lote (calculada: limite_maximo - unidades confirmadas) + flag manual_esgotado.
   const getEsgotadoNoLote = (product) => {
@@ -94,6 +94,19 @@ export default function Catalog() {
       window.console.warn('⚠️ ID não encontrado!')
     }
   }, [id])
+
+  // Bloqueio de acesso por status do lote, reavaliado quando o perfil do
+  // usuário termina de carregar. loadCatalog() roda no mount, quando `client`
+  // ainda pode estar nulo — sem esta reavaliação, um lote fechado/oculto
+  // acessado por link direto abre normalmente até o perfil chegar (e nunca
+  // mais é bloqueado depois).
+  useEffect(() => {
+    if (!lot || authLoading) return
+    const statusRestrito = ['fechado', 'fechado_e_bloqueado', 'oculto'].includes(lot.status)
+    const bloquear = statusRestrito && !isAdmin
+    setIsBlocked(bloquear)
+    if (bloquear) setBlockedLotName(lot.nome)
+  }, [lot, isAdmin, authLoading])
 
   // Quando o carrinho é sincronizado (ex.: usuário removeu itens ou esvaziou no Cart), atualizar totais e modal
   useEffect(() => {
@@ -398,9 +411,11 @@ export default function Catalog() {
         throw lotError || new Error('Catálogo não encontrado')
       }
 
-      // VALIDAÇÃO: Verificar se o lote está fechado E o usuário é um cliente
-      if ((lotData.status === 'fechado' || lotData.status === 'fechado_e_bloqueado') && client?.role === 'cliente') {
-        console.log('🚫 Lote fechado para clientes - exibindo tela de bloqueio')
+      // VALIDAÇÃO: Verificar se o lote está fechado/oculto E o usuário é um cliente.
+      // 'oculto' precisa entrar aqui também: o link some da listagem, mas quem
+      // já tiver a URL salva conseguiria abrir o catálogo direto sem este bloqueio.
+      if (['fechado', 'fechado_e_bloqueado', 'oculto'].includes(lotData.status) && client?.role === 'cliente') {
+        console.log('🚫 Lote fechado/oculto para clientes - exibindo tela de bloqueio')
         setIsBlocked(true)
         setBlockedLotName(lotData.nome)
         setLoading(false)

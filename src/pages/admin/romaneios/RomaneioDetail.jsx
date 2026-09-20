@@ -29,6 +29,7 @@ import { useAuth } from '../../../contexts/AuthContext'
 import { useToast } from '../../../components/common/Toast'
 import { generateRomaneioPDF } from '../../../utils/pdfGenerator'
 import { calcPrecoClienteNoLote } from '../../../utils/pricing'
+import { calcRomaneioTotals } from '../../../utils/romaneioTotals'
 
 const STATUS_OPTIONS = [
   { value: 'aguardando_pagamento', label: 'Aguardando Pagamento', color: 'warning' },
@@ -127,7 +128,7 @@ export default function RomaneioDetail() {
       console.log('🔍 Buscando lote com ID:', romaneioData.lot_id)
       const { data: lotData } = await supabase
         .from('lots')
-        .select('id, nome, updated_at, requer_pacote_fechado, adicional_por_produto, escritorio_pct')
+        .select('id, nome, updated_at, requer_pacote_fechado, adicional_por_produto, escritorio_pct, custo_separacao, custo_operacional, custo_motoboy, custo_digitacao')
         .eq('id', romaneioData.lot_id)
         .single()
 
@@ -287,13 +288,9 @@ export default function RomaneioDetail() {
     setShowPaymentForm(true)
   }
 
-  const getValorTotalExib = () => {
-    const valorProdutos = Number(romaneio?.valor_produtos ?? 0)
-    let taxaSep = Number(romaneio?.taxa_separacao ?? 0)
-    if (taxaSep <= 0 && valorProdutos >= 1) taxaSep = valorProdutos <= 80 ? 15 : 25
-    const totalComTaxa = valorProdutos + taxaSep + (romaneio?.valor_frete || 0) - (romaneio?.desconto_credito || 0)
-    return (Number(romaneio?.valor_total ?? 0) <= valorProdutos && taxaSep > 0) ? totalComTaxa : (romaneio?.valor_total ?? 0)
-  }
+  // Total exibido/cobrado: produtos + todas as taxas do lote + frete - desconto.
+  // Ver src/utils/romaneioTotals.js (fonte única, usada também pelo cliente e pelo PDF).
+  const getValorTotalExib = () => calcRomaneioTotals({ romaneio, lot }).total
 
   const handleSaveEnvio = async () => {
     const freteValue = freteInput === '' ? 0 : parseFloat(freteInput.replace(',', '.'))
@@ -304,22 +301,24 @@ export default function RomaneioDetail() {
 
     setSavingEnvio(true)
     try {
-      // Mesma regra automática usada em saveChanges(): recalcula o total
-      // final (produtos + separação + frete) para manter valor_total
-      // consistente com o novo frete — sem isso, getValorTotalExib()
-      // continuaria confiando no valor_total antigo (sem o frete novo).
-      const valorProdutos = Number(romaneio.valor_produtos ?? 0)
-      let taxaSep = Number(romaneio.taxa_separacao ?? 0)
-      if (taxaSep <= 0 && valorProdutos >= 1) taxaSep = valorProdutos <= 80 ? 15 : 25
-      const valorTotal = valorProdutos + taxaSep + freteValue - (romaneio.desconto_credito || 0)
+      // Recalcula o total com o frete novo, mantendo todas as taxas do lote.
+      // Grava também as taxas no romaneio para que ele pare de depender do
+      // fallback pelo lote (o lote pode mudar depois).
+      const t = calcRomaneioTotals({
+        romaneio: { ...romaneio, valor_frete: freteValue },
+        lot
+      })
 
       const { error } = await supabase
         .from('romaneios')
         .update({
           valor_frete: freteValue,
           codigo_rastreio: rastreioInput.trim() || null,
-          taxa_separacao: taxaSep,
-          valor_total: valorTotal,
+          taxa_separacao: t.taxaSeparacao,
+          custo_motoboy: t.custoMotoboy,
+          custo_digitacao: t.custoDigitacao,
+          custo_operacional: t.custoOperacional,
+          valor_total: t.total,
           updated_at: new Date().toISOString()
         })
         .eq('id', id)
@@ -549,26 +548,30 @@ export default function RomaneioDetail() {
       }, 0)
       const quantidadeTotal = updatedItems.reduce((sum, item) => sum + (item.quantidade || 0), 0)
 
-      // Automatic Fee Calculation
-      let taxaSeparacao = 0
-      if (totalProdutos >= 1 && totalProdutos <= 80) {
-        taxaSeparacao = 15.00
-      } else if (totalProdutos > 80) {
-        taxaSeparacao = 25.00
-      }
-
-      // Preserve existing manual freight if any, or usage manual logic if implemented later
-      // For now, we update taxa_separacao automatically based on rules
-
-      const valorTotal = totalProdutos + taxaSeparacao + (romaneio.valor_frete || 0)
+      // Taxas recalculadas pela fonte única: separação por faixa de valor +
+      // motoboy/digitação/operacional do lote. O frete manual é preservado.
+      const t = calcRomaneioTotals({
+        romaneio: {
+          ...romaneio,
+          valor_produtos: totalProdutos,
+          quantidade_itens: quantidadeTotal,
+          // zera para forçar o recálculo a partir do lote (quantidade mudou)
+          taxa_separacao: 0,
+          custo_operacional: 0
+        },
+        lot
+      })
 
       const { error: romaneioError } = await supabase
         .from('romaneios')
         .update({
           valor_produtos: totalProdutos,
           quantidade_itens: quantidadeTotal,
-          taxa_separacao: taxaSeparacao,
-          valor_total: valorTotal
+          taxa_separacao: t.taxaSeparacao,
+          custo_motoboy: t.custoMotoboy,
+          custo_digitacao: t.custoDigitacao,
+          custo_operacional: t.custoOperacional,
+          valor_total: t.total
         })
         .eq('id', id)
 
@@ -628,11 +631,7 @@ export default function RomaneioDetail() {
       const lotName = (lot?.nome || 'Link').trim()
       console.log('📝 Nome do lote usado:', lotName)
 
-      const valorProdutos = Number(romaneio.valor_produtos ?? 0)
-      let taxaSep = Number(romaneio.taxa_separacao ?? 0)
-      if (taxaSep <= 0 && valorProdutos >= 1) taxaSep = valorProdutos <= 80 ? 15 : 25
-      const totalComTaxa = valorProdutos + taxaSep + (romaneio.valor_frete || 0) - (romaneio.desconto_credito || 0)
-      const valorTotalExib = (Number(romaneio.valor_total ?? 0) <= valorProdutos && taxaSep > 0) ? totalComTaxa : (romaneio.valor_total ?? 0)
+      const valorTotalExib = getValorTotalExib()
 
       let message = `Olá ${client.nome}! 🌟\n\n`
       message += `Seu romaneio do *${lotName}* foi atualizado!\n\n`
@@ -803,11 +802,7 @@ export default function RomaneioDetail() {
   const openWhatsApp = () => {
     if (!client?.telefone) return
 
-    const valorProdutos = Number(romaneio.valor_produtos ?? 0)
-    let taxaSep = Number(romaneio.taxa_separacao ?? 0)
-    if (taxaSep <= 0 && valorProdutos >= 1) taxaSep = valorProdutos <= 80 ? 15 : 25
-    const totalComTaxa = valorProdutos + taxaSep + (romaneio.valor_frete || 0) - (romaneio.desconto_credito || 0)
-    const valorTotalExib = (Number(romaneio.valor_total ?? 0) <= valorProdutos && taxaSep > 0) ? totalComTaxa : (romaneio.valor_total ?? 0)
+    const valorTotalExib = getValorTotalExib()
 
     const phone = client.telefone.replace(/\D/g, '')
     const message = encodeURIComponent(
@@ -1312,32 +1307,38 @@ export default function RomaneioDetail() {
           </div>
         </div>
 
-        {/* Resumo Financeiro - custo de separação calculado quando não gravado (15 até R$80, 25 acima) */}
+        {/* Resumo Financeiro — totais de src/utils/romaneioTotals.js */}
         {(() => {
-          const valorProdutos = Number(romaneio.valor_produtos ?? 0)
-          let taxaSep = Number(romaneio.taxa_separacao ?? 0)
-          if (taxaSep <= 0 && valorProdutos >= 1) taxaSep = valorProdutos <= 80 ? 15 : 25
-          const totalComTaxa = valorProdutos + taxaSep + (romaneio.valor_frete || 0) - (romaneio.desconto_credito || 0)
-          const valorTotalExib = (Number(romaneio.valor_total ?? 0) <= valorProdutos && taxaSep > 0) ? totalComTaxa : (romaneio.valor_total ?? 0)
+          const t = calcRomaneioTotals({ romaneio, lot })
+          const valorTotalExib = t.total
           return (
         <div className="resumo-financeiro">
           <h3>• Valor {romaneio.status_pagamento === 'pago_50_pct_s_frete' ? 'Restante (50%)' : 'Total'} da Compra: R$ {(romaneio.status_pagamento === 'pago_50_pct_s_frete' ? valorTotalExib / 2 : valorTotalExib).toFixed(2)}</h3>
           <ul>
-            <li>• Valor Produtos: R$ {valorProdutos.toFixed(2)}</li>
+            <li>• Valor Produtos: R$ {t.valorProdutos.toFixed(2)}</li>
             {romaneio.total_bruto > 0 && romaneio.total_bruto !== romaneio.valor_total && (
               <li>• Total Bruto: R$ {romaneio.total_bruto?.toFixed(2)}</li>
             )}
             {romaneio.taxa_link > 0 && (
               <li>• Taxa Link/Plataforma: R$ {romaneio.taxa_link?.toFixed(2)}</li>
             )}
-            {romaneio.desconto_credito > 0 && (
-              <li style={{ marginLeft: 16 }}>○ Desconto (crédito anterior): R$ {romaneio.desconto_credito?.toFixed(2)}</li>
+            {t.descontoCredito > 0 && (
+              <li style={{ marginLeft: 16 }}>○ Desconto (crédito anterior): R$ {t.descontoCredito.toFixed(2)}</li>
             )}
-            {taxaSep > 0 && (
-              <li>• Custo Separação: R$ {taxaSep.toFixed(2)}</li>
+            {t.taxaSeparacao > 0 && (
+              <li>• Custo Separação: R$ {t.taxaSeparacao.toFixed(2)}</li>
             )}
-            {romaneio.valor_frete > 0 && (
-              <li>• Frete: R$ {romaneio.valor_frete?.toFixed(2)}</li>
+            {t.custoMotoboy > 0 && (
+              <li>• Motoboy: R$ {t.custoMotoboy.toFixed(2)}</li>
+            )}
+            {t.custoDigitacao > 0 && (
+              <li>• Digitação: R$ {t.custoDigitacao.toFixed(2)}</li>
+            )}
+            {t.custoOperacional > 0 && (
+              <li>• Custo Operacional: R$ {t.custoOperacional.toFixed(2)}</li>
+            )}
+            {t.valorFrete > 0 && (
+              <li>• Frete: R$ {t.valorFrete.toFixed(2)}</li>
             )}
             {romaneio.codigo_rastreio && (
               <li>• Código de Rastreio: {romaneio.codigo_rastreio}</li>

@@ -1,4 +1,5 @@
 import { generateRomaneioPDF } from '../utils/pdfGenerator'
+import { calcRomaneioTotals } from '../utils/romaneioTotals'
 
 /**
  * Serviço de integração com WhatsApp via Supabase Edge Function
@@ -149,11 +150,9 @@ _Artea Joias - Compras Coletivas_`
  * Notificar confirmação de pagamento
  */
 export async function notifyPaymentConfirmed(order, client) {
-  const valorProdutos = Number(order.valor_produtos ?? 0)
-  let taxaSep = Number(order.taxa_separacao ?? 0)
-  if (taxaSep <= 0 && valorProdutos >= 1) taxaSep = valorProdutos <= 80 ? 15 : 25
-  const totalComTaxa = valorProdutos + taxaSep + (order.valor_frete || 0) - (order.desconto_credito || 0)
-  const valorTotalExib = (Number(order.valor_total ?? 0) <= valorProdutos && taxaSep > 0) ? totalComTaxa : (order.valor_total ?? 0)
+  // Total pela fonte única (src/utils/romaneioTotals.js). O lote não está
+  // disponível aqui, então as taxas usadas são as já gravadas no romaneio.
+  const valorTotalExib = calcRomaneioTotals({ romaneio: order }).total
 
   const message = `💚 *Pagamento Confirmado!*
 

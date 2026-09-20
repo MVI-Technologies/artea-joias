@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
 import { generateRomaneioPDF } from '../../utils/pdfGenerator'
+import { calcRomaneioTotals } from '../../utils/romaneioTotals'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import { useToast } from '../../components/common/Toast'
@@ -60,7 +61,7 @@ export default function RomaneioDetail() {
         .select(`
           *,
           client:clients(id, nome, telefone, email, enderecos),
-          lot:lots(id, nome, dados_pagamento)
+          lot:lots(id, nome, dados_pagamento, custo_separacao, custo_operacional, custo_motoboy, custo_digitacao)
         `)
         .eq('id', romaneioId)
         .single()
@@ -115,6 +116,11 @@ export default function RomaneioDetail() {
   useEffect(() => {
     if (romaneioId) fetchPagamentos()
   }, [romaneioId])
+
+  // Total efetivo do romaneio (produtos + taxas do lote + frete - desconto).
+  // Usado no PIX, no saldo restante e no detalhamento, para que todos os
+  // números da tela batam entre si. Ver src/utils/romaneioTotals.js.
+  const totals = calcRomaneioTotals({ romaneio, lot })
 
   const getMeioPagamentoLabel = (meio) => {
     const labels = { 'pix': 'PIX', 'dinheiro': 'Dinheiro', 'cartao': 'Cartão', 'transferencia': 'Transferência', 'outro': 'Outro' }
@@ -187,7 +193,7 @@ export default function RomaneioDetail() {
     // Usar configuração centralizada de PIX
     const pixKey = pixConfig?.chave || ''
     const beneficiary = pixConfig?.nome_beneficiario || ''
-    const amount = romaneio?.valor_total || 0
+    const amount = totals.total
 
     // This is a simplified version. For production, implement full PIX BR Code spec
     return `PIX|${pixKey}|${beneficiary}|${amount.toFixed(2)}`
@@ -397,12 +403,12 @@ export default function RomaneioDetail() {
                     )}
                     <div className="info-item valor-destaque">
                       <span className="label">Valor Total:</span>
-                      <span className="valor">R$ {romaneio.valor_total?.toFixed(2)}</span>
+                      <span className="valor">R$ {totals.total.toFixed(2)}</span>
                     </div>
                     {/* Show remaining balance if partial payments exist */}
                     {(() => {
                       const totalPago = pagamentos.reduce((s, p) => s + (p.valor || 0), 0)
-                      const restante = (romaneio.valor_total || 0) - totalPago
+                      const restante = totals.total - totalPago
                       if (totalPago > 0 && restante > 0.01) {
                         return (
                           <div className="info-item valor-destaque" style={{ marginTop: 8 }}>
@@ -519,43 +525,56 @@ export default function RomaneioDetail() {
           ))}
         </div>
 
-        {/* Financial Breakdown - custo separação calculado quando não gravado (15 até R$80, 25 acima) */}
+        {/* Detalhamento financeiro — totais vêm de calcRomaneioTotals (src/utils/romaneioTotals.js) */}
         {(() => {
-          const valorProdutos = Number(romaneio.valor_produtos ?? 0)
-          let taxaSep = Number(romaneio.taxa_separacao ?? 0)
-          if (taxaSep <= 0 && valorProdutos >= 1) taxaSep = valorProdutos <= 80 ? 15 : 25
-          const totalExib = (Number(romaneio.valor_total ?? 0) <= valorProdutos && taxaSep > 0)
-            ? valorProdutos + taxaSep + (romaneio.valor_frete || 0) - (romaneio.desconto_credito || 0)
-            : (romaneio.valor_total ?? 0)
+          const t = calcRomaneioTotals({ romaneio, lot })
           return (
         <div className="financial-breakdown card">
           <h2>Detalhamento Financeiro</h2>
           <div className="breakdown-items">
             <div className="breakdown-item">
               <span>Subtotal (Produtos):</span>
-              <span>R$ {valorProdutos.toFixed(2)}</span>
+              <span>R$ {t.valorProdutos.toFixed(2)}</span>
             </div>
-            {taxaSep > 0 && (
+            {t.taxaSeparacao > 0 && (
               <div className="breakdown-item">
                 <span>Taxa de Separação:</span>
-                <span>R$ {taxaSep.toFixed(2)}</span>
+                <span>R$ {t.taxaSeparacao.toFixed(2)}</span>
               </div>
             )}
-            {romaneio.valor_frete > 0 && (
+            {t.custoMotoboy > 0 && (
+              <div className="breakdown-item">
+                <span>Motoboy:</span>
+                <span>R$ {t.custoMotoboy.toFixed(2)}</span>
+              </div>
+            )}
+            {t.custoDigitacao > 0 && (
+              <div className="breakdown-item">
+                <span>Digitação:</span>
+                <span>R$ {t.custoDigitacao.toFixed(2)}</span>
+              </div>
+            )}
+            {t.custoOperacional > 0 && (
+              <div className="breakdown-item">
+                <span>Custo Operacional:</span>
+                <span>R$ {t.custoOperacional.toFixed(2)}</span>
+              </div>
+            )}
+            {t.valorFrete > 0 && (
               <div className="breakdown-item">
                 <span>Frete:</span>
-                <span>R$ {romaneio.valor_frete?.toFixed(2)}</span>
+                <span>R$ {t.valorFrete.toFixed(2)}</span>
               </div>
             )}
-            {romaneio.desconto_credito > 0 && (
+            {t.descontoCredito > 0 && (
               <div className="breakdown-item discount">
                 <span>Desconto:</span>
-                <span>- R$ {romaneio.desconto_credito?.toFixed(2)}</span>
+                <span>- R$ {t.descontoCredito.toFixed(2)}</span>
               </div>
             )}
             <div className="breakdown-item total">
               <strong>Total:</strong>
-              <strong>R$ {totalExib.toFixed(2)}</strong>
+              <strong>R$ {t.total.toFixed(2)}</strong>
             </div>
             {romaneio.codigo_rastreio && (
               <div className="breakdown-item">
@@ -571,7 +590,7 @@ export default function RomaneioDetail() {
         {/* Pagamentos Realizados (read-only) */}
         {pagamentos.length > 0 && (() => {
           const totalPago = pagamentos.reduce((s, p) => s + (p.valor || 0), 0)
-          const valorTotal = romaneio.valor_total || 0
+          const valorTotal = totals.total
           const saldoRestante = Math.max(0, valorTotal - totalPago)
           const porcentagemPaga = valorTotal > 0 ? Math.min(100, (totalPago / valorTotal) * 100) : 0
           const quitado = saldoRestante <= 0.01 && totalPago > 0
