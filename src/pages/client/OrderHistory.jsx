@@ -129,7 +129,8 @@ export default function OrderHistory() {
 
       // Buscar configs
       const { data: company } = await supabase.from('company_settings').select('*').single()
-      const { data: pixInt } = await supabase.from('integrations').select('config').eq('type', 'pix').single()
+      // via RPC: integrations é restrita a admin (config tem credenciais)
+      const { data: pixRows } = await supabase.rpc('get_pix_publico')
 
       const pdfBlob = await generateRomaneioPDF({
         romaneio: fullRomaneio,
@@ -137,7 +138,7 @@ export default function OrderHistory() {
         client: client,
         items: allItems || [],
         company: company,
-        pixConfig: pixInt?.config
+        pixConfig: pixRows?.[0]
       })
 
       if (!pdfBlob) throw new Error('Falha ao gerar PDF')

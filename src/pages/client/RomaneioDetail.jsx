@@ -44,15 +44,13 @@ export default function RomaneioDetail() {
 
   const loadRomaneio = async () => {
     try {
-      // 1. Buscar configuração de pagamento CENTRALIZADA (integrations)
-      const { data: pixIntegration } = await supabase
-        .from('integrations')
-        .select('config')
-        .eq('type', 'pix')
-        .single()
+      // 1. Dados do PIX via RPC: integrations.config guarda credenciais e é
+      // restrita a admin — ler a tabela direto daqui dava 403 e o cliente via
+      // "Método de pagamento não configurado".
+      const { data: pix } = await supabase.rpc('get_pix_publico')
 
-      if (pixIntegration?.config) {
-        setPixConfig(pixIntegration.config)
+      if (pix?.[0]?.chave) {
+        setPixConfig(pix[0])
       }
 
       // 2. Buscar romaneio detalhado (SEM dados de pagamento - vem de integrations)
